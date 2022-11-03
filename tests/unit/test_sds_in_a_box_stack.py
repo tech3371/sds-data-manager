@@ -1,3 +1,7 @@
+###################################################
+# NOTE: Doesn't actually do anything at the moment
+###################################################
+
 import aws_cdk as core
 import aws_cdk.assertions as assertions
 
