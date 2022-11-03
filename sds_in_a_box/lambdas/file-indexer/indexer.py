@@ -3,6 +3,9 @@ import urllib.parse
 import boto3
 import logging 
 
+logger=logging.getLogger()
+logger.setLevel(logging.INFO)
+
 s3 = boto3.client('s3')
 
 def _load_allowed_filenames():
@@ -13,7 +16,7 @@ def _load_allowed_filenames():
     return data
 
 def _check_for_matching_filetype(pattern, filename):
-    # This function loads in the 
+    
     split_filename = filename.replace("_", ".").split(".")
 
     if len(split_filename) != len(pattern):
@@ -25,7 +28,7 @@ def _check_for_matching_filetype(pattern, filename):
         if pattern[field] == '*':
             file_dictionary[field] = split_filename[i]
         elif pattern[field] == split_filename[i]:
-            file_dictionary[field] == split_filename[i]
+            file_dictionary[field] = split_filename[i]
         else:
             return None
         i += 1
@@ -37,7 +40,7 @@ def lambda_handler(event, context):
 
     # Retrieve a list of allowed file types
     filetypes = _load_allowed_filenames()
-    logger.info("Allowed file types: " + filetypes)
+    logger.info("Allowed file types: " + str(filetypes))
 
     # We're only expecting one record, but for some reason the Records are a list object
     for record in event['Records']:
@@ -55,8 +58,11 @@ def lambda_handler(event, context):
             if metadata is not None:
                 break
         
+        #Found nothing.  This should probably send out an error notification to the team, because how did it make its way onto the SDC?
+        if metadata is None:
+            logger.info(f"Found no matching file types to index this file against.")
+            return None
+        
         # Rather than returning the metadata, we should insert it into the DB
+        logger.info("Found the following metadata to index: " + str(metadata))
         return metadata
-
-
-    
