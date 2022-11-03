@@ -7,3 +7,4 @@ pattern = data[0]['pattern']
 
 
 for field in pattern:
+    print(field)
