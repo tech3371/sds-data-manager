@@ -2,16 +2,22 @@ import json
 import urllib.parse
 import boto3
 import logging 
+import os 
+import sys
 
 logger=logging.getLogger()
 logger.setLevel(logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 s3 = boto3.client('s3')
 
 def _load_allowed_filenames():
     # Rather than storing the configuration locally, we should store the configuration somewhere where things can be changed on the fly.  
     # For example, a dynamodb table or a section in opensearch
-    with open("config.json") as f:
+    current_dir = os.path.dirname(__file__)
+    config_file = os.path.join(current_dir, "config.json")
+    
+    with open(config_file) as f:
         data = json.load(f)
     return data
 
