@@ -7,6 +7,4 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 RUN unzip awscliv2.zip
 RUN sudo ./aws/install
 RUN export AWS_CONFIG_FILE=/workspace/SDS-in-a-box/.aws/config
-RUN sudo echo "AWS_CONFIG_FILE=/workspace/SDS-in-a-box/.aws/config" >> /etc/environment
 RUN export AWS_SHARED_CREDENTIALS_FILE=/workspace/SDS-in-a-box/.aws/credentials
-RUN sudo echo "AWS_SHARED_CREDENTIALS_FILE=/workspace/SDS-in-a-box/.aws/credentials" >> /etc/environment
