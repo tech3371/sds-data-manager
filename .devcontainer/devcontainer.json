@@ -8,10 +8,8 @@
 	},
 	"remoteUser": "vscode",
 	"features": {
-		"desktop-lite": {
-			"password": "vscode",
-			"webPort": "6080",
-			"vncPort": "5901"
+		"ghcr.io/devcontainers/features/desktop-lite:1": {
+			"version": "latest"
 		}
 	},
 	"runArgs": ["--init", "--shm-size=1g"],
