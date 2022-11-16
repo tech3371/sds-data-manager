@@ -10,29 +10,31 @@ class Payload():
         self.payload_size = 0
 
     def add_documents(self, documents):
-        if type(documents) is Document:
-            documents.format_for_bulk_request()
-            self.payload_contents = self.payload_contents + str(documents)
+        """
+        Add document(s) to the payload for a bulk upload.
+        
+        Parameters
+        ----------
+        documents: Document, list of Documents
+            document(s) to be added to the payload in preparation for a bulk upload.
+        """
+        if type(documents) is Document:()
+            self.payload_contents = self.payload_contents + documents.contents()
 
         elif type(documents) is list:
-            concat_docs = [str(doc.format_for_bulk_request()) for doc in documents]
+            concat_docs = [doc.contents() for doc in documents]
             self.payload_contents = self.payload_contents + "".join(concat_docs)
 
         else:
-            pass
-            # need to raise some exception here
+            raise TypeError("Input was of type {} must be of type Document or list of Documents.".format(type(documents)))
 
     def size_in_bytes(self):
+        """Returns the size of the payload contents in bytes."""
         return len(self.payload_contents.encode("ascii"))
 
-
     def contents(self):
+        """Returns the contents of the payload as a string"""
         return self.payload_contents
-
-
-    def upload_to(self, client):
-        client.bulk(self.payload_contents, params={"request_timeout":1000000})
-
 
     def __repr__(self):
         return str(self.payload_contents)
