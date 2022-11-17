@@ -9,21 +9,24 @@ class TestIndex(unittest.TestCase):
       that an object of type Action is of type Action and is returned
       unchanged
       """
+      ## Arrange ##
+      action_true = Action.CREATE
 
-      action = Action.CREATE
+      ## Act ##
+      action_out = Action.validate_action(action_true)  
 
-      result = Action.validate_action(action)  
-
-      assert result == action
+      ## Assert ##
+      assert action_true == action_out
 
     def test_validate_action_fail(self):
       """
       Tests that the validate_action method correctly throws an error
       if the input is not of type Action.
       """
-
+      ## Arrange ##
       action = "this is a string, not an action"
 
+      ## Act / Assert ##
       self.assertRaises(TypeError, Action.validate_action, action)
         
 

@@ -6,15 +6,15 @@ class Index():
         self.body = body
 
     def get_name(self):
-        """Returns the name of the index"""
+        """Returns the name of the index as a string"""
         return self.name
     
     def get_body(self):
-        """Returns the body of the index"""
-        return self.body()
+        """Returns the body of the index as a dictionary"""
+        return self.body
 
     def __repr__(self):
-        return str({self.index_name:self.index_body})
+        return str({self.name:self.body})
 
     @staticmethod
     def validate_index(index):

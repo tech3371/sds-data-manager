@@ -64,37 +64,52 @@ class TestDocument(unittest.TestCase):
         """
         Test that the get_action method correctly returns the document's action
         """
+        # Arrange
         index = Index("my_index")
         action = Action.CREATE
         identifier = 1
         document = Document(index, identifier, action)
 
-        assert document.get_action() == action
+        # Act
+        action_out = document.get_action()
+
+        # Assert
+        assert action_out == action
 
     def test_get_identifier(self):
         """
         Test that the get_identifier method correctly returns the document's identifier
         """
+        ## Arrange ##
         index = Index("my_index")
         action = Action.CREATE
-        identifier = 1
-        document = Document(index, identifier, action)
+        identifier_true = 1
+        document = Document(index, identifier_true, action)
 
-        assert document.get_identifier() == identifier
+        ## Act ##
+        identifier_out = document.get_identifier()
+        
+        ## Assert ##
+        assert identifier_out == identifier_true
 
     def test_size_in_bytes(self):
         """
         Test that the size_in_bytes method correctly returns the document's size in bytes
         """
+        ## Arrange ##
         body = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
         index = Index("my_index")
         action = Action.CREATE
-        identifier = 1
-        document = Document(index, identifier, action, body)
-
+        identifier_true = 1
+        document = Document(index, identifier_true, action, body)
         doc = '{ "create" : {"_index": "my_index", "_id" : "1"}}\n{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}\n'
+        size_true = len(doc.encode("ascii"))
 
-        assert document.size_in_bytes() == len(doc.encode("ascii"))
+        ## Act ##
+        size_out = document.size_in_bytes()
+
+        ## Assert ##
+        assert size_out == size_true
     
 
 if __name__ == '__main__':
