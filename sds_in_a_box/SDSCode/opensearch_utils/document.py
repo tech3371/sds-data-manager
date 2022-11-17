@@ -4,11 +4,47 @@ from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 
 
 class Document():
+    """
+    Class to represent an OpenSearch document.
+
+    ...
+
+    Attributes
+    ----------
+    index: Index
+        the index associated with the document.
+    identifier: int
+        the id associated with the document to be used in the database.
+    body: str
+        the body of the document.
+    action: Action
+        the action associated with the document.
+    contents: str
+        the complete document formatted as a single API request.
+    size: int
+        the size of the document in bytes.
+
+    Methods
+    -------
+    update_body(body):
+        updates the body of the document with a string.
+    get_body():
+        returns the body of the document.
+    get_index():
+        returns the name of the index associated with the document.
+    get_action():
+        returns the action associated with the document.
+    get_identifier():
+        returns the identifier associated with the document.
+    size_in_bytes():
+        returns the size of the encoded (ascii) document contents in bytes.
+    """
 
     def __init__(self, index, doc_id, action, body="",):
         self.index = Index.validate_index(index)
         self.identifier = self.__validate_identifier(doc_id)
         self.body = body
+        # TODO: may want to make action optional?
         self.action = Action.validate_action(action)
         self.contents = ""
         self.size = 0
@@ -32,19 +68,19 @@ class Document():
             
     
     def get_body(self):
-        """Returns the body of the document as a string"""
+        """Returns the body of the document as a string."""
         return self.body
 
     def get_index(self):
-        """Returns the name of the document's index as a string"""
+        """Returns the name of the document's index as a string."""
         return self.index.get_name()
 
     def get_action(self):
-        """Returns the document's action as a string"""
+        """Returns the document's action as a string."""
         return self.action
 
     def get_identifier(self):
-        """Returns the document's id as an int"""
+        """Returns the document's id as an int."""
         return self.identifier
     
     def size_in_bytes(self):

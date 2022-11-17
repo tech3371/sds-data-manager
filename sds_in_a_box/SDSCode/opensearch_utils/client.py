@@ -1,11 +1,54 @@
 from index import Index
 from document import Document
+from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
 class Client():
+    """
+    Class to represent the connection with the OpenSearch database.
 
-    def __init__(self):
-        pass
+    ...
+
+    Attributes
+    ----------
+    hosts: list
+        list of dicts containing the host and port.
+        ex: [{'host': host, 'port': port}]
+    http_auth: tuple
+        tuple containing the authentication username and password for the database.
+    use_ssl: boolean
+        turn on / off SSL.
+    verify_certs: boolean
+        turn on / off verification of SSL certificates.
+    connection_class: 
+        
+
+
+    Methods
+    -------
+    create_index(index):
+        creates an index in the database.
+    create_document(document):
+        creates a document in the database.
+    delete_document(document):
+        deletes a document in the database.
+    update_document(document):
+        updates a document in the databse.
+    index_document(document):
+        creates new document in database if it does not exist,
+        updates the existing one if it does exist.
+    send_payload(payload):
+        Sends a bulk payload of documents to the database.
+
+
+    """
+    def __init__(self, hosts, http_auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection):
+        self.hosts = hosts
+        self.http_auth = http_auth
+        self.use_ssl = use_ssl
+        self.verify_certs = verify_certs
+        self.connnection_class = connnection_class
+        self.client = OpenSearch(self.hosts, self.http_auth, self.use_ssl, self.verify_certs, self.connnection_class)
 
     def create_index(self, index):
         """

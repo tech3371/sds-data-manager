@@ -4,7 +4,27 @@ from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
 class Payload():
+    """
+    Class to represent an OpenSearch bulk file payload.
 
+    ...
+
+
+    Attributes
+    ----------
+    payload_contents: str
+        json string with the payload contents.
+    payload_size: int
+        size of the payload contents as an encoded ascii string
+        in bytes.
+
+    Methods
+    -------
+    size_in_bytes():
+        returns the size of the encoded ascii payload in bytes.
+    contents():
+        returns the payload contents as a string
+    """
     def __init__(self):
         self.payload_contents = ""
         self.payload_size = 0

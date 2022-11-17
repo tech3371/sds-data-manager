@@ -2,6 +2,26 @@ from enum import Enum
 
 
 class Action(Enum):
+    """
+    Enum class to represent an OpenSearch API actions that can be performed on 
+    documents. Possible actions are create, delete, update, and index.
+
+    ...
+
+    Attributes
+    ----------
+    Create : "create"
+    Delete : "delete"
+    Update : "update"
+    Index  : "index"
+
+    Methods
+    -------
+    validate_action(action):
+        Static method to validate that the input is of 
+        type Action.
+
+    """
     CREATE = "create"
     DELETE = "delete"
     UPDATE = "update"

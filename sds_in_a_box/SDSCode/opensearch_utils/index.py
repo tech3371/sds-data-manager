@@ -1,6 +1,28 @@
 from opensearchpy import OpenSearch
 
 class Index():
+    """
+    Class to represent an OpenSearch index.
+
+    ...
+
+    Attributes
+    ----------
+    name: str
+        name to be given to the index.
+    body: dict, optional
+        dictionary containing index options.
+
+    Methods
+    -------
+    get_name():
+        returns the name of the index as a string.
+    get_body():
+        returns the body of the index as a dict.
+    validate_index(index):
+        Static method to validate that the input is of 
+        type Index.    
+    """
     def __init__(self, name, body=None):
         self.name = name
         self.body = body
