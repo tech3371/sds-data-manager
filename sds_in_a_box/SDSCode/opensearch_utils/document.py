@@ -36,6 +36,9 @@ class Document():
         returns the action associated with the document.
     get_identifier():
         returns the identifier associated with the document.
+    get_contents():
+        returns full contents of the document as a list. this includes
+        the index, action, identifier, and body.
     size_in_bytes():
         returns the size of the encoded (ascii) document contents in bytes.
     """
@@ -43,9 +46,10 @@ class Document():
     def __init__(self, index, doc_id, action, body="",):
         self.index = Index.validate_index(index)
         self.identifier = self.__validate_identifier(doc_id)
-        self.body = body
         # TODO: may want to make action optional?
         self.action = Action.validate_action(action)
+        # TODO: may want to input/store this as a dict instead of a string?
+        self.body = body
         self.contents = ""
         self.size = 0
 
@@ -82,6 +86,9 @@ class Document():
     def get_identifier(self):
         """Returns the document's id as an int."""
         return self.identifier
+    
+    def get_contents(self):
+        return self.contents
     
     def size_in_bytes(self):
         """Returns the size of the document's bulk request json string in bytes."""

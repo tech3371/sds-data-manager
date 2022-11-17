@@ -1,4 +1,4 @@
-from uploadTools.Document import Document
+from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 import json
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
@@ -22,7 +22,7 @@ class Payload():
     -------
     size_in_bytes():
         returns the size of the encoded ascii payload in bytes.
-    contents():
+    get_contents():
         returns the payload contents as a string
     """
     def __init__(self):
@@ -38,12 +38,17 @@ class Payload():
         documents: Document, list of Documents
             document(s) to be added to the payload in preparation for a bulk upload.
         """
-        if type(documents) is Document:()
-            self.payload_contents = self.payload_contents + documents.contents()
+        if type(documents) is Document:
+            self.payload_contents = self.payload_contents + documents.get_contents()
 
         elif type(documents) is list:
-            concat_docs = [doc.contents() for doc in documents]
-            self.payload_contents = self.payload_contents + "".join(concat_docs)
+            # check that all the objects in documents are of type Document
+            if all(isinstance(doc, Document) for doc in documents): 
+                concat_docs = [doc.get_contents() for doc in documents]
+                self.payload_contents = self.payload_contents + "".join(concat_docs)
+            
+            else:
+                raise TypeError("Document list contained at least one object that was not of type Document")
 
         else:
             raise TypeError("Input was of type {} must be of type Document or list of Documents.".format(type(documents)))
@@ -52,7 +57,7 @@ class Payload():
         """Returns the size of the payload contents in bytes."""
         return len(self.payload_contents.encode("ascii"))
 
-    def contents(self):
+    def get_contents(self):
         """Returns the contents of the payload as a string"""
         return self.payload_contents
 

@@ -4,6 +4,9 @@ from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 class TestIndex(unittest.TestCase):
 
     def test_get_name(self):
+        """
+        test that the get_name method correctly returns the index name as a string.
+        """
         ## Arrange ##
         index_name_true = 'python-test-index3'
         index_body = {
@@ -22,6 +25,9 @@ class TestIndex(unittest.TestCase):
         assert index_name_true == index_name_out
 
     def test_get_body(self):
+        """
+        test that the get_body method correctly returns the index body as a dict.
+        """
         ## Arrange ##
         index_name = 'python-test-index3'
         index_body_true = {
@@ -41,6 +47,9 @@ class TestIndex(unittest.TestCase):
 
     
     def test_validate_index(self):
+        """
+        test that the validate_index method correctly determines the input to be of type Index.
+        """
         ## Arrange ##
         index_name = 'python-test-index3'
         index_body = {
@@ -59,6 +68,9 @@ class TestIndex(unittest.TestCase):
         assert index_true == index_out
 
     def test_validate_index_error(self):
+        """
+        test that the validate_index method corrctly determines the input to not be of type Index.
+        """
         ## Arrange ##
         index = "string, not an Index"
 
@@ -66,6 +78,9 @@ class TestIndex(unittest.TestCase):
         self.assertRaises(TypeError, Index.validate_index, index)
 
     def test_repr(self):
+        """
+        test that the object is correctly represented as a string.
+        """
         ## Arrange ##
         index_name = 'python-test-index3'
         index_body = {
