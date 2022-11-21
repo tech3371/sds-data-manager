@@ -1,5 +1,5 @@
-from index import Index
-from document import Document
+from sds_in_a_box.SDSCode.opensearch_utils.index import Index
+from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
@@ -48,7 +48,8 @@ class Client():
         self.use_ssl = use_ssl
         self.verify_certs = verify_certs
         self.connnection_class = connnection_class
-        self.client = OpenSearch(self.hosts, self.http_auth, self.use_ssl, self.verify_certs, self.connnection_class)
+        self.client = OpenSearch(hosts=self.hosts, http_auth=self.http_auth, 
+        use_ssl=self.use_ssl, verify_certs=self.verify_certs, connection_class=self.connnection_class)
 
     def create_index(self, index):
         """
@@ -59,8 +60,21 @@ class Client():
         index: Index
             index to be created in the database
 
-        """"
-        response = self.client.indicies.create(index.name(), body=index.body()) 
+        """
+        response = self.client.indices.create(index.get_name(), body=index.get_body()) 
+
+    def index_exists(self, index):
+        """
+        Checks if a particular index exists.
+
+        Parameters
+        ----------
+        index: Index, list
+            index or list of indicies
+        """
+
+        return self.client.indicies.exists(index.name(), body=index.body())
+            
         
     def create_document(self, document):
         """
@@ -73,7 +87,7 @@ class Client():
             Document to be added to the database
 
         """
-        self.client.create(document.index().name(), document.id(), body = document.body())
+        self.client.create(index=document.get_index(), id=document.get_identifier(), body=document.get_body())
 
     def delete_document(self, document):
         """
@@ -127,4 +141,4 @@ class Client():
         payload: Payload
             payload containing bulk documents to be sent to the database
         """
-        self.client.bulk(payload.contents(), params={"request_timeout":1000000})
+        self.client.bulk(payload.get_contents(), params={"request_timeout":1000000})

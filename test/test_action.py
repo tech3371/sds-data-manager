@@ -1,7 +1,7 @@
 import unittest
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 
-class TestIndex(unittest.TestCase):
+class TestAction(unittest.TestCase):
 
     def test_validate_action_pass(self):
       """

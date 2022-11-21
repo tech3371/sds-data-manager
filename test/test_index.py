@@ -3,20 +3,23 @@ from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 
 class TestIndex(unittest.TestCase):
 
-    def test_get_name(self):
-        """
-        test that the get_name method correctly returns the index name as a string.
-        """
-        ## Arrange ##
-        index_name_true = 'python-test-index3'
-        index_body = {
+    def setUp(self):
+        self.index_name = 'python-test-index3'
+        self.index_body = {
         'settings': {
             'index': {
             'number_of_shards': 4
             }
         }
         }
-        index = Index(index_name_true, index_body)
+
+    def test_get_name(self):
+        """
+        test that the get_name method correctly returns the index name as a string.
+        """
+        ## Arrange ##
+        index_name_true = self.index_name
+        index = Index(index_name_true, self.index_body)
 
         ## Act ##
         index_name_out = index.get_name()
@@ -29,15 +32,8 @@ class TestIndex(unittest.TestCase):
         test that the get_body method correctly returns the index body as a dict.
         """
         ## Arrange ##
-        index_name = 'python-test-index3'
-        index_body_true = {
-        'settings': {
-            'index': {
-            'number_of_shards': 4
-            }
-        }
-        }
-        index = Index(index_name, index_body_true)
+        index_body_true = self.index_body
+        index = Index(self.index_name, index_body_true)
 
         ## Act ##
         index_body_out = index.get_body()
@@ -51,15 +47,7 @@ class TestIndex(unittest.TestCase):
         test that the validate_index method correctly determines the input to be of type Index.
         """
         ## Arrange ##
-        index_name = 'python-test-index3'
-        index_body = {
-        'settings': {
-            'index': {
-            'number_of_shards': 4
-            }
-        }
-        }
-        index_true = Index(index_name, index_body)
+        index_true = Index(self.index_name, self.index_body)
 
         ## Act ##
         index_out = Index.validate_index(index_true)
@@ -82,15 +70,7 @@ class TestIndex(unittest.TestCase):
         test that the object is correctly represented as a string.
         """
         ## Arrange ##
-        index_name = 'python-test-index3'
-        index_body = {
-        'settings': {
-            'index': {
-            'number_of_shards': 4
-            }
-        }
-        }
-        my_index = Index(index_name, index_body)
+        my_index = Index(self.index_name, self.index_body)
         index_string_true = str({'python-test-index3': {'settings': {'index': {'number_of_shards': 4}}}})
 
         ## Act ##

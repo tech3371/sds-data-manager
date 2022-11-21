@@ -6,15 +6,17 @@ from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 
 class TestPayload(unittest.TestCase):
 
+    def setUp(self):
+        self.index = Index("my_index")
+
     def test_add_documents(self):
         """
         test that the add_documents method correctly adds documents to the payload.
         """
         ## Arrange ##
-        index = Index("my_index")
         payload = Payload()
         body = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
-        document = Document(index, 1, Action.CREATE, body)
+        document = Document(self.index, 1, Action.CREATE, body)
 
         ## Act ##
         payload.add_documents(document)
@@ -27,12 +29,11 @@ class TestPayload(unittest.TestCase):
         test that the add_documents method correctly adds a list of documents to the payload.
         """
         ## Arrange ##
-        index = Index("my_index")
         payload = Payload()
         body1 = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
         body2 = '{"mission":"imap", "level":"l2", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
-        document1 = Document(index, 1, Action.CREATE, body1)
-        document2 = Document(index, 1, Action.CREATE, body2)
+        document1 = Document(self.index, 1, Action.CREATE, body1)
+        document2 = Document(self.index, 1, Action.CREATE, body2)
         payload_contents_true = document1.get_contents() + document2.get_contents()
 
 
@@ -70,10 +71,9 @@ class TestPayload(unittest.TestCase):
         """
         test that the size_in_bytes method correctly returns the size of the payload in bytes.
         """
-        index = Index("my_index")
         payload = Payload()
         body = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
-        document = Document(index, 1, Action.CREATE, '{"testbody":"test1"}')
+        document = Document(self.index, 1, Action.CREATE, '{"testbody":"test1"}')
         payload.add_documents(document)
         size_in_bytes_true = len(document.get_contents().encode("ascii"))
 
@@ -88,10 +88,9 @@ class TestPayload(unittest.TestCase):
         test that the get_contents method correctly returns the contents of the payload
         as a string.
         """
-        index = Index("my_index")
         payload = Payload()
         body = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
-        document = Document(index, 1, Action.CREATE, '{"testbody":"test1"}')
+        document = Document(self.index, 1, Action.CREATE, '{"testbody":"test1"}')
         payload.add_documents(document)
         contents_true = document.get_contents()
 

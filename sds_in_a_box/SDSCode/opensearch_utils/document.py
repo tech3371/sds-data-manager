@@ -110,8 +110,18 @@ class Document():
             return identifier
         else:
             raise TypeError("Identifier is of type {}, but must be of type int".format(type(index)))
-            
-            
+    
+    @staticmethod
+    def is_document(document):
+        """
+        static method that returns whether the input is of type document.
+
+        Parameters
+        ----------
+        document: 
+            input to check if it is of type Document
+        """
+        return type(document) is Document         
 
     def __repr__(self):
         return str(self.contents)

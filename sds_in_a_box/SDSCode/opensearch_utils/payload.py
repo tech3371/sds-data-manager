@@ -1,11 +1,11 @@
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 import json
+from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
 class Payload():
     """
-    Class to represent an OpenSearch bulk file payload.
+    Class to represent an OpenSearch bulk document payload.
 
     ...
 
@@ -38,7 +38,7 @@ class Payload():
         documents: Document, list of Documents
             document(s) to be added to the payload in preparation for a bulk upload.
         """
-        if type(documents) is Document:
+        if Document.is_document(documents):
             self.payload_contents = self.payload_contents + documents.get_contents()
 
         elif type(documents) is list:
