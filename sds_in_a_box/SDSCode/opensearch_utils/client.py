@@ -99,7 +99,7 @@ class Client():
             Document to be deleted from the database
 
         """
-        self.client.delete(document.index().name(), document.id())
+        self.client.delete(index=document.get_index(), id=document.get_identifier())
 
     def update_document(self, document):
         """
@@ -112,7 +112,8 @@ class Client():
              Document to be updated in the database
 
         """
-        client.update(document.index().name(), document.id(), body = document.body())
+        body = {'doc': document.get_body()}
+        self.client.update(index=document.get_index(), id=document.get_identifier(), body = body)
 
     def index_document(self, document):
         """
@@ -125,7 +126,11 @@ class Client():
             Document to be created or updated in the database
 
         """
-        client.index(document.index().name(), document.id(), body = document.body())
+        self.client.index(index=document.get_index(), id=document.get_identifier(), body = document.get_body())
+
+    def document_exists(self, document):
+        """Returns an boolean indicating whether the document exists in the index"""
+        return self.client.exists(index=document.get_index(), id=document.get_identifier())
 
     def perform_document_action(self, document):
         # not sure if it's better to get the action from the document
@@ -142,3 +147,11 @@ class Client():
             payload containing bulk documents to be sent to the database
         """
         self.client.bulk(payload.get_contents(), params={"request_timeout":1000000})
+
+    def get_document(self, document):
+        """Returns the specified document"""
+        return self.client.get(index=document.get_index(), id=document.get_identifier())
+
+    def close(self):
+        """Close the Transport and all internal connections"""
+        self.client.close()

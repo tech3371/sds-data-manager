@@ -43,7 +43,7 @@ class Document():
         returns the size of the encoded (ascii) document contents in bytes.
     """
 
-    def __init__(self, index, doc_id, action, body="",):
+    def __init__(self, index, doc_id, action, body={},):
         self.index = Index.validate_index(index)
         self.identifier = self.__validate_identifier(doc_id)
         # TODO: may want to make action optional?
@@ -64,11 +64,11 @@ class Document():
         body: str
             updated body text for the document.
         """
-        if type(body) is str:
+        if type(body) is dict:
             self.body = body
             self.__update_contents()
         else:
-            raise TypeError("Document body passed in as type {}, but must be of type str".format(type(body)))
+            raise TypeError("Document body passed in as type {}, but must be of type dict".format(type(body)))
             
     
     def get_body(self):
@@ -88,6 +88,7 @@ class Document():
         return self.identifier
     
     def get_contents(self):
+        """Returns the full contents of the document as a string."""
         return self.contents
     
     def size_in_bytes(self):
@@ -98,11 +99,11 @@ class Document():
         action_string = \
                 '{ "' \
                 + self.action.value \
-                + '" : {"_index": "' \
+                + '": { "_index": "' \
                 + self.index.get_name() \
-                + '", "_id" : "' \
-                + str(self.identifier) + '"}}\n'
-        self.contents = action_string + self.body + "\n"
+                + '", "_id": "' \
+                + str(self.identifier) + '" } }\n'
+        self.contents = action_string + json.dumps(self.body) + '\n'
         self.size = len(self.contents.encode("ascii"))
 
     def __validate_identifier(self, identifier):
