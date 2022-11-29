@@ -13,7 +13,6 @@ class TestClient(unittest.TestCase):
     def setUp(self):
         #Opensearch client Params
         host = 'search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com'
-        #host = 'search-opensearch-test-wjjxdwvlp55hemwqop7hbymxue.us-west-2.es.amazonaws.com'
         port = 443
         hosts = [{"host":host, "port":port}]
         
