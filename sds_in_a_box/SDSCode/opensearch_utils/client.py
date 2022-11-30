@@ -61,8 +61,20 @@ class Client():
             index to be created in the database
 
         """
-        response = self.client.indices.create(index.get_name(), body=index.get_body()) 
+        response = self.client.indices.create(index=index.get_name(), body=index.get_body()) 
 
+    def delete_index(self, index):
+        """
+        Deletes an index in the database.
+
+        Parameters
+        ----------
+        index: Index
+            index to be deleted in the database
+
+        """
+        self.client.indices.delete(index=index.get_name())
+        
     def index_exists(self, index):
         """
         Checks if a particular index exists.
@@ -72,8 +84,7 @@ class Client():
         index: Index, list
             index or list of indicies
         """
-
-        return self.client.indicies.exists(index.name(), body=index.body())
+        return self.client.indices.exists(index.get_name())
             
         
     def create_document(self, document):

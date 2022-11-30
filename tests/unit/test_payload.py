@@ -66,23 +66,6 @@ class TestPayload(unittest.TestCase):
         ## Act / Assert ##
         self.assertRaises(TypeError, payload.add_documents, bad_document_list)
 
-
-    def test_size_in_bytes(self):
-        """
-        test that the size_in_bytes method correctly returns the size of the payload in bytes.
-        """
-        payload = Payload()
-        body = '{"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}'
-        document = Document(self.index, 1, Action.CREATE, '{"testbody":"test1"}')
-        payload.add_documents(document)
-        size_in_bytes_true = len(document.get_contents().encode("ascii"))
-
-        ## Act ##
-        size_in_bytes_out = payload.size_in_bytes()
-
-        ## Assert ##
-        assert size_in_bytes_true == size_in_bytes_out 
-
     def test_get_contents(self):
         """
         test that the get_contents method correctly returns the contents of the payload

@@ -4,6 +4,12 @@ import boto3
 import logging 
 import os 
 import sys
+from sds_in_a_box.SDSCode.opensearch_utils.document import Document
+from sds_in_a_box.SDSCode.opensearch_utils.index import Index
+from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
+from sds_in_a_box.SDSCode.opensearch_utils.action import Action
+from sds_in_a_box.SDSCode.opensearch_utils.client import Client
+from opensearchpy import OpenSearch, RequestsHttpConnection
 
 logger=logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -41,12 +47,52 @@ def _check_for_matching_filetype(pattern, filename):
     
     return file_dictionary
 
+def _create_client():
+    #TODO: there's probably a better way to create the client in here
+    #Opensearch client Params
+    host = 'search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com'
+    port = 443
+    hosts = [{"host":host, "port":port}]
+    
+    secret_name = "OpenSearchPassword9643DC3D-uVH94BjrbF9u"
+    region_name = "us-west-2"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    # Decrypts secret using the associated KMS key.
+    secret = get_secret_value_response['SecretString']
+
+    auth = ("master-user", secret)
+    return Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
+
+
 def lambda_handler(event, context):
     logger.info("Received event: " + json.dumps(event, indent=2))
 
     # Retrieve a list of allowed file types
     filetypes = _load_allowed_filenames()
     logger.info("Allowed file types: " + str(filetypes))
+
+    # create opensearch client
+    client = _create_client()
+    # create an index
+    # TODO: probably a better way to set the index than hardcoding it
+    index = Index("test_index")
+    # create a payload
+    document_payload = Payload()
 
     # We're only expecting one record, but for some reason the Records are a list object
     for record in event['Records']:
@@ -71,4 +117,10 @@ def lambda_handler(event, context):
         
         # Rather than returning the metadata, we should insert it into the DB
         logger.info("Found the following metadata to index: " + str(metadata))
-        return metadata
+
+        # create a document for the metadata and add it to the payload
+        opensearch_doc = Document(index, filename, Action.CREATE, metadata)
+        document_payload.add_documents(opensearch_doc)
+
+    # send the paylaod to the opensearch instance
+    client.send_payload(document_payload)

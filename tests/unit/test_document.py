@@ -90,7 +90,7 @@ class TestDocument(unittest.TestCase):
         test that the get_identifier method correctly returns the document's identifier.
         """
         ## Arrange ##
-        identifier_true = self.identifier
+        identifier_true = str(self.identifier)
         document = Document(self.index, identifier_true, self.action)
 
         ## Act ##
@@ -106,12 +106,15 @@ class TestDocument(unittest.TestCase):
         """
         ## Arrange ##
         document = Document(self.index, self.identifier, self.action, self.document_body)
-        contents_true = '{ "create": { "_index": "my_index", "_id": "1" } }\n{\'mission\': \'imap\', \'level\': \'l0\', \'instrument\': \'*\', \'date\': \'*\', \'version\': \'*\', \'extension\': \'fits\'}\n'
+        contents_true = '{ "create": { "_index": "my_index", "_id": "1" } }\n{"mission": "imap", "level": "l0", "instrument": "*", "date": "*", "version": "*", "extension": "fits"}\n'
 
         ## Act ##
         contents_out = document.get_contents()
         
         ## Assert ##
+        print()
+        print(contents_true)
+        print(contents_out)
         assert contents_out == contents_true
 
 

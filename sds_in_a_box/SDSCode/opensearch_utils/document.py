@@ -13,7 +13,7 @@ class Document():
     ----------
     index: Index
         the index associated with the document.
-    identifier: int
+    identifier: int, str
         the id associated with the document to be used in the database.
     body: str
         the body of the document.
@@ -48,7 +48,6 @@ class Document():
         self.identifier = self.__validate_identifier(doc_id)
         # TODO: may want to make action optional?
         self.action = Action.validate_action(action)
-        # TODO: may want to input/store this as a dict instead of a string?
         self.body = body
         self.contents = ""
         self.size = 0
@@ -102,15 +101,15 @@ class Document():
                 + '": { "_index": "' \
                 + self.index.get_name() \
                 + '", "_id": "' \
-                + str(self.identifier) + '" } }\n'
+                + self.identifier + '" } }\n'
         self.contents = action_string + json.dumps(self.body) + '\n'
         self.size = len(self.contents.encode("ascii"))
 
     def __validate_identifier(self, identifier):
-        if type(identifier) is int:
-            return identifier
+        if type(identifier) is str or type(identifier) is int:
+            return str(identifier)
         else:
-            raise TypeError("Identifier is of type {}, but must be of type int".format(type(index)))
+            raise TypeError("Identifier is of type {}, but must be of type str or int".format(type(index)))
     
     @staticmethod
     def is_document(document):

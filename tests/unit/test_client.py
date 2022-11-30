@@ -56,7 +56,7 @@ class TestClient(unittest.TestCase):
         ## Act ##
         self.client.create_index(self.index)
 
-        index_exists_out = self.client.client.indices.exists(self.index.get_name())      
+        index_exists_out = self.client.index_exists(self.index)      
 
         ## Assert ##
         assert index_exists_out == index_exists_true
@@ -166,7 +166,7 @@ class TestClient(unittest.TestCase):
         self.client.delete_document(document2)
 
     def tearDown(self):
-        self.client.client.indices.delete(index=self.index.get_name())
+        self.client.delete_index(self.index)
         self.client.close()
 
 if __name__ == '__main__':
