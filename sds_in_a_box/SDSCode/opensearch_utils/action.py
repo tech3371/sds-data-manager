@@ -11,9 +11,14 @@ class Action(Enum):
     Attributes
     ----------
     Create : "create"
+        Creates a new document or returns 409 response if it already exists.
     Delete : "delete"
+        Deletes the document.
     Update : "update"
+        Updates the document. 
     Index  : "index"
+        Creates a new document if it doesn't exists, updates the existing
+        document if it does.
 
     Methods
     -------

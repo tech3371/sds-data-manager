@@ -14,7 +14,7 @@ class Document():
     index: Index
         the index associated with the document.
     identifier: int, str
-        the id associated with the document to be used in the database.
+        the id associated with the document to be used in the opensearch cluster.
     body: str
         the body of the document.
     action: Action

@@ -1,5 +1,6 @@
 import unittest
 import json
+import os
 from sds_in_a_box.SDSCode import indexer
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 from sds_in_a_box.SDSCode.opensearch_utils.index import Index
@@ -10,13 +11,14 @@ from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import boto3
 from botocore.exceptions import ClientError
 
-class TestClient(unittest.TestCase):
+class TestIndexer(unittest.TestCase):
 
     def setUp(self):
         #Opensearch client Params
-        host = 'search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com'
-        port = 443
-        hosts = [{"host":host, "port":port}]
+        os.environ["OS_DOMAIN"] = 'search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com'
+        os.environ["OS_PORT"] = '443'
+
+        hosts = [{"host":os.environ["OS_DOMAIN"], "port":os.environ["OS_PORT"]}]
         
         secret_name = "OpenSearchPassword9643DC3D-uVH94BjrbF9u"
         region_name = "us-west-2"
@@ -41,6 +43,9 @@ class TestClient(unittest.TestCase):
 
         auth = ("master-user", secret)
         self.client = Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
+
+        os.environ["OS_ADMIN_USERNAME"] = "master-user"
+        os.environ["OS_ADMIN_PASSWORD_LOCATION"] = secret
 
         # This is a pretend new file payload, like we just received "imap_l0_instrument_date_version.fits" from the bucket "IMAP-Data-Bucket"
         self.sample_payload = {

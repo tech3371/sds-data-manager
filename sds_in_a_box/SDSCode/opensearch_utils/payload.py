@@ -12,22 +12,17 @@ class Payload():
 
     Attributes
     ----------
-    payload_contents: str
-        json string with the payload contents.
-    payload_size: int
-        size of the payload contents as an encoded ascii string
-        in bytes.
+    payload_contents: list
+        list of json strings representing the full payload contents,
+        broken up into a list to avoid request limits.
 
     Methods
     -------
-    size_in_bytes():
-        returns the size of the encoded ascii payload in bytes.
     get_contents():
-        returns the payload contents as a string
+        returns the full payload contents as a string
     """
     def __init__(self):
         self.payload_contents = []
-        self.payload_size = []
 
     def add_documents(self, documents):
         """
@@ -61,14 +56,18 @@ class Payload():
         return str(self.payload_contents)
 
     def __add_to_payload(self, document):
-        # TODO: not sure what the actual request limit is or how it's determined,
-        # but the size of the encoded string seems to be the most consistent way to check
-        # if the limit is hit and it seems to be somewhere around the bytes below
+        # TODO: not sure what the actual request limit is or how it's 
+        # determined, but the size of the encoded string seems to be 
+        # the most consistent way to check if the limit is hit and that 
+        # limit seems to be somewhere around the number of bytes below.
         request_limit = 5281500 #bytes
 
+        # check if the payload is empty and if the payload with the new document added would still be under the request limit
         if len(self.payload_contents) > 0 and self.__size_in_bytes(self.payload_contents[-1]) + document.size_in_bytes() < request_limit:
+            # concat the new document
             self.payload_contents[-1] = self.payload_contents[-1] + document.get_contents()
         else:
+            # start a new payload chunk with the new document
             self.payload_contents.append(document.get_contents())
 
     def __size_in_bytes(self, payload):

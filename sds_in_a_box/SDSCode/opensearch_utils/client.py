@@ -5,7 +5,7 @@ from opensearchpy import OpenSearch, RequestsHttpConnection
 
 class Client():
     """
-    Class to represent the connection with the OpenSearch database.
+    Class to represent the connection with the OpenSearch cluster.
 
     ...
 
@@ -15,7 +15,8 @@ class Client():
         list of dicts containing the host and port.
         ex: [{'host': host, 'port': port}]
     http_auth: tuple
-        tuple containing the authentication username and password for the database.
+        tuple containing the authentication username and password for the 
+        OpenSearch cluster.
     use_ssl: boolean
         turn on / off SSL.
     verify_certs: boolean
@@ -27,18 +28,18 @@ class Client():
     Methods
     -------
     create_index(index):
-        creates an index in the database.
+        creates an index in the OpenSearch cluster.
     create_document(document):
-        creates a document in the database.
+        creates a document in the OpenSearch cluster.
     delete_document(document):
-        deletes a document in the database.
+        deletes a document in the OpenSearch cluster.
     update_document(document):
-        updates a document in the databse.
+        updates a document in the OpenSearch cluster.
     index_document(document):
-        creates new document in database if it does not exist,
+        creates new document in OpenSearch cluster if it does not exist,
         updates the existing one if it does exist.
     send_payload(payload):
-        Sends a bulk payload of documents to the database.
+        Sends a bulk payload of documents to the OpenSearch cluster.
 
 
     """
@@ -53,24 +54,24 @@ class Client():
 
     def create_index(self, index):
         """
-        Creates an index in the database.
+        Creates an index in the OpenSearch cluster.
 
         Parameters
         ----------
         index: Index
-            index to be created in the database
+            index to be created in the OpenSearch cluster
 
         """
         response = self.client.indices.create(index=index.get_name(), body=index.get_body()) 
 
     def delete_index(self, index):
         """
-        Deletes an index in the database.
+        Deletes an index in the OpenSearch cluster.
 
         Parameters
         ----------
         index: Index
-            index to be deleted in the database
+            index to be deleted in the OpenSearch cluster
 
         """
         self.client.indices.delete(index=index.get_name())
@@ -89,38 +90,38 @@ class Client():
         
     def create_document(self, document):
         """
-        Creates the document in the database. Returns a 409 response 
+        Creates the document in the OpenSearch cluster. Returns a 409 response 
         when a document with a same ID already exists in the index.
 
         Parameters
         ----------
         document: Document 
-            Document to be added to the database
+            Document to be added to the OpenSearch cluster
 
         """
         self.client.create(index=document.get_index(), id=document.get_identifier(), body=document.get_body())
 
     def delete_document(self, document):
         """
-        Deletes the document in the database.
+        Deletes the document in the OpenSearch cluster.
 
         Parameters
         ----------
         document: Document
-            Document to be deleted from the database
+            Document to be deleted from the OpenSearch cluster
 
         """
         self.client.delete(index=document.get_index(), id=document.get_identifier())
 
     def update_document(self, document):
         """
-        Updates the document in the database if it exists, returns an error
+        Updates the document in the OpenSearch cluster if it exists, returns an error
         if it doesn't exist.
 
         Parameters
         ----------
         document: Document
-             Document to be updated in the database
+             Document to be updated in the OpenSearch cluster
 
         """
         body = {'doc': document.get_body()}
@@ -128,13 +129,13 @@ class Client():
 
     def index_document(self, document):
         """
-        Creates the document in the database if it does not already exist. 
+        Creates the document in the OpenSearch cluster if it does not already exist. 
         If the document does exist, it will update the document.
 
         Parameters
         ----------
          document: Document 
-            Document to be created or updated in the database
+            Document to be created or updated in the OpenSearch cluster
 
         """
         self.client.index(index=document.get_index(), id=document.get_identifier(), body = document.get_body())
@@ -144,18 +145,19 @@ class Client():
         return self.client.exists(index=document.get_index(), id=document.get_identifier())
 
     def perform_document_action(self, document):
-        # not sure if it's better to get the action from the document
-        # or to be explicit with the method name
+        # TODO: not sure if it's better to get the action from the document
+        # or to be explicit with method names (above). This probably depends
+        # on how we end up handling documents
         pass
 
     def send_payload(self, payload):
         """
-        Sends a bulk payload of documents to the database
+        Sends a bulk payload of documents to the OpenSearch cluster
 
         Parameters
         ----------
         payload: Payload
-            payload containing bulk documents to be sent to the database
+            payload containing bulk documents to be sent to the OpenSearch cluster
         """
         self.client.bulk(payload.get_contents(), params={"request_timeout":1000000})
 
