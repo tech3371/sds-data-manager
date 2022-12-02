@@ -28,11 +28,11 @@ class Index():
         self.body = body
 
     def get_name(self):
-        """Returns the name of the index as a string"""
+        """Returns the name of the index as a string."""
         return self.name
     
     def get_body(self):
-        """Returns the body of the index as a dictionary"""
+        """Returns the body of the index as a dictionary."""
         return self.body
 
     def __repr__(self):
@@ -48,15 +48,15 @@ class Index():
 
         Parameters
         ----------
-        index : an object to be validated as an Index
+        index : an object to be validated as an Index.
 
         Returns
         -------
         Index
-            the validated index, same the object input
+            the validated index, same the object input.
         
         """
         if type(index) is Index:
             return index
         else:
-            raise TypeError("Input is of type {}, but must be of type Index".format(type(index)))
+            raise TypeError("Input is type {}, but must be type Index".format(type(index)))

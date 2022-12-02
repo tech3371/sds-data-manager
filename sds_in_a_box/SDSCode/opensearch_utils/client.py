@@ -1,5 +1,6 @@
 from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 from sds_in_a_box.SDSCode.opensearch_utils.document import Document
+from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
@@ -29,15 +30,14 @@ class Client():
     -------
     create_index(index):
         creates an index in the OpenSearch cluster.
-    create_document(document):
-        creates a document in the OpenSearch cluster.
-    delete_document(document):
-        deletes a document in the OpenSearch cluster.
-    update_document(document):
-        updates a document in the OpenSearch cluster.
-    index_document(document):
-        creates new document in OpenSearch cluster if it does not exist,
-        updates the existing one if it does exist.
+    delete_index(index):
+        deletes an index in the OpenSearch cluster.
+    index_exists(index):
+        checks whether a particular index exists in the OpenSearch cluster.
+    document_exists(document):
+        checks whether a particular document exists in the OpenSearch cluster.
+    send_document(document):
+        sends a document to the OpenSearch cluster with its associated action.
     send_payload(payload):
         Sends a bulk payload of documents to the OpenSearch cluster.
 
@@ -59,7 +59,7 @@ class Client():
         Parameters
         ----------
         index: Index
-            index to be created in the OpenSearch cluster
+            index to be created in the OpenSearch cluster.
 
         """
         response = self.client.indices.create(index=index.get_name(), body=index.get_body()) 
@@ -71,93 +71,64 @@ class Client():
         Parameters
         ----------
         index: Index
-            index to be deleted in the OpenSearch cluster
+            index to be deleted in the OpenSearch cluster.
 
         """
         self.client.indices.delete(index=index.get_name())
         
     def index_exists(self, index):
         """
-        Checks if a particular index exists.
+        Returns an boolean indicating whether particular index exists.
 
         Parameters
         ----------
         index: Index, list
-            index or list of indicies
+            index or list of indicies.
         """
         return self.client.indices.exists(index.get_name())
-            
-        
-    def create_document(self, document):
-        """
-        Creates the document in the OpenSearch cluster. Returns a 409 response 
-        when a document with a same ID already exists in the index.
-
-        Parameters
-        ----------
-        document: Document 
-            Document to be added to the OpenSearch cluster
-
-        """
-        self.client.create(index=document.get_index(), id=document.get_identifier(), body=document.get_body())
-
-    def delete_document(self, document):
-        """
-        Deletes the document in the OpenSearch cluster.
-
-        Parameters
-        ----------
-        document: Document
-            Document to be deleted from the OpenSearch cluster
-
-        """
-        self.client.delete(index=document.get_index(), id=document.get_identifier())
-
-    def update_document(self, document):
-        """
-        Updates the document in the OpenSearch cluster if it exists, returns an error
-        if it doesn't exist.
-
-        Parameters
-        ----------
-        document: Document
-             Document to be updated in the OpenSearch cluster
-
-        """
-        body = {'doc': document.get_body()}
-        self.client.update(index=document.get_index(), id=document.get_identifier(), body = body)
-
-    def index_document(self, document):
-        """
-        Creates the document in the OpenSearch cluster if it does not already exist. 
-        If the document does exist, it will update the document.
-
-        Parameters
-        ----------
-         document: Document 
-            Document to be created or updated in the OpenSearch cluster
-
-        """
-        self.client.index(index=document.get_index(), id=document.get_identifier(), body = document.get_body())
 
     def document_exists(self, document):
-        """Returns an boolean indicating whether the document exists in the index"""
+        """
+        Returns an boolean indicating whether the document exists in the index.
+        
+        Parameters
+        ----------
+        document: Document
+            document to check if it exists in the OpenSearch cluster.
+        """
         return self.client.exists(index=document.get_index(), id=document.get_identifier())
 
-    def perform_document_action(self, document):
-        # TODO: not sure if it's better to get the action from the document
-        # or to be explicit with method names (above). This probably depends
-        # on how we end up handling documents
-        pass
+    def send_document(self, document, action_override=None):
+        """
+        Sends the document to OpenSearch using the action associated with
+        the document.
+
+        Parameters
+        ----------
+        document: Document
+            document to be sent to the OpenSearch cluster.
+        """
+
+        # override the action if specified
+        action = self.__override_action(document, action_override)
+
+        if action == Action.CREATE:
+            self.__create_document(document)
+        elif action == Action.DELETE:
+                self.__delete_document(document)
+        elif action == Action.UPDATE:
+            self.__update_document(document)
+        elif action == Action.INDEX:
+            self.__index_document(document)
 
     def send_payload(self, payload):
         """
-        Sends a bulk payload of documents to the OpenSearch cluster
+        Sends a bulk payload of documents to the OpenSearch cluster.
 
         Parameters
         ----------
         payload: Payload
-            payload containing bulk documents to be sent to the OpenSearch cluster
+            payload containing bulk documents to be sent to the OpenSearch cluster.
         """
         self.client.bulk(payload.get_contents(), params={"request_timeout":1000000})
 
@@ -168,3 +139,62 @@ class Client():
     def close(self):
         """Close the Transport and all internal connections"""
         self.client.close()
+            
+    def __override_action(self, document, action):
+        if action == None or type(action) is not Action:
+            action = document.get_action() 
+        return action
+              
+    def __create_document(self, document):
+        """
+        Creates the document in the OpenSearch cluster. Returns a 409 response 
+        when a document with a same identifier already exists in the index.
+
+        Parameters
+        ----------
+        document: Document 
+            Document to be added to the OpenSearch cluster.
+
+        """
+        self.client.create(index=document.get_index(), id=document.get_identifier(), body=document.get_body())
+
+    def __delete_document(self, document):
+        """
+        Deletes the document in the OpenSearch cluster.
+
+        Parameters
+        ----------
+        document: Document
+            Document to be deleted from the OpenSearch cluster.
+
+        """
+        self.client.delete(index=document.get_index(), id=document.get_identifier())
+
+    def __update_document(self, document):
+        """
+        Updates the document in the OpenSearch cluster if it exists, returns an error
+        if it doesn't exist.
+
+        Parameters
+        ----------
+        document: Document
+             Document to be updated in the OpenSearch cluster.
+
+        """
+        body = {'doc': document.get_body()}
+        self.client.update(index=document.get_index(), id=document.get_identifier(), body = body)
+
+    def __index_document(self, document):
+        """
+        Creates the document in the OpenSearch cluster if it does not already exist. 
+        If the document does exist, it will update the document.
+
+        Parameters
+        ----------
+         document: Document 
+            Document to be created or updated in the OpenSearch cluster.
+
+        """
+        self.client.index(index=document.get_index(), id=document.get_identifier(), body = document.get_body())
+
+    

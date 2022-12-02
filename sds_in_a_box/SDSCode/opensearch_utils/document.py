@@ -12,13 +12,13 @@ class Document():
     Attributes
     ----------
     index: Index
-        the index associated with the document.
+        the index that the document should be associated with.
     identifier: int, str
-        the id associated with the document to be used in the opensearch cluster.
+        the identifier to be associated with the document in OpenSearch.
     body: str
         the body of the document.
     action: Action
-        the action associated with the document.
+        the action for OpenSearch to perform on the document.
     contents: str
         the complete document formatted as a single API request.
     size: int
@@ -28,6 +28,8 @@ class Document():
     -------
     update_body(body):
         updates the body of the document with a string.
+    update_action(action):
+        updates the action associated with the document.
     get_body():
         returns the body of the document.
     get_index():
@@ -37,7 +39,7 @@ class Document():
     get_identifier():
         returns the identifier associated with the document.
     get_contents():
-        returns full contents of the document as a list. this includes
+        returns full contents of the document as a str. this includes
         the index, action, identifier, and body.
     size_in_bytes():
         returns the size of the encoded (ascii) document contents in bytes.
@@ -46,7 +48,6 @@ class Document():
     def __init__(self, index, doc_id, action, body={},):
         self.index = Index.validate_index(index)
         self.identifier = self.__validate_identifier(doc_id)
-        # TODO: may want to make action optional?
         self.action = Action.validate_action(action)
         self.body = body
         self.contents = ""
@@ -69,7 +70,17 @@ class Document():
         else:
             raise TypeError("Document body passed in as type {}, but must be of type dict".format(type(body)))
             
-    
+    def update_action(self, action):
+        """ 
+        Updates the action of the document.
+
+        Parameters
+        ----------
+        action: Action
+            action to be performed on the document by OpenSearch.
+        """
+        self.action = Action.validate_action(action)
+
     def get_body(self):
         """Returns the body of the document as a string."""
         return self.body
@@ -109,17 +120,17 @@ class Document():
         if type(identifier) is str or type(identifier) is int:
             return str(identifier)
         else:
-            raise TypeError("Identifier is of type {}, but must be of type str or int".format(type(index)))
+            raise TypeError("Identifier is type {}, but must be type str or int".format(type(index)))
     
     @staticmethod
     def is_document(document):
         """
-        static method that returns whether the input is of type document.
+        static method that returns whether the input is type document.
 
         Parameters
         ----------
         document: 
-            input to check if it is of type Document
+            input to check if it is type Document.
         """
         return type(document) is Document         
 

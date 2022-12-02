@@ -14,7 +14,7 @@ class Payload():
     ----------
     payload_contents: list
         list of json strings representing the full payload contents,
-        broken up into a list to avoid request limits.
+        broken up into a list to avoid request limits when sending
 
     Methods
     -------
@@ -42,10 +42,10 @@ class Payload():
                 concat_docs = [self.__add_to_payload(doc) for doc in documents]
             
             else:
-                raise TypeError("Document list contained at least one object that was not of type Document")
+                raise TypeError("Document list contained at least one object that was not type Document")
 
         else:
-            raise TypeError("Input was of type {} must be of type Document or list of Documents.".format(type(documents)))
+            raise TypeError("Input was type {} must be type Document or list of Documents.".format(type(documents)))
 
     def get_contents(self):
         """Returns the contents of the payload as a string"""

@@ -42,6 +42,22 @@ class TestDocument(unittest.TestCase):
 
         ## Act / Assert ##
         self.assertRaises(TypeError, document.update_body, body)
+
+    def test_update_action(self):
+        """
+        test that the update_action method updates the action 
+        associated with the document.
+        """
+        ## Arrange ##
+        document = Document(self.index, self.identifier, self.action)
+        action_true = Action.INDEX
+
+        ## Act ##
+        document.update_action(action_true)
+        action_out = document.get_action()
+
+        ## Assert ##
+        assert action_out == action_true
         
     def test_get_body(self):
         """

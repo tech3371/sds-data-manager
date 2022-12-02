@@ -92,7 +92,8 @@ class SdsInABoxStack(Stack):
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
                                             "OS_DOMAIN": domain.domain_endpoint,
-                                            "OS_PORT": "443"
+                                            "OS_PORT": "443",
+                                            "OS_INDEX": "metadata"
                                             }
                                           )
 

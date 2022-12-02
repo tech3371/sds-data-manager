@@ -17,6 +17,7 @@ class TestIndexer(unittest.TestCase):
         #Opensearch client Params
         os.environ["OS_DOMAIN"] = 'search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com'
         os.environ["OS_PORT"] = '443'
+        os.environ["OS_INDEX"] = "test_data"
 
         hosts = [{"host":os.environ["OS_DOMAIN"], "port":os.environ["OS_PORT"]}]
         
@@ -65,10 +66,15 @@ class TestIndexer(unittest.TestCase):
         }
 
         self.body = {'mission': 'imap', 'level': 'l0', 'instrument': 'instrument', 'date': 'date', 'version': 'version', 'extension': 'fits'}
-        self.index = Index("test_index")
+        self.index = Index(os.environ["OS_INDEX"])
         self.action = Action.CREATE
         identifier = self.sample_payload["Records"][0]["s3"]["object"]["key"]
         self.document = Document(self.index, identifier, self.action, self.body)
+        try:
+            self.client.delete_index(self.index)
+        except:
+            pass
+        
         self.client.create_index(self.index)
 
         self.payload = Payload()
@@ -76,7 +82,7 @@ class TestIndexer(unittest.TestCase):
     def test_indexer(self):
         ## Arrange
         exists_true = True
-        document_true = {"_index":"test_index","_type":"_doc","_id":"imap_l0_instrument_date_version.fits","_version":1,"_seq_no":0,"_primary_term":1,"found":True,"_source":{"mission": "imap", "level": "l0", "instrument": "instrument", "date": "date", "version": "version", "extension": "fits"}}
+        document_true = {"_index":"test_data","_type":"_doc","_id":"imap_l0_instrument_date_version.fits","_version":1,"_seq_no":0,"_primary_term":1,"found":True,"_source":{"mission": "imap", "level": "l0", "instrument": "instrument", "date": "date", "version": "version", "extension": "fits"}}
 
         ## Act
         indexer.lambda_handler(self.sample_payload, "")
@@ -89,7 +95,7 @@ class TestIndexer(unittest.TestCase):
         
 
     def tearDown(self):
-        self.client.delete_document(self.document)
+        self.client.send_document(self.document, Action.DELETE)
         self.client.delete_index(self.index)
         self.client.close()
 

@@ -62,8 +62,7 @@ def lambda_handler(event, context):
     # create opensearch client
     client = _create_open_search_client()
     # create an index
-    # TODO: probably a better place/way to set the index name than hardcoding it here
-    index = Index("test_index")
+    index = Index(os.environ["OS_INDEX"])
     # create a payload
     document_payload = Payload()
 

@@ -3,7 +3,7 @@ from enum import Enum
 
 class Action(Enum):
     """
-    Enum class to represent an OpenSearch API actions that can be performed on 
+    Enum class to represent an OpenSearch API action that can be performed on 
     documents. Possible actions are create, delete, update, and index.
 
     ...
@@ -17,7 +17,7 @@ class Action(Enum):
     Update : "update"
         Updates the document. 
     Index  : "index"
-        Creates a new document if it doesn't exists, updates the existing
+        Creates a new document if it doesn't exist, updates the existing
         document if it does.
 
     Methods
@@ -47,10 +47,10 @@ class Action(Enum):
         Returns
         -------
         Action
-            the validated action, same the object input
+            the validated action that was input
         
         """
         if type(action) is Action:
             return action
         else:
-            raise TypeError("Input is of type {}, but must be of type Action".format(type(action)))
+            raise TypeError("Input is type {}, but must be type Action".format(type(action)))

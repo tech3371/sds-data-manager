@@ -61,84 +61,98 @@ class TestClient(unittest.TestCase):
         ## Assert ##
         assert index_exists_out == index_exists_true
 
-    def test_create_document(self):
+    def test_send_document_create(self):
         """
-        test that the create_document method correctly creates the specified document in OpenSearch.
+        test that the send_document method correctly creates the specified document in OpenSearch.
         """
         ## Arrange ##
         self.client.create_index(self.index)
+        action = Action.CREATE
+        document = Document(self.index, 1, action, {'test body': 10})
         document_true = {'_index': 'test_index', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
 
         ## Act ##
-        self.client.create_document(self.document)
-        document_out = self.client.get_document(self.document)
+        self.client.send_document(document)
+        document_out = self.client.get_document(document)
 
         ## Assert ##
         assert document_true == document_out
 
         ## TearDown ##
-        self.client.delete_document(self.document)
+        document.update_action(Action.DELETE)
+        self.client.send_document(document)
 
 
-    def test_delete_document(self):
+    def test_send_document_delete(self):
         """
-        test that the create_document method correctly deletes the specified document in OpenSearch.
+        test that the send_document method correctly deletes the specified document in OpenSearch.
         """
         ## Arrange ##
         self.client.create_index(self.index)
-        self.client.create_document(self.document)
+        action = Action.CREATE
+        document = Document(self.index, 1, action, {'test body': 10})
+        self.client.send_document(document)
+        action = Action.DELETE
+        document = Document(self.index, 1, action, {'test body': 10})
         exists_true = False
 
         exists_confirm = self.client.document_exists(self.document)
         assert exists_confirm == True
 
         ## Act ##
-        self.client.delete_document(self.document)
-        exists_out = self.client.document_exists(self.document)
+        self.client.send_document(document)
+        exists_out = self.client.document_exists(document)
 
         ## Assert ##
         assert exists_out == exists_true
     
-    def test_update_document(self):
+    def test_send_document_update(self):
         """
-        test that the update_document method correctly updates the specified document in OpenSearch.
+        test that the send_document method correctly updates the specified document in OpenSearch.
         """
         ## Arrange ##
         self.client.create_index(self.index)
-        self.client.create_document(self.document)
-        self.document.update_body({'test body': 20})
+        action = Action.CREATE
+        document = Document(self.index, 1, action, {'test body': 10})
+        self.client.send_document(self.document)
+        document.update_body({'test body': 20})
+        document.update_action(Action.UPDATE)
         # the version number increments each time a doc is updated (starts at 1)
         # _seq_no increments for each operation performed on the document (starts at 0)
         document_true = {'_index': 'test_index', '_type': '_doc', '_id': '1', '_version': 2, '_seq_no': 1, '_primary_term': 1, 'found': True, '_source': {'test body': 20}}
         
         ## Act ##
-        self.client.update_document(self.document)
-        document_out = self.client.get_document(self.document)
+        self.client.send_document(document)
+        document_out = self.client.get_document(document)
 
         ## Assert ##
         assert document_out == document_true
 
         ## TearDown ##
-        self.client.delete_document(self.document)
+        document.update_action(Action.DELETE)
+        self.client.send_document(document)
 
-    def test_index_document(self):
+    def test_send_document_index(self):
         """
-        test that the index_document method correctly indexes the specified document in OpenSearch.
+        test that the send_document method correctly indexes the specified document in OpenSearch.
         """
         ## Arrange ##
         self.client.create_index(self.index)
+        action = Action.INDEX
+        document = Document(self.index, 1, action, {'test body': 10})
         document_true = {'_index': 'test_index', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
         
         ## Act ##
-        self.client.index_document(self.document)
-        document_out = self.client.get_document(self.document)
+        self.client.send_document(document)
+        document_out = self.client.get_document(document)
 
         
         ## Assert ##
         assert document_out == document_true
 
         ## TearDown ##
-        self.client.delete_document(self.document)
+        document.update_action(Action.DELETE)
+        self.client.send_document(document)
 
     def test_send_payload(self):
         """
@@ -162,8 +176,10 @@ class TestClient(unittest.TestCase):
         assert (document_out == document_true) and (document2_out == document2_true)
 
         ## TearDown ##
-        self.client.delete_document(self.document)
-        self.client.delete_document(document2)
+        self.document.update_action(Action.DELETE)
+        self.client.send_document(self.document)
+        document2.update_action(Action.DELETE)
+        self.client.send_document(document2)
 
     def tearDown(self):
         self.client.delete_index(self.index)
