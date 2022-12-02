@@ -9,6 +9,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 class TestClient(unittest.TestCase):
+    """tests for client.py"""
 
     def setUp(self):
         #Opensearch client Params
@@ -39,11 +40,7 @@ class TestClient(unittest.TestCase):
 
         auth = ("master-user", secret)
         self.client = Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
-
-        self.index = Index("test_index")
-        self.action = Action.INDEX
-        self.document = Document(self.index, 1, self.action, {'test body': 10})
-
+        self.index = Index("test_data")
         self.payload = Payload()
 
     def test_create_index(self):
@@ -69,7 +66,7 @@ class TestClient(unittest.TestCase):
         self.client.create_index(self.index)
         action = Action.CREATE
         document = Document(self.index, 1, action, {'test body': 10})
-        document_true = {'_index': 'test_index', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
+        document_true = {'_index': 'test_data', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
 
         ## Act ##
         self.client.send_document(document)
@@ -96,7 +93,7 @@ class TestClient(unittest.TestCase):
         document = Document(self.index, 1, action, {'test body': 10})
         exists_true = False
 
-        exists_confirm = self.client.document_exists(self.document)
+        exists_confirm = self.client.document_exists(document)
         assert exists_confirm == True
 
         ## Act ##
@@ -114,12 +111,12 @@ class TestClient(unittest.TestCase):
         self.client.create_index(self.index)
         action = Action.CREATE
         document = Document(self.index, 1, action, {'test body': 10})
-        self.client.send_document(self.document)
+        self.client.send_document(document)
         document.update_body({'test body': 20})
         document.update_action(Action.UPDATE)
         # the version number increments each time a doc is updated (starts at 1)
         # _seq_no increments for each operation performed on the document (starts at 0)
-        document_true = {'_index': 'test_index', '_type': '_doc', '_id': '1', '_version': 2, '_seq_no': 1, '_primary_term': 1, 'found': True, '_source': {'test body': 20}}
+        document_true = {'_index': 'test_data', '_type': '_doc', '_id': '1', '_version': 2, '_seq_no': 1, '_primary_term': 1, 'found': True, '_source': {'test body': 20}}
         
         ## Act ##
         self.client.send_document(document)
@@ -140,7 +137,7 @@ class TestClient(unittest.TestCase):
         self.client.create_index(self.index)
         action = Action.INDEX
         document = Document(self.index, 1, action, {'test body': 10})
-        document_true = {'_index': 'test_index', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
+        document_true = {'_index': 'test_data', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
         
         ## Act ##
         self.client.send_document(document)
@@ -161,25 +158,25 @@ class TestClient(unittest.TestCase):
         """
         ## Arrange ##
         self.client.create_index(self.index)
-        document2 = Document(self.index, 2, self.action, {'test body': 10})
-        self.payload.add_documents([self.document, document2])
-
-        document_true = {'_index': 'test_index', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
-        document2_true = {'_index': 'test_index', '_type': '_doc', '_id': '2', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
+        action = Action.INDEX
+        document1 = Document(self.index, 1, action, {'test body': 10})
+        document2 = Document(self.index, 2, action, {'test body': 10})
+        self.payload.add_documents([document1, document2])
+        
+        document1_true = {'_index': 'test_data', '_type': '_doc', '_id': '1', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
+        document2_true = {'_index': 'test_data', '_type': '_doc', '_id': '2', '_version': 1, '_seq_no': 0, '_primary_term': 1, 'found': True, '_source': {'test body': 10}}
 
         ## Act ##
         self.client.send_payload(self.payload)
-        document_out = self.client.get_document(self.document)
+        document1_out = self.client.get_document(document1)
         document2_out = self.client.get_document(document2)
 
         ## Assert ##
-        assert (document_out == document_true) and (document2_out == document2_true)
+        assert (document1_out == document1_true) and (document2_out == document2_true)
 
         ## TearDown ##
-        self.document.update_action(Action.DELETE)
-        self.client.send_document(self.document)
-        document2.update_action(Action.DELETE)
-        self.client.send_document(document2)
+        self.client.send_document(document1, Action.DELETE)
+        self.client.send_document(document2, Action.DELETE)
 
     def tearDown(self):
         self.client.delete_index(self.index)

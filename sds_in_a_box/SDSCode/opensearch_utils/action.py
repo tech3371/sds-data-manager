@@ -33,6 +33,18 @@ class Action(Enum):
     INDEX = "index"
 
     @staticmethod
+    def is_action(action):
+        """
+        Static method that returns whether the input is type Action.
+
+        Parameters
+        ----------
+        document: 
+            input to check if it is type Action.
+        """
+        return type(action) is Action
+
+    @staticmethod
     def validate_action(action):
         """
         Static method used to validate whether an object
@@ -42,15 +54,15 @@ class Action(Enum):
 
         Parameters
         ----------
-        action : an object to be validated as an action
+        action : an object to be validated as an action.
 
         Returns
         -------
         Action
-            the validated action that was input
+            the validated action that was input.
         
         """
-        if type(action) is Action:
+        if Action.is_action(action):
             return action
         else:
             raise TypeError("Input is type {}, but must be type Action".format(type(action)))

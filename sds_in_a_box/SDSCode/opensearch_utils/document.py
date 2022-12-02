@@ -125,7 +125,7 @@ class Document():
     @staticmethod
     def is_document(document):
         """
-        static method that returns whether the input is type document.
+        static method that returns whether the input is type Document.
 
         Parameters
         ----------

@@ -5,9 +5,10 @@ from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 
 class TestPayload(unittest.TestCase):
+    """tests for payload.py"""
 
     def setUp(self):
-        self.index = Index("my_index")
+        self.index = Index("test_data")
 
     def test_add_documents(self):
         """

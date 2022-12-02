@@ -141,7 +141,7 @@ class Client():
         self.client.close()
             
     def __override_action(self, document, action):
-        if action == None or type(action) is not Action:
+        if action == None or not Action.is_action(action):
             action = document.get_action() 
         return action
               

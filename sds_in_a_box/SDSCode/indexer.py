@@ -91,8 +91,6 @@ def lambda_handler(event, context):
         logger.info("Found the following metadata to index: " + str(metadata))
 
         # create a document for the metadata and add it to the payload
-        # TODO: do we always want to create a new document from the metadata or do we
-        # want an existing document to be overwritten here in some cases?
         opensearch_doc = Document(index, filename, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)
 

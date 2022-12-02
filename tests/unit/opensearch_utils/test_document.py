@@ -7,10 +7,11 @@ from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
 class TestDocument(unittest.TestCase):
+    """tests for document.py"""
 
     def setUp(self):
         self.document_body = {"mission":"imap", "level":"l0", "instrument":"*", "date":"*", "version":"*", "extension":"fits"}
-        self.index_name = "my_index"
+        self.index_name = "test_data"
         self.index = Index(self.index_name)
         self.identifier = 1
         self.action = Action.CREATE
@@ -122,7 +123,7 @@ class TestDocument(unittest.TestCase):
         """
         ## Arrange ##
         document = Document(self.index, self.identifier, self.action, self.document_body)
-        contents_true = '{ "create": { "_index": "my_index", "_id": "1" } }\n{"mission": "imap", "level": "l0", "instrument": "*", "date": "*", "version": "*", "extension": "fits"}\n'
+        contents_true = '{ "create": { "_index": "test_data", "_id": "1" } }\n{"mission": "imap", "level": "l0", "instrument": "*", "date": "*", "version": "*", "extension": "fits"}\n'
 
         ## Act ##
         contents_out = document.get_contents()
@@ -140,7 +141,7 @@ class TestDocument(unittest.TestCase):
         """
         ## Arrange ##
         document = Document(self.index, self.identifier, self.action, self.document_body)
-        doc = '{ "create": { "_index": "my_index", "_id": "1" } }\n{\'mission\': \'imap\', \'level\': \'l0\', \'instrument\': \'*\', \'date\': \'*\', \'version\': \'*\', \'extension\': \'fits\'}\n'
+        doc = '{ "create": { "_index": "test_data", "_id": "1" } }\n{\'mission\': \'imap\', \'level\': \'l0\', \'instrument\': \'*\', \'date\': \'*\', \'version\': \'*\', \'extension\': \'fits\'}\n'
         size_in_bytes_true = len(doc.encode("ascii"))
 
         ## Act ##

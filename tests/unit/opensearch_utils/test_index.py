@@ -2,6 +2,7 @@ import unittest
 from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 
 class TestIndex(unittest.TestCase):
+    """tests for index.py"""
 
     def setUp(self):
         self.index_name = 'python-test-index3'

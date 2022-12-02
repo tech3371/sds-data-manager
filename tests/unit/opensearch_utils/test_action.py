@@ -2,6 +2,7 @@ import unittest
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 
 class TestAction(unittest.TestCase):
+    """tests for action.py"""
 
     def test_validate_action_pass(self):
       """
@@ -28,7 +29,38 @@ class TestAction(unittest.TestCase):
 
       ## Act / Assert ##
       self.assertRaises(TypeError, Action.validate_action, action)
-        
+
+    def test_is_action_true(self):
+      """
+      Tests that the is_action method correctly determines
+      the input is type Action.
+      """
+
+      ## Arrange ##
+      action = Action.CREATE
+      action_true = True
+      
+      ## Act ##
+      action_out = Action.is_action(action)
+
+      ## Assert ##
+      assert action_out == action_true
+
+    def test_is_action_false(self):
+      """
+      Tests that the is_action method correctly determines that the 
+      input is not type Action.
+      """
+
+      ## Arrange ##
+      action = "this is a string, not an action"
+      action_true = False
+      
+      ## Act ##
+      action_out = Action.is_action(action)
+
+      ## Assert ##
+      assert action_out == action_true
 
 if __name__ == '__main__':
     unittest.main()

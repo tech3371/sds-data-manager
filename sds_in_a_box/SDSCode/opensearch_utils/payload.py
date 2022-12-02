@@ -14,12 +14,15 @@ class Payload():
     ----------
     payload_contents: list
         list of json strings representing the full payload contents,
-        broken up into a list to avoid request limits when sending
+        broken up into a list to avoid request limits when sending to OpenSearch.
 
     Methods
     -------
+    add_documents(documents):
+        adds document(s) to the payload to prepare for a 
+        bulk upload.
     get_contents():
-        returns the full payload contents as a string
+        returns the full payload contents as a string.
     """
     def __init__(self):
         self.payload_contents = []
@@ -38,8 +41,9 @@ class Payload():
 
         elif type(documents) is list:
             # check that all the objects in documents are of type Document
-            if all(isinstance(doc, Document) for doc in documents): 
-                concat_docs = [self.__add_to_payload(doc) for doc in documents]
+            if all(Document.is_document(doc) for doc in documents): 
+                for doc in documents:
+                    self.__add_to_payload(doc)
             
             else:
                 raise TypeError("Document list contained at least one object that was not type Document")
@@ -48,7 +52,7 @@ class Payload():
             raise TypeError("Input was type {} must be type Document or list of Documents.".format(type(documents)))
 
     def get_contents(self):
-        """Returns the contents of the payload as a string"""
+        """Returns the contents of the payload as a string."""
         full_contents = "".join(self.payload_contents)
         return full_contents
 
@@ -60,6 +64,7 @@ class Payload():
         # determined, but the size of the encoded string seems to be 
         # the most consistent way to check if the limit is hit and that 
         # limit seems to be somewhere around the number of bytes below.
+        # Need to figure out how the request limits work.
         request_limit = 5281500 #bytes
 
         # check if the payload is empty and if the payload with the new document added would still be under the request limit
