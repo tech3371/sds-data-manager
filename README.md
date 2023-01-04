@@ -22,6 +22,7 @@ Everyone gets 50 free hours per month of github Codespace time.  Alternatively, 
 
 Top start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".  
 
+
 ### AWS Setup
 The first thing you'll need to do is configure your aws environemnt with:
 
@@ -51,5 +52,7 @@ and then you can deploy the architecture with the following command:
 cdk deploy
 ```
 
+After about 20 minutes or so, you should have a brand new SDS set up in AWS.  
 
-
+### Virtual Desktop
+Codespaces actually comes with a fully functional virtual desktop.  To open, click on the "ports" tab and then "open in new browser".  The default password is "vscode".  
