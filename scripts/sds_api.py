@@ -5,8 +5,8 @@ import datetime
 
 USER_TOKEN = None
 LOGIN_TIME = None
-COGNITO_CLIENT_ID = "5lho1tpko90vegmvsb7hqigmrv"
-API_URL = "https://uhuleh2mm5m6efpievta3tdshe0lyjjm.lambda-url.us-west-2.on.aws/"
+COGNITO_CLIENT_ID = "eapgusfsbcep6ph6ukd7omo7v"
+API_URL = "https://hbzxte4isrjr277pxtt5mmg4jm0vkqtx.lambda-url.us-west-2.on.aws/"
 
 def _set_user_token(t):
     global USER_TOKEN

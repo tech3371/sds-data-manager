@@ -131,9 +131,11 @@ class SdsInABoxStack(Stack):
                                              cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"sds-login-{random_letters}"))
 
         # Adding a lambda that doesn't do much to act as the endpoints to the APIs
-        ### NOTE: Deployment of these lambdas depends entirely on 
+        # NOTE: This is where we install dependencies for the lambda function 
+        os.system("pip install requests -t ./external/python")
+        os.system("pip install python-jose -t ./external/python")
         layer = lambda_.LayerVersion(self, "SDSDependencies",
-                                    code=lambda_.Code.from_asset("/home/vscode/.local/lib/python3.9/site-packages"),
+                                    code=lambda_.Code.from_asset("./external"),
                                     description="A layer that contains all dependencies needed for the lambda functions"
                                 )
 
@@ -157,46 +159,18 @@ class SdsInABoxStack(Stack):
                                               cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"])
         )
 
-        '''
-        # Adding in the bare-bones API Gateway authorizors and endpoitns
-        httpapi = apigatewayv2.CfnApi(self, "SDSTeamAPI",
-                                      name=f"SDS-API-{random_letters}",
-                                      protocol_type='HTTP'
-                                     )
+        initial_user = cognito.CfnUserPoolUser(self, "MyCfnUserPoolUser",
+                                               user_pool_id=userpool.user_pool_id,
+                                               desired_delivery_mediums=["EMAIL"],
+                                               force_alias_creation=False,
+                                               user_attributes=[cognito.CfnUserPoolUser.AttributeTypeProperty(
+                                                  name="email",
+                                                  value="harter@lasp.colorado.edu"
+                                               )],
+                                               username="harter@lasp.colorado.edu"
+                                              )
 
-          
-        JWTAuthorizer = apigatewayv2.CfnAuthorizer(self, "APIAuthorizer",
-                                                   name=f"SDSCognitoAuthorizer-{random_letters}",
-                                                   api_id=httpapi.ref,
-                                                   authorizer_type="JWT",
-                                                   identity_source=["$request.header.Authorization"],
-                                                   jwt_configuration=apigatewayv2.CfnAuthorizer.JWTConfigurationProperty(
-                                                   audience=[command_line_client.user_pool_client_id],
-                                                   issuer=f"https://cognito-idp.us-west-2.amazonaws.com/{userpool.user_pool_id}"
-                                                  )
-        )
-
-        #httpapioverrides = apigatewayv2.CfnApiGatewayManagedOverrides(self, "HTTPAPIOverrides",
-        #                                                              api_id = httpapi.ref,
-        #                                                              route=apigatewayv2.CfnApiGatewayManagedOverrides.RouteOverridesProperty(
-        #                                                                authorization_type="JWT",
-        #                                                                authorizer_id=JWTAuthorizer.ref
-        #                                                              )
-        #)
-
-        api_integration = apigatewayv2.CfnIntegration(self, "APILambdaIntegration",
-                                                      api_id=httpapi.ref,
-                                                      integration_type='AWS_PROXY',
-                                                      integration_method="GET",
-                                                      integration_uri=api_lambda.function_arn,
-                                                      payload_format_version="2.0"
-        )
-
-        api_route = apigatewayv2.CfnRoute(self, "APIRoutes",
-                                          api_id=httpapi.ref,
-                                          route_key="GET /query",
-        #                                  authorization_type='JWT',
-        #                                  authorizer_id=JWTAuthorizer.ref,
-                                          target="integrations/"+api_integration.ref       
-        )
-        '''
+        cdk.CfnOutput(self, "API_URL", value=api_url.url)
+        cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=userpool.user_pool_id)
+        cdk.CfnOutput(self, "COGNITO_APP_ID", value=command_line_client.user_pool_client_id)
+        cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", value=f"https://sds-login-{random_letters}.auth.us-west-2.amazoncognito.com/login?client_id={command_line_client.user_pool_client_id}&redirect_uri=https://example.com&response_type=code")

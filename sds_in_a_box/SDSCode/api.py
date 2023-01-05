@@ -51,6 +51,8 @@ def _verify_cognito_token(token):
     return claims
 
 def lambda_handler(event, context):
+    
+    verified_token = False
     try:
         token=event["headers"]["authorization"]
         verified_token = _verify_cognito_token(token)
