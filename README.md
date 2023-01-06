@@ -8,10 +8,11 @@ Our goal with the project is that users will only need to modify the file config
 
 The code in this repository takes the form of an AWS CDK project. It provides the architecture for:
 
-1. An HTTPS API to upload files to an S3 bucket
+1. An HTTPS API to upload files to an S3 bucket (*in development*)
 2. An S3 bucket to contain uploaded files
-3. An HTTPS API to query and download files from the S3 bucket
+3. An HTTPS API to query and download files from the S3 bucket (*in development*)
 4. A lambda function that inserts file metadata into an openseach instance
+5. A Cognito User Pool that keeps track of who can access the restricted APIs.  
 
 
 ## Development
@@ -40,6 +41,11 @@ cdk bootstrap
 
 ### Deploy
 
+Inside the app.py file, there are two important configuration items which you can alter:
+
+1) SDS_ID - This is just a string of 8 random letters that are appendend to each resources.  Alternatively, you can change this to something more meaningful (i.e. "bryan-testing").  Just be aware that this ID needs to be completely unique in each account.  
+2) initial_user - This is the email address that the initial API user gets sent to.  
+
 To deploy the SDS, first you'll need to snyth the CDK code with the command:
 
 ```
@@ -54,5 +60,12 @@ cdk deploy
 
 After about 20 minutes or so, you should have a brand new SDS set up in AWS.  
 
-### Virtual Desktop
+
+### Virtual Desktop for Development
 Codespaces actually comes with a fully functional virtual desktop.  To open, click on the "ports" tab and then "open in new browser".  The default password is "vscode".  
+
+
+### Testing the APIs
+Inside of the "scripts" folder is a python script you can use to call the APIs.  It is completely independent of the rest of the project, so you should be able to pull this single file out and run it anywhere.  It only depends on basic python libraries.  
+
+Unfortunately right now you need to "hard code" in the lambda API URL and the Cognito App Client at the top of the file after every build.  I'm hoping in the future to determine a better way to automate this.  

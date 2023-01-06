@@ -3,10 +3,11 @@ import json
 import os
 import datetime
 
-USER_TOKEN = None
-LOGIN_TIME = None
 COGNITO_CLIENT_ID = "eapgusfsbcep6ph6ukd7omo7v"
 API_URL = "https://hbzxte4isrjr277pxtt5mmg4jm0vkqtx.lambda-url.us-west-2.on.aws/"
+
+USER_TOKEN = None
+LOGIN_TIME = None
 
 def _set_user_token(t):
     global USER_TOKEN
