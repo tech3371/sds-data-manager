@@ -88,7 +88,13 @@ class SdsInABoxStack(Stack):
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(15),
                                           memory_size=1000,
-                                          environment={"OS_ADMIN_USERNAME": "master-user", "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name}
+                                          environment={
+                                            "OS_ADMIN_USERNAME": "master-user", 
+                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
+                                            "OS_DOMAIN": domain.domain_endpoint,
+                                            "OS_PORT": "443",
+                                            "OS_INDEX": "metadata"
+                                            }
                                           )
 
         indexer_lambda.add_event_source(S3EventSource(data_bucket,
