@@ -6,6 +6,14 @@ from jose import jwk, jwt
 from jose.utils import base64url_decode
 
 def _verify_cognito_token(token):
+    
+    '''
+     This function verifies that a cognito token that we've received is:
+         - Actually from the expected userpool
+         - Not expired
+         - From the correct cognito client ID
+    '''
+
     region = 'us-west-2'
     userpool_id = os.environ["COGNITO_USERPOOL_ID"]
     app_client_id = os.environ["COGNITO_APP_ID"]
