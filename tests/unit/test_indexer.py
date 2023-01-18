@@ -1,16 +1,21 @@
-import unittest
 import json
 import os
+import unittest
+
+import boto3
+from botocore.exceptions import ClientError
+from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+import pytest
+
 from sds_in_a_box.SDSCode import indexer
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
 from sds_in_a_box.SDSCode.opensearch_utils.client import Client
-from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
-import boto3
-from botocore.exceptions import ClientError
 
+
+@pytest.mark.network
 class TestIndexer(unittest.TestCase):
 
     def setUp(self):
