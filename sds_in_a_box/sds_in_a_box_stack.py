@@ -5,7 +5,7 @@ from aws_cdk import (
     # Duration,
     Stack,
     RemovalPolicy,
-    # aws_sqs as sqs,
+    aws_lambda_python_alpha
 )
 from constructs import Construct
 import aws_cdk as cdk
