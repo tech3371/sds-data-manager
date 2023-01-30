@@ -136,6 +136,17 @@ class Client():
         """Returns the specified document"""
         return self.client.get(index=document.get_index(), id=document.get_identifier())
 
+    def search(self, query):
+        """
+        Searches the OpenSearch cluster using the provided query object.
+
+        Parameters
+        ----------
+        query: Query
+            query object instantiated with the desired query parameters.
+        """
+
+
     def close(self):
         """Close the Transport and all internal connections"""
         self.client.close()
