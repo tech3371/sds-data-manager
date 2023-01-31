@@ -11,6 +11,7 @@ from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
 from sds_in_a_box.SDSCode.opensearch_utils.client import Client
 from sds_in_a_box.SDSCode.opensearch_utils.query import Query
+import time
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import boto3
 from botocore.exceptions import ClientError
@@ -22,6 +23,7 @@ class TestClient(unittest.TestCase):
 
     def setUp(self):
         #Opensearch client Params
+        #host = 'search-opensearch-test-wjjxdwvlp55hemwqop7hbymxue.us-west-2.es.amazonaws.com'
         host = 'search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com'
         port = 443
         hosts = [{"host":host, "port":port}]
@@ -48,12 +50,13 @@ class TestClient(unittest.TestCase):
         secret = get_secret_value_response['SecretString']
 
         auth = ("master-user", secret)
+        #auth = ("testuser", "Testuser1!")
         self.client = Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
         self.index = Index("test_data")
         self.payload = Payload()
-        body1 = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'*', 'version':'*', 'extension':'fits'}
-        body2 = {'mission':'imap', 'level':'l1', 'instrument':'mag', 'date':'*', 'version':'*', 'extension':'fits'}
-        body3 = {'mission':'imap', 'level':'l0', 'instrument':'swe', 'date':'*', 'version':'*', 'extension':'fits'}
+        body1 = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'20230112', 'version':'*', 'extension':'fits'}
+        body2 = {'mission':'imap', 'level':'l1', 'instrument':'mag', 'date':'20230112', 'version':'*', 'extension':'fits'}
+        body3 = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'20221230', 'version':'*', 'extension':'fits'}
         self.document1 = Document(self.index, 1, Action.CREATE, body1)
         self.document2 = Document(self.index, 2, Action.CREATE, body2)
         self.document3 = Document(self.index, 3, Action.CREATE, body3)
@@ -199,18 +202,17 @@ class TestClient(unittest.TestCase):
         intended results
         """
         ## Arrange ##
+        search_true = [{'_index': 'test_data', '_type': '_doc', '_id': '1', '_score': 0.5753642, '_source': {'mission': 'imap', 'level': 'l0', 'instrument': 'mag', 'date': '20230112', 'version': '*', 'extension': 'fits'}}]
         self.payload.add_documents([self.document1, self.document2, self.document3])
-        print("\nPAYLOAD: {}\n".format(self.payload))
         self.client.send_payload(self.payload)
-        query = Query({"level":"l0"})
-        print("\nSEARCH QUERY: {}\n".format(query.query_dsl()))
-
+        query = Query({"level":"l0", "instrument":"mag", "start_date":"20230101", "end_date":"20230201"})
+        # need to give opensearch a second to receive the payload before searching
+        time.sleep(1)
         ## Act ##
         search_out = self.client.search(query, self.index)
 
         ## Assert ##
-        print("\n DOC EXISTS: {}\n".format(self.client.get_document(self.document1)))
-        print("\nSEARCH RESULT: {}\n".format(search_out))
+        assert search_out == search_true
 
         ## Teardown ##
         self.client.send_document(self.document1, action_override=Action.DELETE)

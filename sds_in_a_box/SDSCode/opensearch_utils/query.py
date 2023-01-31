@@ -1,3 +1,5 @@
+import json
+
 class Query:
     """
     Query class to represent an AWS OpenSearch query domain-specific language (DSL),
@@ -30,7 +32,7 @@ class Query:
 
     def query_dsl(self):
         """Returns the query parameters in the AWS OpenSearch Query DSL format"""
-        return self.query_dsl_formatted
+        return json.dumps(self.query_dsl_formatted)
 
     def size(self):
         """Returns the number of results the query is allowed to return in the search"""

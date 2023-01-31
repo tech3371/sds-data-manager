@@ -3,7 +3,7 @@ from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 from sds_in_a_box.SDSCode.opensearch_utils.query import Query
 from opensearchpy import OpenSearch, RequestsHttpConnection
-
+import json
 
 class Client():
     """
@@ -148,12 +148,10 @@ class Client():
         index: Index
             OpenSearch index to use for the search.
         """
-
         result = self.client.search(body=query.query_dsl(), index=index.get_name(), params={"scroll": "1m"})
         scroll_id = result['_scroll_id']
         scroll_size = len(result["hits"]["hits"])
         counter = 0
-        print("\n SEARCH RAW RESULT: {}\n".format(result))
         full_result = result["hits"]["hits"]
 
         while scroll_size > 0:
