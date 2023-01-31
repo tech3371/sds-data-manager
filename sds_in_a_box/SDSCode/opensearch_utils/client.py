@@ -1,6 +1,7 @@
 from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
+from sds_in_a_box.SDSCode.opensearch_utils.query import Query
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
@@ -136,7 +137,7 @@ class Client():
         """Returns the specified document"""
         return self.client.get(index=document.get_index(), id=document.get_identifier())
 
-    def search(self, query):
+    def search(self, query, index):
         """
         Searches the OpenSearch cluster using the provided query object.
 
@@ -144,8 +145,25 @@ class Client():
         ----------
         query: Query
             query object instantiated with the desired query parameters.
+        index: Index
+            OpenSearch index to use for the search.
         """
 
+        result = self.client.search(body=query.query_dsl(), index=index.get_name(), params={"scroll": "1m"})
+        scroll_id = result['_scroll_id']
+        scroll_size = len(result["hits"]["hits"])
+        counter = 0
+        print("\n SEARCH RAW RESULT: {}\n".format(result))
+        full_result = result["hits"]["hits"]
+
+        while scroll_size > 0:
+            counter += scroll_size
+            result = self.client.scroll(scroll_id=scroll_id, scroll="1m")
+            full_result += result["hits"]["hits"]
+            scroll_id = result["_scroll_id"]
+            scroll_size = len(result["hits"]["hits"])
+
+        return full_result
 
     def close(self):
         """Close the Transport and all internal connections"""

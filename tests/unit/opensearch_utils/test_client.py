@@ -10,6 +10,10 @@ from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
 from sds_in_a_box.SDSCode.opensearch_utils.client import Client
+from sds_in_a_box.SDSCode.opensearch_utils.query import Query
+from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+import boto3
+from botocore.exceptions import ClientError
 
 
 @pytest.mark.network
@@ -47,6 +51,12 @@ class TestClient(unittest.TestCase):
         self.client = Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
         self.index = Index("test_data")
         self.payload = Payload()
+        body1 = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'*', 'version':'*', 'extension':'fits'}
+        body2 = {'mission':'imap', 'level':'l1', 'instrument':'mag', 'date':'*', 'version':'*', 'extension':'fits'}
+        body3 = {'mission':'imap', 'level':'l0', 'instrument':'swe', 'date':'*', 'version':'*', 'extension':'fits'}
+        self.document1 = Document(self.index, 1, Action.CREATE, body1)
+        self.document2 = Document(self.index, 2, Action.CREATE, body2)
+        self.document3 = Document(self.index, 3, Action.CREATE, body3)
 
     def test_create_index(self):
         """
@@ -183,6 +193,30 @@ class TestClient(unittest.TestCase):
         self.client.send_document(document1, Action.DELETE)
         self.client.send_document(document2, Action.DELETE)
 
+    def test_search(self):
+        """
+        test that the search. method correctly queries the OpenSearch cluster and received the 
+        intended results
+        """
+        ## Arrange ##
+        self.payload.add_documents([self.document1, self.document2, self.document3])
+        print("\nPAYLOAD: {}\n".format(self.payload))
+        self.client.send_payload(self.payload)
+        query = Query({"level":"l0"})
+        print("\nSEARCH QUERY: {}\n".format(query.query_dsl()))
+
+        ## Act ##
+        search_out = self.client.search(query, self.index)
+
+        ## Assert ##
+        print("\n DOC EXISTS: {}\n".format(self.client.get_document(self.document1)))
+        print("\nSEARCH RESULT: {}\n".format(search_out))
+
+        ## Teardown ##
+        self.client.send_document(self.document1, action_override=Action.DELETE)
+        self.client.send_document(self.document2, action_override=Action.DELETE)
+        self.client.send_document(self.document3, action_override=Action.DELETE)
+        
     def tearDown(self):
         self.client.delete_index(self.index)
         self.client.close()

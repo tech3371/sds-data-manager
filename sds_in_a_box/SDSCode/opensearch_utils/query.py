@@ -37,40 +37,29 @@ class Query:
         return self.query_size
 
     def __build_query_dsl(self, query_params):
-        query_structure = '{{"query": {{ "bool": {{"must": [{}] }} }} }}'
-        query_param_structure = '{{ "match": {{ "{}": "{}" }} }}, '
-        query_param_formatted = ''
-
-        query_param_formatted, query_params = self.__build_range(query_params)
-
+        query = {"query": {"bool":{}}}
+        query_must_structure = {"must": []}
+        query_match_structure = {"match": {}}
+        query_filter_structure = {"filter": []}
+        query_date_structure = {"range": {"date": {}}}
+   
         for param in query_params:
-            query_param_formatted = query_param_formatted + query_param_structure.format(param, query_params[param])
-        
-        query_dsl = query_structure.format(query_param_formatted)
-
-        return query_dsl
-
-    def __build_range(self, query_params):
-        query_range_structure = '{{ "match": {{ "date": {{ {}{} }} }} }}, '
-        query_range_formatted = ""
-        try:
-            start_date = '"gte": "{}"'.format(query_params.pop("start_date"))
-        except:
-            start_date = ""
-        try:
-            end_date = '"lte": "{}"'.format(query_params.pop("end_date"))
-            if start_date != "":
-                end_date = ", " + end_date
-        except:
-            end_date = ""
-
-        if start_date != "" or end_date != "":
-            query_range_formatted = query_range_structure.format(start_date, end_date)
-        
-        return query_range_formatted, query_params
-        
-
-        
+            if param == "start_date" or param == "end_date":
+                if "filter" not in query["query"]["bool"]:
+                    query["query"]["bool"]["filter"] = query_date_structure
+                if param == "start_date":
+                    query["query"]["bool"]["filter"]["range"]["date"]["gte"] = query_params[param]
+                if param == "end_date":
+                    query["query"]["bool"]["filter"]["range"]["date"]["lte"] = query_params[param]
+            else:
+                if "must" not in query["query"]["bool"]:
+                    query["query"]["bool"]["must"] = []
+                
+                query_match = query_match_structure.copy()
+                query_match["match"] = {param:query_params[param]}
+                query["query"]["bool"]["must"].append(query_match)
+            
+        return query    
 
     def __repr__(self):
         return self.query_dsl_formatted
