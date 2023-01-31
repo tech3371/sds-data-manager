@@ -23,7 +23,6 @@ class TestClient(unittest.TestCase):
 
     def setUp(self):
         #Opensearch client Params
-        #host = 'search-opensearch-test-wjjxdwvlp55hemwqop7hbymxue.us-west-2.es.amazonaws.com'
         host = 'search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com'
         port = 443
         hosts = [{"host":host, "port":port}]
@@ -50,7 +49,6 @@ class TestClient(unittest.TestCase):
         secret = get_secret_value_response['SecretString']
 
         auth = ("master-user", secret)
-        #auth = ("testuser", "Testuser1!")
         self.client = Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
         self.index = Index("test_data")
         self.payload = Payload()
