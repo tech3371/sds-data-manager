@@ -5,7 +5,7 @@ from aws_cdk import (
     # Duration,
     Stack,
     RemovalPolicy,
-    aws_lambda_python_alpha
+    #aws_lambda_python_alpha
 )
 from constructs import Construct
 import aws_cdk as cdk
@@ -28,6 +28,8 @@ class SdsInABoxStack(Stack):
         if not SDS_ID:
             SDS_ID="".join( [random.choice(string.ascii_lowercase) for i in range(8)] )
         
+        initial_user = cdk.CfnParameter(self, "initial_user", type="String", description="The email address of the initial user of the stack")
+
         if not initial_user:
             print("Please set an initial user before calling this stack")
             return
@@ -82,6 +84,49 @@ class SdsInABoxStack(Stack):
               master_user_password=os_secret.secret_value
             )
         )
+
+########### COGNITO
+        # Create the Cognito UserPool
+        userpool = cognito.UserPool(self,
+                                    id='TeamUserPool',
+                                    account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
+                                    auto_verify=cognito.AutoVerifiedAttrs(email=True),
+                                    standard_attributes=cognito.
+                                    StandardAttributes(email=cognito.StandardAttribute(required=True)),
+                                    sign_in_aliases=cognito.SignInAliases(username=False, email=True),
+                                    removal_policy=cdk.RemovalPolicy.DESTROY
+                                    )
+
+        # Add a client sign in for the userpool
+        command_line_client = cognito.UserPoolClient(user_pool=userpool, scope=self, id='sds-command-line',
+                                                     user_pool_client_name= f"sdscommandline-{SDS_ID}",
+                                                     id_token_validity=cdk.Duration.minutes(60),
+                                                     access_token_validity=cdk.Duration.minutes(60),
+                                                     refresh_token_validity=cdk.Duration.minutes(60),
+                                                     auth_flows=cognito.AuthFlow(admin_user_password=True,
+                                                                                 user_password=True,
+                                                                                 user_srp=True,
+                                                                                 custom=True),
+                                                     prevent_user_existence_errors=True)
+        
+        # Add a random unique domain name where users can sign up / reset passwords
+        # Users will be able to reset their passwords at https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={}&redirect_uri=https://example.com&response_type=code
+        userpooldomain = userpool.add_domain(id="TeamLoginCognitoDomain",
+                                             cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"sds-login-{SDS_ID}"))
+
+        # Add a lambda function that will trigger whenever an email is sent to the user (see the lambda section above)
+
+        # Create an initial user of the API
+        initial_user = cognito.CfnUserPoolUser(self, "MyCfnUserPoolUser",
+                                               user_pool_id=userpool.user_pool_id,
+                                               desired_delivery_mediums=["EMAIL"],
+                                               force_alias_creation=False,
+                                               user_attributes=[cognito.CfnUserPoolUser.AttributeTypeProperty(
+                                                  name="email",
+                                                  value="harter@lasp.colorado.edu"
+                                               )],
+                                               username="harter@lasp.colorado.edu"
+                                              )
 
 ########### LAMBDA FUNCTIONS
 
@@ -151,50 +196,16 @@ class SdsInABoxStack(Stack):
                                          environment={"COGNITO_DOMAIN_PREFIX": f"sds-login-{SDS_ID}", "COGNITO_DOMAIN": f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com", "SDS_ID": SDS_ID}
         )
         signup_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-
-########### COGNITO
-        # Create the Cognito UserPool
-        userpool = cognito.UserPool(self,
-                                    id='TeamUserPool',
-                                    account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
-                                    auto_verify=cognito.AutoVerifiedAttrs(email=True),
-                                    standard_attributes=cognito.
-                                    StandardAttributes(email=cognito.StandardAttribute(required=True)),
-                                    sign_in_aliases=cognito.SignInAliases(username=False, email=True),
-                                    removal_policy=cdk.RemovalPolicy.DESTROY
-                                    )
-
-        # Add a client sign in for the userpool
-        command_line_client = cognito.UserPoolClient(user_pool=userpool, scope=self, id='sds-command-line',
-                                                     user_pool_client_name= f"sdscommandline-{SDS_ID}",
-                                                     id_token_validity=cdk.Duration.minutes(60),
-                                                     access_token_validity=cdk.Duration.minutes(60),
-                                                     refresh_token_validity=cdk.Duration.minutes(60),
-                                                     auth_flows=cognito.AuthFlow(admin_user_password=True,
-                                                                                 user_password=True,
-                                                                                 user_srp=True,
-                                                                                 custom=True),
-                                                     prevent_user_existence_errors=True)
-        
-        # Add a random unique domain name where users can sign up / reset passwords
-        # Users will be able to reset their passwords at https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={}&redirect_uri=https://example.com&response_type=code
-        userpooldomain = userpool.add_domain(id="TeamLoginCognitoDomain",
-                                             cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"sds-login-{SDS_ID}"))
-
-        # Add a lambda function that will trigger whenever an email is sent to the user (see the lambda section above)
         userpool.add_trigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, signup_lambda)
 
-        # Create an initial user of the API
-        initial_user = cognito.CfnUserPoolUser(self, "MyCfnUserPoolUser",
-                                               user_pool_id=userpool.user_pool_id,
-                                               desired_delivery_mediums=["EMAIL"],
-                                               force_alias_creation=False,
-                                               user_attributes=[cognito.CfnUserPoolUser.AttributeTypeProperty(
-                                                  name="email",
-                                                  value="harter@lasp.colorado.edu"
-                                               )],
-                                               username="harter@lasp.colorado.edu"
-                                              )
+        #testing_lambda_alpha = aws_lambda_python_alpha.PythonFunction(
+        #                        self,
+        #                        "LambdaFunction",
+        #                        entry=f"sds_in_a_box/SDSCode",
+        #                        index="indexer.py",
+        #                        handler="lambda_handler",
+        #                        runtime=lambda_.Runtime.PYTHON_3_9,
+        #                    )
 
 ########### OUTPUTS
         # This is a list of the major outputs of the stack
