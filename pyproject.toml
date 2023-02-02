@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SDS-in-a-box"
+version = "0.1.0"
+description = "IMAP Science Operations Center SDS-in-a-box"
+readme = "README.md"
+license = {text = "MIT"}
+keywords = ["IMAP", "SDC", "SOC", "Science Operations"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "aws-cdk-lib==2.48.0",
+    "constructs>=10.0.0,<11.0.0",
+    "boto3",
+    "opensearch-py",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==6.2.5",
+]
+
+[project.urls]
+homepage = "https://github.com/IMAP-Science-Operations-Center"
+repository = "https://github.com/IMAP-Science-Operations-Center/SDS-in-a-box"
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests",
+]
+addopts = "-ra"
+markers = [
+    "network: Test that requires network access",
+]
