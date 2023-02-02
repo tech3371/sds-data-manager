@@ -102,3 +102,24 @@ class SdsInABoxStack(Stack):
                                                       )
                                         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+
+        # The purpose of this lambda function is to trigger off of a lambda URL.
+        query_lambda = lambda_.Function(self,
+                                          id="QueryLambda",
+                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode")),
+                                          handler="queries.lambda_handler",
+                                          role=lambda_role,
+                                          runtime=lambda_.Runtime.PYTHON_3_9,
+                                          timeout=cdk.Duration.minutes(15),
+                                          memory_size=1000,
+                                          environment={
+                                            "OS_ADMIN_USERNAME": "master-user", 
+                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
+                                            "OS_DOMAIN": domain.domain_endpoint,
+                                            "OS_PORT": "443",
+                                            "OS_INDEX": "metadata"
+                                            }
+                                          )
+        query_lambda.add_function_url()
+        indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        
