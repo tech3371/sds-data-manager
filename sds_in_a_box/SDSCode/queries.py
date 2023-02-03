@@ -3,10 +3,11 @@ import logging
 import os
 import sys
 
+from opensearchpy import RequestsHttpConnection
+
 from .opensearch_utils.client import Client
 from .opensearch_utils.index import Index
 from .opensearch_utils.query import Query
-from opensearchpy import RequestsHttpConnection
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

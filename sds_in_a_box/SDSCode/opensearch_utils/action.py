@@ -66,6 +66,4 @@ class Action(Enum):
         if Action.is_action(action):
             return action
         else:
-            raise TypeError(
-                "Input is type {}, but must be type Action".format(type(action))
-            )
+            raise TypeError(f"Input is type {type(action)}, but must be type Action")

@@ -18,7 +18,7 @@ def _execute_api(url, **kwargs):
     url_with_parameters = url + "?" + query_parameters
     print(url_with_parameters)
     try:
-        response = requests.get(url_with_parameters)
+        response = requests.get(url_with_parameters, timeout=10)
     except Exception as e:
         print(f"Could not finish query due to error {str(e)}")
         return
@@ -34,7 +34,6 @@ def download(filename, download_dir=""):
 
     :return: None, but downloads the file to the specified download directory
     """
-    global DOWNLOAD_API_URL
     download_url = _execute_api(DOWNLOAD_API_URL, s3_uri=filename)
 
     if download_url.status_code == 400:
@@ -51,7 +50,7 @@ def download(filename, download_dir=""):
 
     with open(file_name_and_path, "wb") as file:
         print(f"Downloading {file_name_and_path}")
-        file_location = requests.get(download_url.json()["download_url"])
+        file_location = requests.get(download_url.json()["download_url"], timeout=10)
         file.write(file_location.content)
 
     return file_location
@@ -64,7 +63,6 @@ def query(**kwargs):
 
     :return: This returns JSON with all information about the files.
     """
-    global QUERY_API_URL
     response = _execute_api(QUERY_API_URL, **kwargs)
     return response.json()
 
@@ -82,7 +80,6 @@ def upload(file_location, file_name, **kwargs):
 
     :return: A requests response object. (200 for success)
     """
-    global UPLOAD_API_URL
     response = _execute_api(UPLOAD_API_URL, filename=file_name, **kwargs)
 
     if response.status_code != 200:
@@ -91,7 +88,7 @@ def upload(file_location, file_name, **kwargs):
 
     with open(file_location, "rb") as object_file:
         object_text = object_file.read()
-    response = requests.put(response.json(), data=object_text)
+    response = requests.put(response.json(), data=object_text, timeout=10)
     return response
 
 

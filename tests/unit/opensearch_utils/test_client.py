@@ -14,7 +14,7 @@ from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
 from sds_in_a_box.SDSCode.opensearch_utils.query import Query
 
 
-@pytest.mark.network
+@pytest.mark.network()
 class TestClient(unittest.TestCase):
     """tests for client.py"""
 
@@ -255,7 +255,8 @@ class TestClient(unittest.TestCase):
         document2_out = self.client.get_document(document2)
 
         ## Assert ##
-        assert (document1_out == document1_true) and (document2_out == document2_true)
+        assert document1_out == document1_true
+        assert document2_out == document2_true
 
         ## TearDown ##
         self.client.send_document(document1, Action.DELETE)

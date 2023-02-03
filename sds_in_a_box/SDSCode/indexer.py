@@ -4,12 +4,13 @@ import os
 import sys
 
 import boto3
+from opensearchpy import RequestsHttpConnection
+
 from .opensearch_utils.action import Action
 from .opensearch_utils.client import Client
 from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
-from opensearchpy import RequestsHttpConnection
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

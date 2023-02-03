@@ -15,7 +15,7 @@ from constructs import Construct
 
 class SdsInABoxStack(Stack):
     def __init__(
-        self, scope: Construct, construct_id: str, SDS_ID: str, **kwargs
+        self, scope: Construct, construct_id: str, sds_id: str, **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -24,7 +24,7 @@ class SdsInABoxStack(Stack):
         data_bucket = s3.Bucket(
             self,
             "DATA-BUCKET",
-            bucket_name=f"sds-data-{SDS_ID}",
+            bucket_name=f"sds-data-{sds_id}",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
@@ -117,7 +117,7 @@ class SdsInABoxStack(Stack):
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
             id="IndexerLambda",
-            function_name=f"file-indexer-{SDS_ID}",
+            function_name=f"file-indexer-{sds_id}",
             entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"),
             index="indexer.py",
             handler="lambda_handler",
@@ -145,7 +145,7 @@ class SdsInABoxStack(Stack):
         upload_api_lambda = lambda_alpha_.PythonFunction(
             self,
             id="UploadAPILambda",
-            function_name=f"upload-api-handler-{SDS_ID}",
+            function_name=f"upload-api-handler-{sds_id}",
             entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
             index="upload_api.py",
             handler="lambda_handler",
@@ -165,7 +165,7 @@ class SdsInABoxStack(Stack):
         query_api_lambda = lambda_alpha_.PythonFunction(
             self,
             id="QueryAPILambda",
-            function_name=f"query-api-handler-{SDS_ID}",
+            function_name=f"query-api-handler-{sds_id}",
             entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
             index="queries.py",
             handler="lambda_handler",
@@ -195,7 +195,7 @@ class SdsInABoxStack(Stack):
         download_query_api = lambda_alpha_.PythonFunction(
             self,
             id="DownloadQueryAPILambda",
-            function_name=f"download-query-api-{SDS_ID}",
+            function_name=f"download-query-api-{sds_id}",
             entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
             index="download_query_api.py",
             handler="lambda_handler",

@@ -58,6 +58,4 @@ class Index:
         if type(index) is Index:
             return index
         else:
-            raise TypeError(
-                "Input is type {}, but must be type Index".format(type(index))
-            )
+            raise TypeError(f"Input is type {type(index)}, but must be type Index")

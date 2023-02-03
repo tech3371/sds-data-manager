@@ -14,7 +14,7 @@ from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 
 
-@pytest.mark.network
+@pytest.mark.network()
 class TestIndexer(unittest.TestCase):
     def setUp(self):
         # Opensearch client Params

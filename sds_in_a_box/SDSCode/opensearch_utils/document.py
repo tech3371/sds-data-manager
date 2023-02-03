@@ -51,12 +51,12 @@ class Document:
         index,
         doc_id,
         action,
-        body={},
+        body=None,
     ):
         self.index = Index.validate_index(index)
         self.identifier = self._validate_identifier(doc_id)
         self.action = Action.validate_action(action)
-        self.body = body
+        self.body = body or {}
         self.contents = ""
         self.size = 0
 

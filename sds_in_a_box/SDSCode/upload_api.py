@@ -52,7 +52,7 @@ def _check_for_matching_filetype(pattern, filename):
     return file_dictionary
 
 
-def _generate_signed_upload_url(filename, tags={}):
+def _generate_signed_upload_url(filename, tags=None):
     """
     Create a presigned url for a file in the SDS storage bucket.
 
@@ -78,7 +78,7 @@ def _generate_signed_upload_url(filename, tags={}):
         Params={
             "Bucket": bucket_name[5:],
             "Key": path_to_upload_file + filename,
-            "Metadata": tags,
+            "Metadata": tags or dict(),
         },
         ExpiresIn=3600,
     )
