@@ -34,8 +34,15 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "moto"
+    "moto",
     "pytest",
+]
+
+dev = [
+    "black",
+    "pre-commit",
+    "ruff",
+    "sds_data_manager[test]"
 ]
 
 [project.urls]
@@ -50,3 +57,6 @@ addopts = "-ra"
 markers = [
     "network: Test that requires network access",
 ]
+
+[tool.ruff]
+select = ["E", "F", "I"]
