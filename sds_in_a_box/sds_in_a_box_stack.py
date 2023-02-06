@@ -9,6 +9,7 @@ from constructs import Construct
 import aws_cdk as cdk
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_lambda as lambda_
+import aws_cdk.aws_lambda_python_alpha as lambda_alpha_
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_opensearchservice as opensearch
 import aws_cdk.aws_ec2 as ec2
@@ -118,8 +119,8 @@ class SdsInABoxStack(Stack):
                                             "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
-                                            }
+                                            }, 
+                                            layers=[lambda_alpha_.PythonLayerVersion(self, "SDSCodeLayer",entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"))]
                                           )
         query_lambda.add_function_url()
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-        
