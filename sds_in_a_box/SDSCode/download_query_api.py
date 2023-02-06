@@ -1,6 +1,6 @@
 import boto3
 import os
-
+import json
 
 def http_response(header_type='text/html', status_code=200, body='Success'):
     """customize http response.
@@ -31,15 +31,36 @@ def lambda_handler(event, context):
         context : This is not used.
     """
 
-    if event['queryStringParameters'] is None or 'filepath' not in event['queryStringParameters'] or 'bucket' not in event['queryStringParameters']:
-        response_body = f'''Missing input parameter. It requires bucket and filepath.\n
+    if  event['rawQueryString'] == '':
+        response_body = f'''No input given. It requires bucket and filepath or s3_uri.\n
                         bucket: S3 bucket name\n
-                        filepath: full file path with filname. Eg. dir1/subdir/filename.pkts
+                        filepath: full file path with filname. Eg. dir1/subdir/filename.pkts \n
+                        s3_uri: full s3 URI. Eg. s3://bucket-name/filepath/filename.pkts
                         '''
         return http_response(status_code=421, body=response_body)
 
-    bucket = event['queryStringParameters']['bucket']
-    filepath = event['queryStringParameters']['filepath']
+    elif 'filepath' in event['queryStringParameters'] and 'bucket' in event['queryStringParameters']:
+        bucket = event['queryStringParameters']['bucket']
+        filepath = event['queryStringParameters']['filepath']
+
+    elif 's3_uri' in event['queryStringParameters']:
+        # parse s3 uri to get bucket and filepath
+        # Eg. s3://bucket-name/filepath/filename.pkts
+        s3_uri = event['queryStringParameters']['s3_uri']
+        # Parse by '//', then parse by first occurence of '/'. Result would look like:
+        # ['bucket-name', 'filepath/filename.pkts']
+        parsed_list = s3_uri.split('//')[1].split('/', 1)
+        bucket = parsed_list[0]
+        filepath = parsed_list[1]
+
+    else:
+        response_body = f'''Did not find bucket and filepath or s3_uri.\n
+                        bucket: S3 bucket name\n
+                        filepath: full file path with filname. Eg. dir1/subdir/filename.pkts \n
+                        s3_uri: full s3 URI. Eg. s3://bucket-name/filepath/filename.pkts
+                        '''
+        return http_response(status_code=422, body=response_body)
+
     s3_client = boto3.client('s3')
 
     # check if object exists
@@ -52,58 +73,6 @@ def lambda_handler(event, context):
                                                     Params={'Bucket': bucket,
                                                             'Key': filepath},
                                                     ExpiresIn=os.environ['URL_EXPIRE'])
-    return pre_signed_url
+    response_body = {'download_url': pre_signed_url}
 
-event = {
-    "version": "2.0",
-    "routeKey": "$default",
-    "rawPath": "/",
-    "rawQueryString": "filename=test_tenzin.txt&event=sky",
-    "headers": {
-        "sec-fetch-mode": "navigate",
-        "x-amzn-tls-version": "TLSv1.2",
-        "sec-fetch-site": "none",
-        "accept-language": "en-US,en;q=0.9",
-        "x-forwarded-proto": "https",
-        "x-forwarded-port": "443",
-        "x-forwarded-for": "128.138.131.13",
-        "sec-fetch-user": "?1",
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-        "x-amzn-tls-cipher-suite": "ECDHE-RSA-AES128-GCM-SHA256",
-        "sec-ch-ua": "\"Not_A Brand\";v=\"99\", \"Google Chrome\";v=\"109\", \"Chromium\";v=\"109\"",
-        "sec-ch-ua-mobile": "?0",
-        "x-amzn-trace-id": "Root=1-63d87ec7-13d194014f4c840b670a3fa8",
-        "sec-ch-ua-platform": "\"macOS\"",
-        "host": "i4mmi7nwd4bvqzxtfuwivnadou0ynlnc.lambda-url.us-west-2.on.aws",
-        "upgrade-insecure-requests": "1",
-        "accept-encoding": "gzip, deflate, br",
-        "sec-fetch-dest": "document",
-        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
-    },
-    "queryStringParameters": {
-        "bucket": "delete-later-tenzin",
-        "filepath": "sds_in_a_box/SDSCode/science_block_20221116_163611Z_idle.bin"
-    },
-    "requestContext": {
-        "accountId": "anonymous",
-        "apiId": "i4mmi7nwd4bvqzxtfuwivnadou0ynlnc",
-        "domainName": "i4mmi7nwd4bvqzxtfuwivnadou0ynlnc.lambda-url.us-west-2.on.aws",
-        "domainPrefix": "i4mmi7nwd4bvqzxtfuwivnadou0ynlnc",
-        "http": {
-            "method": "GET",
-            "path": "/",
-            "protocol": "HTTP/1.1",
-            "sourceIp": "128.138.131.13",
-            "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"
-        },
-        "requestId": "41090832-b4f2-4f8c-b465-6b92b45f6d5b",
-        "routeKey": "$default",
-        "stage": "$default",
-        "time": "31/Jan/2023:02:36:55 +0000",
-        "timeEpoch": 1675132615290
-    },
-    "isBase64Encoded": False
-}
-
-response = lambda_handler(event, None)
-print(response)
+    return http_response(header_type='applicaation/json', body=json.dumps(response_body))
