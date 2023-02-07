@@ -102,3 +102,27 @@ class SdsInABoxStack(Stack):
                                                       )
                                         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+
+        # download query API lambda
+        download_query_api = lambda_.Function(self,
+                                          id="DownloadQueryAPILambda",
+                                          function_name='download-query-api',
+                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")),
+                                          handler="download_query_api.lambda_handler",
+                                          role=lambda_role,
+                                          runtime=lambda_.Runtime.PYTHON_3_9,
+                                          timeout=cdk.Duration.minutes(15),
+                                          memory_size=1000,
+                                          environment={
+                                              "URL_EXPIRE": "86400"
+                                          }
+                                          )
+
+        lambda_funtion_url = lambda_.FunctionUrl(self,
+                                                id="DownloadQueryAPI",
+                                                function=download_query_api,
+                                                auth_type=lambda_.FunctionUrlAuthType.NONE,
+
+                                                cors=lambda_.FunctionUrlCorsOptions(
+                                                                    allowed_origins=["*"],
+                                                                    allowed_methods=[lambda_.HttpMethod.GET]))
