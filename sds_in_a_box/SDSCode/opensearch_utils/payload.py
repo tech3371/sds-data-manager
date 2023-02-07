@@ -1,5 +1,5 @@
 import json
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
+from opensearch_utils.document import Document
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 

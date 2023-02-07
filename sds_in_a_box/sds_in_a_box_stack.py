@@ -120,7 +120,7 @@ class SdsInABoxStack(Stack):
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
                                             }, 
-                                            #layers=[lambda_alpha_.PythonLayerVersion(self, "SDSCodeLayer",entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"))]
+                                            layers=[lambda_.LayerVersion(self, "SDSCodeLayer", code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")))]
                                           )
         lambda_query_funtion_url = lambda_.FunctionUrl(self,
                                                  id="QueryAPI",

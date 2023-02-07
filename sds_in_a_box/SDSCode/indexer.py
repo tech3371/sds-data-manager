@@ -4,11 +4,11 @@ import boto3
 import logging 
 import os 
 import sys
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
-from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
-from sds_in_a_box.SDSCode.opensearch_utils.client import Client
+from opensearch_utils.document import Document
+from opensearch_utils.index import Index
+from opensearch_utils.payload import Payload
+from opensearch_utils.action import Action
+from opensearch_utils.client import Client
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 logger=logging.getLogger()

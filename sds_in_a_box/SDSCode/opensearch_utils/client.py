@@ -1,7 +1,7 @@
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
-from sds_in_a_box.SDSCode.opensearch_utils.query import Query
+from opensearch_utils.index import Index
+from opensearch_utils.document import Document
+from opensearch_utils.action import Action
+from opensearch_utils.query import Query
 from opensearchpy import OpenSearch, RequestsHttpConnection
 import json
 

@@ -1,6 +1,6 @@
 import json
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
+from opensearch_utils.index import Index
+from opensearch_utils.action import Action
 
 
 class Document():
