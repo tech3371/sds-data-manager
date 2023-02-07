@@ -49,13 +49,19 @@ Inside the app.py file, there are two important configuration items which you ca
 To deploy the SDS, first you'll need to snyth the CDK code with the command:
 
 ```
-cdk synth
+cdk synth --context SDSID={insert a unique ID here} --context initial_user={enter in an email address here}
 ```
 
 and then you can deploy the architecture with the following command:
 
 ```
-cdk deploy
+cdk deploy --context SDSID={insert a unique ID here} --context initial_user={enter in an email address here}
+```
+for example:
+
+```
+cdk synth --context SDSID=harter-testing --context initial_user=harter@lasp.colorado.edu
+cdk deploy --context SDSID=harter-testing --context initial_user=harter@lasp.colorado.edu
 ```
 
 After about 20 minutes or so, you should have a brand new SDS set up in AWS.  
