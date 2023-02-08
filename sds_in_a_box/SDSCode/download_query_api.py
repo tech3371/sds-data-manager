@@ -2,7 +2,6 @@ import boto3
 import botocore
 import os
 import json
-
 import logging
 
 logger = logging.getLogger()
@@ -31,8 +30,8 @@ def http_response(header_type='text/html', status_code=200, body='Success'):
 
 def lambda_handler(event, context):
     """This lambda handler checks if this file exists or not. If file doesn't exist, it
-    gives back an error. Otherwise, it returns pre-signed s3 url that user can use to donwload
-    data from s3.
+    gives back an error. Otherwise, it returns pre-signed s3 url that user can use to
+    donwload data from s3.
 
     Args:
         event (dict): input to lambda
@@ -41,15 +40,20 @@ def lambda_handler(event, context):
 
     logger.info(event)
 
+    one_day = 86400
+    url_life = os.environ.get("URL_EXPIRE", one_day)
+
     if  event['rawQueryString'] == '':
-        response_body = f'''No input given. It requires bucket and filepath or s3_uri.\n
+        response_body = '''No input given. It requires bucket and filepath or s3_uri.\n
                         bucket: S3 bucket name\n
-                        filepath: full file path with filname. Eg. dir1/subdir/filename.pkts \n
+                        filepath: full path with filname. Eg. dir1/subdir/filename.pkts\n
                         s3_uri: full s3 URI. Eg. s3://bucket-name/filepath/filename.pkts
                         '''
-        return http_response(status_code=421, body=response_body)
+        return http_response(status_code=400, body=response_body)
 
-    elif 'filepath' in event['queryStringParameters'] and 'bucket' in event['queryStringParameters']:
+    elif 'filepath' in event['queryStringParameters'] and \
+        'bucket' in event['queryStringParameters']:
+
         bucket = event['queryStringParameters']['bucket']
         filepath = event['queryStringParameters']['filepath']
 
@@ -59,7 +63,8 @@ def lambda_handler(event, context):
         s3_uri = event['queryStringParameters']['s3_uri']
 
         if "s3://" not in s3_uri:
-            return http_response(status_code=421, body='Not valid S3 URI. Should start with s3://bucket/path/file.ext')
+            response_body = 'Not valid S3 URI. Example input: s3://bucket/path/file.ext'
+            return http_response(status_code=400, body=response_body)
         # Parse by '//', then parse by first occurence of '/'. Result would look like:
         # ['bucket-name', 'filepath/filename.pkts']
         parsed_list = s3_uri.split('//')[1].split('/', 1)
@@ -67,12 +72,12 @@ def lambda_handler(event, context):
         filepath = parsed_list[1]
 
     else:
-        response_body = f'''Did not find bucket and filepath or s3_uri.\n
+        response_body = '''Did not find bucket and filepath or s3_uri.\n
                         bucket: S3 bucket name\n
-                        filepath: full file path with filname. Eg. dir1/subdir/filename.pkts \n
+                        filepath: full file path with filname. Eg. dir1/file.pkts \n
                         s3_uri: full s3 URI. Eg. s3://bucket-name/filepath/filename.pkts
                         '''
-        return http_response(status_code=422, body=response_body)
+        return http_response(status_code=400, body=response_body)
 
     s3_client = boto3.client('s3')
 
@@ -90,7 +95,7 @@ def lambda_handler(event, context):
     pre_signed_url = s3_client.generate_presigned_url('get_object',
                                                     Params={'Bucket': bucket,
                                                             'Key': filepath},
-                                                    ExpiresIn=os.environ['URL_EXPIRE'])
+                                                    ExpiresIn=url_life)
     response_body = {'download_url': pre_signed_url}
 
     return http_response(header_type='application/json', body=json.dumps(response_body))

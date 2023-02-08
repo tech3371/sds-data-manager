@@ -105,23 +105,23 @@ class SdsInABoxStack(Stack):
 
         # download query API lambda
         download_query_api = lambda_.Function(self,
-                                          id="DownloadQueryAPILambda",
-                                          function_name='download-query-api',
-                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")),
-                                          handler="download_query_api.lambda_handler",
-                                          role=lambda_role,
-                                          runtime=lambda_.Runtime.PYTHON_3_9,
-                                          timeout=cdk.Duration.seconds(60),
-                                          environment={
-                                              "URL_EXPIRE": "86400"
-                                          }
-                                          )
+            id="DownloadQueryAPILambda",
+            function_name='download-query-api',
+            code=lambda_.Code.from_asset(
+                os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")
+            ),
+            handler="download_query_api.lambda_handler",
+            role=lambda_role,
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            timeout=cdk.Duration.seconds(60)
+        )
 
-        download_query_lambda_funtion_url = lambda_.FunctionUrl(self,
-                                                id="DownloadQueryAPI",
-                                                function=download_query_api,
-                                                auth_type=lambda_.FunctionUrlAuthType.NONE,
+        lambda_.FunctionUrl(self,
+            id="DownloadQueryAPI",
+            function=download_query_api,
+            auth_type=lambda_.FunctionUrlAuthType.NONE,
 
-                                                cors=lambda_.FunctionUrlCorsOptions(
-                                                                    allowed_origins=["*"],
-                                                                    allowed_methods=[lambda_.HttpMethod.GET]))
+            cors=lambda_.FunctionUrlCorsOptions(
+                                allowed_origins=["*"],
+                                allowed_methods=[lambda_.HttpMethod.GET])
+        )

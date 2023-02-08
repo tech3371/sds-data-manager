@@ -17,12 +17,11 @@ def download_file(filename_and_path, download_link):
     # Get file content using urlopen
     with urlopen(download_link) as response:
         if response.getcode() != 200:
-            logger.warn("Failed to download file [%s], returned status code [%d]", download_link, response.status_code)
-
+            logger.warn("Failed to download file [%s], returned status code [%d]",
+                        download_link, response.status_code
+            )
+            return
         # save/write file content to file on local machine
-        if response.getcode() == 200:
-            with open(filename_and_path, 'wb') as file:
-                logger.info(f"Downloading to {filename_and_path}")
-                file.write(response.read())
-        else:
-            logger.info("Failed to download file")
+        with open(filename_and_path, 'wb') as file:
+            logger.info(f"Downloading to {filename_and_path}")
+            file.write(response.read())

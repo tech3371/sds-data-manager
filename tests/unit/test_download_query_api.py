@@ -16,7 +16,6 @@ class TestDownloadQueryAPI(unittest.TestCase):
     os.environ["AWS_SECURITY_TOKEN"] = "testing"
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
-    os.environ["URL_EXPIRE"] = "60"
 
     def setUp(self):
         self.mock_s3.start()
@@ -25,12 +24,17 @@ class TestDownloadQueryAPI(unittest.TestCase):
 
         # create mock s3 bucket
         self.s3_client.create_bucket(Bucket=self.bucket_name,
-                              CreateBucketConfiguration={"LocationConstraint": "us-west-2"}
-                              )
+                              CreateBucketConfiguration={
+                                "LocationConstraint": "us-west-2"
+                                }
+                            )
         # upload a file
         self.s3_filepath = "test-data/science_block_20221116_163611Z_idle.bin"
-        self.local_filepath = "tests/unit/test-data/science_block_20221116_163611Z_idle.bin"
-        self.s3_client.upload_file(self.local_filepath, self.bucket_name, self.s3_filepath)
+        self.local_filepath = f"tests/unit/{self.s3_filepath}"
+        self.s3_client.upload_file(self.local_filepath,
+                                   self.bucket_name,
+                                   self.s3_filepath
+                                )
         file_list = self.s3_client.list_objects(Bucket=self.bucket_name)['Contents']
 
         assert len(file_list) == 1
@@ -125,10 +129,10 @@ class TestDownloadQueryAPI(unittest.TestCase):
         }
 
         response = lambda_handler(event=self.empty_para_event, context=None)
-        assert response['statusCode'] == 421
+        assert response['statusCode'] == 400
 
         response = lambda_handler(event=self.missing_para_event, context=None)
-        assert response['statusCode'] == 422
+        assert response['statusCode'] == 400
 
     def tearDown(self):
         self.mock_s3.stop()
