@@ -1,5 +1,9 @@
-import requests
+from urllib.request import urlopen
+import logging
 
+logger = logging.getLogger()
+logging.basicConfig()
+logger.setLevel(logging.INFO)
 
 def download_file(filename_and_path, download_link):
     """This allows user to download file from S3 using pre-signed URL generated
@@ -10,13 +14,15 @@ def download_file(filename_and_path, download_link):
             Eg. dir/subdir/filename.ext
         download_link (str): pre-signed URL from S3
     """
-    # Get file content using requests
-    response = requests.get(download_link, stream=True)
+    # Get file content using urlopen
+    with urlopen(download_link) as response:
+        if response.getcode() != 200:
+            logger.warn("Failed to download file [%s], returned status code [%d]", download_link, response.status_code)
 
-    # save/write file content to file on local machine
-    if response.status_code == 200:
-        with open(filename_and_path, 'wb') as file:
-            print(f"Downloading {filename_and_path}")
-            file.write(response.content)
-    else:
-        print("Failed to download file")
+        # save/write file content to file on local machine
+        if response.getcode() == 200:
+            with open(filename_and_path, 'wb') as file:
+                logger.info(f"Downloading to {filename_and_path}")
+                file.write(response.read())
+        else:
+            logger.info("Failed to download file")

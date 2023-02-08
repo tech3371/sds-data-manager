@@ -1,18 +1,24 @@
 import boto3
-import pytest
 import unittest
-
+import os
 from operator import contains
 from moto import mock_s3
 
 from sds_in_a_box.SDSCode.download_query_api import lambda_handler
 
 
-@pytest.mark.network
-class TestIndexer(unittest.TestCase):
+class TestDownloadQueryAPI(unittest.TestCase):
+    mock_s3 = mock_s3()
 
-    @mock_s3
-    def setUpS3(self):
+    # Mocked AWS Credentials for moto
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+
+    def setUp(self):
+        self.mock_s3.start()
         self.bucket_name = "download-query-api"
         self.s3_client = boto3.client("s3")
 
@@ -28,11 +34,9 @@ class TestIndexer(unittest.TestCase):
 
         assert len(file_list) == 1
 
-    @mock_s3
     def test_object_exists_with_bucket_and_path(self):
         """Test that objects exist in s3
         """
-        self.setUpS3()
         self.event = {
             "version": "2.0",
             "routeKey": "$default",
@@ -49,11 +53,9 @@ class TestIndexer(unittest.TestCase):
         assert response['statusCode'] == 200
         assert contains(response['body'], 'download_url')
 
-    @mock_s3
     def test_object_exists_with_bucket_and_path_fails(self):
-        """Test that objects exist in s3
+        """Test that objects exist in s3 fails
         """
-        self.setUpS3()
         self.event = {
             "version": "2.0",
             "routeKey": "$default",
@@ -68,11 +70,9 @@ class TestIndexer(unittest.TestCase):
         response = lambda_handler(event=self.event, context=None)
         assert response['statusCode'] == 404
 
-    @mock_s3
     def test_object_exists_with_s3_uri(self):
         """Test that objects exist in s3
         """
-        self.setUpS3()
         self.event = {
             "version": "2.0",
             "routeKey": "$default",
@@ -87,11 +87,9 @@ class TestIndexer(unittest.TestCase):
         assert response['statusCode'] == 200
         assert contains(response['body'], 'download_url')
     
-    @mock_s3
     def test_object_exists_with_s3_uri_fails(self):
-        """Test that objects exist in s3
+        """Test that objects exist in s3 fails
         """
-        self.setUpS3()
         self.event = {
             "version": "2.0",
             "routeKey": "$default",
@@ -105,11 +103,9 @@ class TestIndexer(unittest.TestCase):
         response = lambda_handler(event=self.event, context=None)
         assert response['statusCode'] == 404
 
-    @mock_s3
     def test_input_parameters_missing(self):
         """Test that required input parameters exist
         """
-        self.setUpS3()
         self.empty_para_event = {
             "version": "2.0",
             "routeKey": "$default",
@@ -133,6 +129,8 @@ class TestIndexer(unittest.TestCase):
         response = lambda_handler(event=self.missing_para_event, context=None)
         assert response['statusCode'] == 422
 
+    def tearDown(self):
+        self.mock_s3.stop()
 
 if __name__ == '__main__':
     unittest.main()

@@ -111,14 +111,13 @@ class SdsInABoxStack(Stack):
                                           handler="download_query_api.lambda_handler",
                                           role=lambda_role,
                                           runtime=lambda_.Runtime.PYTHON_3_9,
-                                          timeout=cdk.Duration.minutes(15),
-                                          memory_size=1000,
+                                          timeout=cdk.Duration.seconds(60),
                                           environment={
                                               "URL_EXPIRE": "86400"
                                           }
                                           )
 
-        lambda_funtion_url = lambda_.FunctionUrl(self,
+        download_query_lambda_funtion_url = lambda_.FunctionUrl(self,
                                                 id="DownloadQueryAPI",
                                                 function=download_query_api,
                                                 auth_type=lambda_.FunctionUrlAuthType.NONE,
