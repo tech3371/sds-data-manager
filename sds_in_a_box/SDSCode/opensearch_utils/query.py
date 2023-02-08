@@ -39,12 +39,24 @@ class Query:
         return self.query_size
 
     def __build_query_dsl(self, query_params):
+        """
+        Builds a Query DSL using a dictionary with field:value pairings.
+
+        Parameters
+        ----------
+        query_params: dict
+            dictionary containing field:value search parameters.
+
+        """
+        # define query structure
         query = {"query": {"bool":{}}}
-        query_must_structure = {"must": []}
         query_match_structure = {"match": {}}
-        query_filter_structure = {"filter": []}
         query_date_structure = {"range": {"date": {}}}
-   
+        
+        # remove all params that are not valid
+        query_params = self.__filter_params(query_params)
+
+        # create the query
         for param in query_params:
             if param == "start_date" or param == "end_date":
                 if "filter" not in query["query"]["bool"]:
@@ -62,6 +74,27 @@ class Query:
                 query["query"]["bool"]["must"].append(query_match)
             
         return query    
+
+    def __filter_params(self, query_params):
+        """
+        filter the search parameters to only use valid fields
+
+        Parameters
+        ----------
+        query_params: dict
+            dictionary containing field:value search parameters.
+        """
+        # filter the query_params to only keep valid params
+        valid_params = set(self.__get_config_params())
+        valid_params = valid_params.intersection(set(query_params.keys()))
+        return {param: query_params[param] for param in valid_params}     
+    
+    def __get_config_params(self):
+        """get the valid search parameters from the config file."""
+        # use the config.json to get all valid params for search
+        f = open('config.json')
+        config = json.load(f)
+        return list(set([y for x in config for y in list(x["pattern"].keys())]))
 
     def __repr__(self):
         return self.query_dsl_formatted

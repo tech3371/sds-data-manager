@@ -15,6 +15,8 @@ import aws_cdk.aws_opensearchservice as opensearch
 import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_secretsmanager as secretsmanager
 from aws_cdk.aws_lambda_event_sources import S3EventSource, SnsEventSource
+import boto3
+from botocore.exceptions import ClientError
 
 class SdsInABoxStack(Stack):
 
@@ -73,6 +75,17 @@ class SdsInABoxStack(Stack):
             )
         )
 
+        # add an access policy for opensearch
+        domain.add_access_policies(
+            iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            principals=[
+                iam.AnyPrincipal()
+            ],
+            actions=["es:*"],
+            resources=[domain.domain_arn + "/*"]
+            ))
+
         # This is the role that the lambdas will assume
         # We'll narrow things down later
         lambda_role = iam.Role(self, "Indexer Role", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"))
@@ -86,16 +99,17 @@ class SdsInABoxStack(Stack):
                                           code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode")),
                                           handler="indexer.lambda_handler",
                                           role=lambda_role,
-                                          runtime=lambda_.Runtime.PYTHON_3_9,
+                                          runtime=lambda_.Runtime.PYTHON_3_7,
                                           timeout=cdk.Duration.minutes(15),
                                           memory_size=1000,
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
-                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
+                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
                                             "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
-                                            "OS_INDEX": "metadata"
-                                            }
+                                            "OS_INDEX": "metadata",
+                                            "S3_BUCKET": data_bucket.s3_url_for_object()},
+                                            layers=[lambda_alpha_.PythonLayerVersion(self, "SDSIndexerCodeLayer", entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"))]
                                           )
 
         indexer_lambda.add_event_source(S3EventSource(data_bucket,
@@ -115,17 +129,18 @@ class SdsInABoxStack(Stack):
                                           memory_size=1000,
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
-                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
+                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
                                             "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
                                             }, 
-                                            layers=[lambda_.LayerVersion(self, "SDSCodeLayer", code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")))]
+                                            layers=[lambda_alpha_.PythonLayerVersion(self, "SDSQueryCodeLayer", entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"))]
                                           )
+        # add function url for lambda query API
         lambda_query_funtion_url = lambda_.FunctionUrl(self,
                                                  id="QueryAPI",
                                                  function=query_lambda,
                                                  auth_type=lambda_.FunctionUrlAuthType.NONE,
                                                  cors=lambda_.FunctionUrlCorsOptions(
                                                                      allowed_origins=["*"],
-                                                                     allowed_methods=[lambda_.HttpMethod.GET]))
+                                                                     allowed_methods=[lambda_.HttpMethod.GET, lambda_.HttpMethod.POST]))

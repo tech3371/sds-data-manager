@@ -91,7 +91,8 @@ def lambda_handler(event, context):
         logger.info("Found the following metadata to index: " + str(metadata))
 
         # create a document for the metadata and add it to the payload
-        opensearch_doc = Document(index, filename, Action.CREATE, metadata)
+        file_path = os.environ["S3_BUCKET"] + filetypes[0]['path'] + "/" + filename
+        opensearch_doc = Document(index, file_path, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)
 
     # send the paylaod to the opensearch instance
