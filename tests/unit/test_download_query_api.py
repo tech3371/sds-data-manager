@@ -16,6 +16,7 @@ class TestDownloadQueryAPI(unittest.TestCase):
     os.environ["AWS_SECURITY_TOKEN"] = "testing"
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+    os.environ["URL_EXPIRE"] = "60"
 
     def setUp(self):
         self.mock_s3.start()
