@@ -3,12 +3,12 @@ services:
   imap_sdc:
     build:
       context: .
-      dockerfile: .gitpod.Dockerfile # path to Dockerfile
+      dockerfile: .devcontainer/Dockerfile # path to Dockerfile
     image: sds_in_a_box
     stdin_open: true # This line is same as docker run -i
     tty: true # This line is same as docker run -t
     volumes: # mount volumes
-      - ./:/workspace/SDS-in-a-box/
-      - $HOME/.aws:/workspace/SDS-in-a-box/.aws/
-    env_file: # Set environment variables using .env file
-      - ./sds_in_a_box/SDSCode/lambda.env
+      - .:/workspaces/SDS-in-a-box/
+      - $HOME/.aws:/workspaces/SDS-in-a-box/.aws/
+    # env_file: # Set environment variables using .env file
+    #   - ./sds_in_a_box/SDSCode/lambda.env
