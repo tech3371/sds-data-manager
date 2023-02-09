@@ -11,7 +11,7 @@ RUN unzip awscliv2.zip
 RUN sudo ./aws/install
 RUN sudo apt-get install -y python3 python3-pip
 RUN pip install aws-cdk-lib==2.48.0 
-RUN pip install aws-cdk-lib.aws-lambda-python-alpha
+RUN pip install aws-cdk.aws-lambda-python-alpha
 RUN pip install "constructs>=10.0.0,<11.0.0"
 RUN pip install boto3
 RUN pip install opensearch-py
