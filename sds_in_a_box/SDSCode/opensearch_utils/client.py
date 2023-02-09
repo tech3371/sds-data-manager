@@ -131,7 +131,8 @@ class Client():
         payload: Payload
             payload containing bulk documents to be sent to the OpenSearch cluster.
         """
-        self.client.bulk(payload.get_contents(), params={"request_timeout":1000000})
+        for chunk in payload.payload_chunks():
+            self.client.bulk(chunk, params={"request_timeout":1000000})
 
     def get_document(self, document):
         """Returns the specified document"""
@@ -148,12 +149,14 @@ class Client():
         index: Index
             OpenSearch index to use for the search.
         """
+        # search the opensearch instance with scroll to handle larger responses
         result = self.client.search(body=query.query_dsl(), index=index.get_name(), params={"scroll": "1m"})
         scroll_id = result['_scroll_id']
         scroll_size = len(result["hits"]["hits"])
         counter = 0
         full_result = result["hits"]["hits"]
 
+        # scroll through the results and add results to list
         while scroll_size > 0:
             counter += scroll_size
             result = self.client.scroll(scroll_id=scroll_id, scroll="1m")

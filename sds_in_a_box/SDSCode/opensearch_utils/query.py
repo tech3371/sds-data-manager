@@ -48,7 +48,7 @@ class Query:
             dictionary containing field:value search parameters.
 
         """
-        # define query structure
+        # define the query structure
         query = {"query": {"bool":{}}}
         query_match_structure = {"match": {}}
         query_date_structure = {"range": {"date": {}}}
@@ -58,17 +58,25 @@ class Query:
 
         # create the query
         for param in query_params:
+            # create a date query using start and end date parameters
             if param == "start_date" or param == "end_date":
+                # create the filter strcture for date queries if it hasn't
+                # already been created
                 if "filter" not in query["query"]["bool"]:
                     query["query"]["bool"]["filter"] = query_date_structure
+                # create the greater than or equal to (gte) start date query
                 if param == "start_date":
                     query["query"]["bool"]["filter"]["range"]["date"]["gte"] = query_params[param]
+                # create the less than or equal to (lte) end date query
                 if param == "end_date":
                     query["query"]["bool"]["filter"]["range"]["date"]["lte"] = query_params[param]
             else:
+                # create the must query structure if it doesn't 
+                # already exist
                 if "must" not in query["query"]["bool"]:
                     query["query"]["bool"]["must"] = []
                 
+                # add the search parameters to the must query structure
                 query_match = query_match_structure.copy()
                 query_match["match"] = {param:query_params[param]}
                 query["query"]["bool"]["must"].append(query_match)

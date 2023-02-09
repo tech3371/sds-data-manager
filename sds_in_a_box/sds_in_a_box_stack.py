@@ -15,8 +15,6 @@ import aws_cdk.aws_opensearchservice as opensearch
 import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_secretsmanager as secretsmanager
 from aws_cdk.aws_lambda_event_sources import S3EventSource, SnsEventSource
-import boto3
-from botocore.exceptions import ClientError
 
 class SdsInABoxStack(Stack):
 

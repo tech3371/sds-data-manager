@@ -1,11 +1,7 @@
 import json
-import urllib.parse
-import boto3
 import logging 
 import os 
 import sys
-import subprocess
-import time
 from opensearch_utils.document import Document
 from opensearch_utils.index import Index
 from opensearch_utils.payload import Payload

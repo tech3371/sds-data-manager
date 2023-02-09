@@ -24,7 +24,6 @@ class TestQuery(unittest.TestCase):
         
 
         ## Assert ##
-        print("\nout : {} \ntrue: {}".format(query_dsl_out, query_dsl_true))
         assert query_dsl_out == query_dsl_true
 
     def test_get_name_no_start_date(self):

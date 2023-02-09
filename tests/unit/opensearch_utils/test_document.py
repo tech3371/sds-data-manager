@@ -5,7 +5,6 @@ from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
-
 class TestDocument(unittest.TestCase):
     """tests for document.py"""
 
@@ -129,9 +128,6 @@ class TestDocument(unittest.TestCase):
         contents_out = document.get_contents()
         
         ## Assert ##
-        print()
-        print(contents_true)
-        print(contents_out)
         assert contents_out == contents_true
 
 

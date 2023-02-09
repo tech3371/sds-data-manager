@@ -55,6 +55,11 @@ class Payload():
         """Returns the contents of the payload as a string."""
         full_contents = "".join(self.payload_contents)
         return full_contents
+    
+    def payload_chunks(self):
+        """Returns a list of payload documents chunked to avoid bulk upload limits"""
+        return self.payload_contents
+    
 
     def __repr__(self):
         return str(self.payload_contents)
