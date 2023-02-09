@@ -1,7 +1,7 @@
-from opensearch_utils.index import Index
-from opensearch_utils.document import Document
-from opensearch_utils.action import Action
-from opensearch_utils.query import Query
+from .index import Index
+from .document import Document
+from .action import Action
+from .query import Query
 from opensearchpy import OpenSearch, RequestsHttpConnection
 import json
 

@@ -87,12 +87,11 @@ def lambda_handler(event, context):
             logger.info(f"Found no matching file types to index this file against.")
             return None
         
-        # Rather than returning the metadata, we should insert it into the DB
         logger.info("Found the following metadata to index: " + str(metadata))
 
         # create a document for the metadata and add it to the payload
-        file_path = os.environ["S3_BUCKET"] + filetypes[0]['path'] + "/" + filename
-        opensearch_doc = Document(index, file_path, Action.CREATE, metadata)
+        bucket_path = os.path.join(os.environ["S3_BUCKET"], filetypes[0]['path'], filename)
+        opensearch_doc = Document(index, bucket_path, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)
 
     # send the paylaod to the opensearch instance

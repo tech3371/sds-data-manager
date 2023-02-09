@@ -119,8 +119,8 @@ class SdsInABoxStack(Stack):
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
         # The purpose of this lambda function is to trigger off of a lambda URL.
-        query_lambda = lambda_.Function(self,
-                                          id="QueryLambda",
+        query_api_lambda = lambda_.Function(self,
+                                          id="QueryAPILambda",
                                           code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")),
                                           handler="queries.lambda_handler",
                                           role=lambda_role,
@@ -137,9 +137,9 @@ class SdsInABoxStack(Stack):
                                             layers=[lambda_alpha_.PythonLayerVersion(self, "SDSQueryCodeLayer", entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"))]
                                           )
         # add function url for lambda query API
-        lambda_query_funtion_url = lambda_.FunctionUrl(self,
+        lambda_query_api_function_url = lambda_.FunctionUrl(self,
                                                  id="QueryAPI",
-                                                 function=query_lambda,
+                                                 function=query_api_lambda,
                                                  auth_type=lambda_.FunctionUrlAuthType.NONE,
                                                  cors=lambda_.FunctionUrlCorsOptions(
                                                                      allowed_origins=["*"],

@@ -1,6 +1,6 @@
 import json
-from opensearch_utils.index import Index
-from opensearch_utils.action import Action
+from .index import Index
+from .action import Action
 
 
 class Document():

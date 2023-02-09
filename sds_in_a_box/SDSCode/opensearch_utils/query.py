@@ -84,17 +84,10 @@ class Query:
         query_params: dict
             dictionary containing field:value search parameters.
         """
+        # need a better way to manage valid search params
+        valid_params = ["instrument", "level", "start_date", "end_date"]
         # filter the query_params to only keep valid params
-        valid_params = set(self.__get_config_params())
-        valid_params = valid_params.intersection(set(query_params.keys()))
-        return {param: query_params[param] for param in valid_params}     
-    
-    def __get_config_params(self):
-        """get the valid search parameters from the config file."""
-        # use the config.json to get all valid params for search
-        f = open('config.json')
-        config = json.load(f)
-        return list(set([y for x in config for y in list(x["pattern"].keys())]))
+        return {param: query_params[param] for param in query_params if param in valid_params}
 
     def __repr__(self):
         return self.query_dsl_formatted

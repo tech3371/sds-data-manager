@@ -1,5 +1,5 @@
 import json
-from opensearch_utils.document import Document
+from .document import Document
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 

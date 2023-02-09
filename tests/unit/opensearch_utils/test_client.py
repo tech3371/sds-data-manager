@@ -51,6 +51,10 @@ class TestClient(unittest.TestCase):
         auth = ("master-user", secret)
         self.client = Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
         self.index = Index("test_data")
+
+        if self.client.index_exists(self.index):
+            self.client.delete_index(self.index)
+
         self.payload = Payload()
         body1 = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'20230112', 'version':'*', 'extension':'fits'}
         body2 = {'mission':'imap', 'level':'l1', 'instrument':'mag', 'date':'20230112', 'version':'*', 'extension':'fits'}
