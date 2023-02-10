@@ -2,4 +2,3 @@ aws-cdk-lib==2.48.0
 aws-cdk.aws-lambda-python-alpha
 constructs>=10.0.0,<11.0.0
 boto3
-opensearch-py
