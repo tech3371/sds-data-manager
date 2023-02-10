@@ -4,13 +4,18 @@ import boto3
 import logging 
 import os 
 import sys
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
-from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
-from sds_in_a_box.SDSCode.opensearch_utils.client import Client
-from sds_in_a_box.SDSCode.opensearch_utils.query import Query
+from opensearch_utils.document import Document
+from opensearch_utils.index import Index
+from opensearch_utils.payload import Payload
+from opensearch_utils.action import Action
+from opensearch_utils.client import Client
+from opensearch_utils.query import Query
 from opensearchpy import OpenSearch, RequestsHttpConnection
+
+
+logger=logging.getLogger()
+logger.setLevel(logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 def _create_open_search_client():
     hosts = [{"host":os.environ["OS_DOMAIN"], "port":int(os.environ["OS_PORT"])}]
@@ -25,4 +30,4 @@ def lambda_handler(event, context):
 
     search_result = client.search(query, Index(os.environ["OS_INDEX"]))
     logger.info("Query Search Results: " + json.dumps(search_result))
-    return search_resultresult
+    return search_result

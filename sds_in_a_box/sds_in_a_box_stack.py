@@ -107,10 +107,10 @@ class SdsInABoxStack(Stack):
         # The purpose of this lambda function is to trigger off of a lambda URL.
         query_lambda = lambda_.Function(self,
                                           id="QueryLambda",
-                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode")),
+                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")),
                                           handler="queries.lambda_handler",
                                           role=lambda_role,
-                                          runtime=lambda_.Runtime.PYTHON_3_9,
+                                          runtime=lambda_.Runtime.PYTHON_3_7,
                                           timeout=cdk.Duration.minutes(15),
                                           memory_size=1000,
                                           environment={
@@ -120,7 +120,12 @@ class SdsInABoxStack(Stack):
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
                                             }, 
-                                            layers=[lambda_alpha_.PythonLayerVersion(self, "SDSCodeLayer",entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"))]
+                                            #layers=[lambda_alpha_.PythonLayerVersion(self, "SDSCodeLayer",entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"))]
                                           )
-        query_lambda.add_function_url()
-        indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        lambda_query_funtion_url = lambda_.FunctionUrl(self,
+                                                 id="QueryAPI",
+                                                 function=query_lambda,
+                                                 auth_type=lambda_.FunctionUrlAuthType.NONE,
+                                                 cors=lambda_.FunctionUrlCorsOptions(
+                                                                     allowed_origins=["*"],
+                                                                     allowed_methods=[lambda_.HttpMethod.GET]))
