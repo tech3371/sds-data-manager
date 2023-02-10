@@ -39,42 +39,6 @@ class TestDownloadQueryAPI(unittest.TestCase):
 
         assert len(file_list) == 1
 
-    def test_object_exists_with_bucket_and_path(self):
-        """Test that objects exist in s3
-        """
-        self.event = {
-            "version": "2.0",
-            "routeKey": "$default",
-            "rawPath": "/",
-            "rawQueryString": f"filename={self.s3_filepath}&bucket={self.bucket_name}",
-            "queryStringParameters": {
-                "s3_uri": f"s3://{self.bucket_name}/{self.s3_filepath}",
-                "bucket": f"{self.bucket_name}",
-                "filepath": f"{self.s3_filepath}"
-            }
-        }
-
-        response = lambda_handler(event=self.event, context=None)
-        assert response['statusCode'] == 200
-        assert contains(response['body'], 'download_url')
-
-    def test_object_exists_with_bucket_and_path_fails(self):
-        """Test that objects exist in s3 fails
-        """
-        self.event = {
-            "version": "2.0",
-            "routeKey": "$default",
-            "rawPath": "/",
-            "rawQueryString": f"filename={self.s3_filepath}&bucket={self.bucket_name}",
-            "queryStringParameters": {
-                "bucket": f"{self.bucket_name}",
-                "filepath": "/bad_path/fake.txt"
-            }
-        }
-
-        response = lambda_handler(event=self.event, context=None)
-        assert response['statusCode'] == 404
-
     def test_object_exists_with_s3_uri(self):
         """Test that objects exist in s3
         """
@@ -118,20 +82,20 @@ class TestDownloadQueryAPI(unittest.TestCase):
             "rawQueryString": ""
         }
 
-        self.missing_para_event = {
+        self.bad_para_event = {
             "version": "2.0",
             "routeKey": "$default",
             "rawPath": "/",
-            "rawQueryString": f"filename={self.s3_filepath}",
+            "rawQueryString": f"bad_input={self.s3_filepath}",
             "queryStringParameters": {
-                "filepath": f"{self.s3_filepath}"
+                "bad_input": f"{self.s3_filepath}"
             }
         }
 
         response = lambda_handler(event=self.empty_para_event, context=None)
         assert response['statusCode'] == 400
 
-        response = lambda_handler(event=self.missing_para_event, context=None)
+        response = lambda_handler(event=self.bad_para_event, context=None)
         assert response['statusCode'] == 400
 
     def tearDown(self):

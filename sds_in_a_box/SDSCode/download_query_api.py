@@ -44,18 +44,10 @@ def lambda_handler(event, context):
     url_life = os.environ.get("URL_EXPIRE", one_day)
 
     if  event['rawQueryString'] == '':
-        response_body = '''No input given. It requires bucket and filepath or s3_uri.\n
-                        bucket: S3 bucket name\n
-                        filepath: full path with filname. Eg. dir1/subdir/filename.pkts\n
+        response_body = '''No input given. It requires s3_uri.\n
                         s3_uri: full s3 URI. Eg. s3://bucket-name/filepath/filename.pkts
                         '''
         return http_response(status_code=400, body=response_body)
-
-    elif 'filepath' in event['queryStringParameters'] and \
-        'bucket' in event['queryStringParameters']:
-
-        bucket = event['queryStringParameters']['bucket']
-        filepath = event['queryStringParameters']['filepath']
 
     elif 's3_uri' in event['queryStringParameters']:
         # parse s3 uri to get bucket and filepath
@@ -72,9 +64,7 @@ def lambda_handler(event, context):
         filepath = parsed_list[1]
 
     else:
-        response_body = '''Did not find bucket and filepath or s3_uri.\n
-                        bucket: S3 bucket name\n
-                        filepath: full file path with filname. Eg. dir1/file.pkts \n
+        response_body = '''Did not find s3_uri input parameter.\n
                         s3_uri: full s3 URI. Eg. s3://bucket-name/filepath/filename.pkts
                         '''
         return http_response(status_code=400, body=response_body)
