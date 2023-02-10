@@ -2,9 +2,9 @@ import json
 import logging 
 import os 
 import sys
-from opensearch_utils.index import Index
-from opensearch_utils.client import Client
-from opensearch_utils.query import Query
+from .opensearch_utils.index import Index
+from .opensearch_utils.client import Client
+from .opensearch_utils.query import Query
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 logger=logging.getLogger()
