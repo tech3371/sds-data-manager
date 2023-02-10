@@ -91,13 +91,14 @@ class SdsInABoxStack(Stack):
         
         # The purpose of this lambda function is to trigger off of a new file entering the SDC.
         # For now, it just prints the event.  
-        indexer_lambda = lambda_.Function(self,
+        indexer_lambda = lambda_alpha_.PythonFunction(self,
                                           id="IndexerLambda",
                                           #function_name='file-indexer',
-                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode")),
-                                          handler="indexer.lambda_handler",
+                                          entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"),
+                                          index = "indexer.py",
+                                          handler="lambda_handler",
                                           role=lambda_role,
-                                          runtime=lambda_.Runtime.PYTHON_3_7,
+                                          runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(15),
                                           memory_size=1000,
                                           environment={
@@ -106,8 +107,7 @@ class SdsInABoxStack(Stack):
                                             "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata",
-                                            "S3_BUCKET": data_bucket.s3_url_for_object()},
-                                            layers=[lambda_alpha_.PythonLayerVersion(self, "SDSIndexerCodeLayer", entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"))]
+                                            "S3_BUCKET": data_bucket.s3_url_for_object()}
                                           )
 
         indexer_lambda.add_event_source(S3EventSource(data_bucket,
@@ -117,13 +117,14 @@ class SdsInABoxStack(Stack):
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
         # The purpose of this lambda function is to trigger off of a lambda URL.
-        query_api_lambda = lambda_.Function(self,
+        query_api_lambda = lambda_alpha_.PythonFunction(self,
                                           id="QueryAPILambda",
-                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")),
-                                          handler="queries.lambda_handler",
+                                          entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
+                                          index="queries.py",
+                                          handler="lambda_handler",
                                           role=lambda_role,
-                                          runtime=lambda_.Runtime.PYTHON_3_7,
-                                          timeout=cdk.Duration.minutes(15),
+                                          runtime=lambda_.Runtime.PYTHON_3_9,
+                                          timeout=cdk.Duration.minutes(1),
                                           memory_size=1000,
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
@@ -131,8 +132,7 @@ class SdsInABoxStack(Stack):
                                             "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
-                                            }, 
-                                            layers=[lambda_alpha_.PythonLayerVersion(self, "SDSQueryCodeLayer", entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"))]
+                                            }
                                           )
         # add function url for lambda query API
         lambda_query_api_function_url = lambda_.FunctionUrl(self,
@@ -141,4 +141,4 @@ class SdsInABoxStack(Stack):
                                                  auth_type=lambda_.FunctionUrlAuthType.NONE,
                                                  cors=lambda_.FunctionUrlCorsOptions(
                                                                      allowed_origins=["*"],
-                                                                     allowed_methods=[lambda_.HttpMethod.GET, lambda_.HttpMethod.POST]))
+                                                                     allowed_methods=[lambda_.HttpMethod.GET]))

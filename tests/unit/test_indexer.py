@@ -94,8 +94,6 @@ class TestIndexer(unittest.TestCase):
         document_out = self.client.get_document(self.document)
 
         ## Assert
-        print("out:  " + json.dumps(document_out))
-        print("true: "  + json.dumps(document_true))
         assert document_out == document_true
 
         

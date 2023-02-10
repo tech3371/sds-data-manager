@@ -111,16 +111,16 @@ class Client():
         """
 
         # override the action if specified
-        action = self.__override_action(document, action_override)
+        action = self._override_action(document, action_override)
 
         if action == Action.CREATE:
-            self.__create_document(document)
+            self._create_document(document)
         elif action == Action.DELETE:
-                self.__delete_document(document)
+                self._delete_document(document)
         elif action == Action.UPDATE:
-            self.__update_document(document)
+            self._update_document(document)
         elif action == Action.INDEX:
-            self.__index_document(document)
+            self._index_document(document)
 
     def send_payload(self, payload):
         """
@@ -170,12 +170,12 @@ class Client():
         """Close the Transport and all internal connections"""
         self.client.close()
             
-    def __override_action(self, document, action):
+    def _override_action(self, document, action):
         if action == None or not Action.is_action(action):
             action = document.get_action() 
         return action
               
-    def __create_document(self, document):
+    def _create_document(self, document):
         """
         Creates the document in the OpenSearch cluster. Returns a 409 response 
         when a document with a same identifier already exists in the index.
@@ -188,7 +188,7 @@ class Client():
         """
         self.client.create(index=document.get_index(), id=document.get_identifier(), body=document.get_body())
 
-    def __delete_document(self, document):
+    def _delete_document(self, document):
         """
         Deletes the document in the OpenSearch cluster.
 
@@ -200,7 +200,7 @@ class Client():
         """
         self.client.delete(index=document.get_index(), id=document.get_identifier())
 
-    def __update_document(self, document):
+    def _update_document(self, document):
         """
         Updates the document in the OpenSearch cluster if it exists, returns an error
         if it doesn't exist.
@@ -214,7 +214,7 @@ class Client():
         body = {'doc': document.get_body()}
         self.client.update(index=document.get_index(), id=document.get_identifier(), body = body)
 
-    def __index_document(self, document):
+    def _index_document(self, document):
         """
         Creates the document in the OpenSearch cluster if it does not already exist. 
         If the document does exist, it will update the document.

@@ -2,10 +2,7 @@ import json
 import logging 
 import os 
 import sys
-from opensearch_utils.document import Document
 from opensearch_utils.index import Index
-from opensearch_utils.payload import Payload
-from opensearch_utils.action import Action
 from opensearch_utils.client import Client
 from opensearch_utils.query import Query
 from opensearchpy import OpenSearch, RequestsHttpConnection

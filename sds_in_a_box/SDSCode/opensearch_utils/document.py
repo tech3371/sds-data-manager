@@ -47,13 +47,13 @@ class Document():
 
     def __init__(self, index, doc_id, action, body={},):
         self.index = Index.validate_index(index)
-        self.identifier = self.__validate_identifier(doc_id)
+        self.identifier = self._validate_identifier(doc_id)
         self.action = Action.validate_action(action)
         self.body = body
         self.contents = ""
         self.size = 0
 
-        self.__update_contents()
+        self._update_contents()
 
     def update_body(self, body):
         """
@@ -66,7 +66,7 @@ class Document():
         """
         if type(body) is dict:
             self.body = body
-            self.__update_contents()
+            self._update_contents()
         else:
             raise TypeError("Document body passed in as type {}, but must be of type dict".format(type(body)))
             
@@ -105,7 +105,7 @@ class Document():
         """Returns the size of the document's bulk request json string in bytes."""
         return self.size
 
-    def __update_contents(self):
+    def _update_contents(self):
         action_string = \
                 '{ "' \
                 + self.action.value \
@@ -116,7 +116,7 @@ class Document():
         self.contents = action_string + json.dumps(self.body) + '\n'
         self.size = len(self.contents.encode("ascii"))
 
-    def __validate_identifier(self, identifier):
+    def _validate_identifier(self, identifier):
         if type(identifier) is str or type(identifier) is int:
             return str(identifier)
         else:

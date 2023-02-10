@@ -1,5 +1,7 @@
 import json
 
+VALID_PARAMS = ["instrument", "level", "start_date", "end_date"]
+
 class Query:
     """
     Query class to represent an AWS OpenSearch query domain-specific language (DSL),
@@ -10,10 +12,12 @@ class Query:
 
     Attributes
     ----------
-    query: dict
+    query_params: dict
         dictionary containing the query field (dict key) and the query text 
         (dict value).
-    size: int, optional
+    query_dsl_formatted: dict
+        dictionary containing the json query in the OpenSearch DSL format.
+    query_size: int, optional
         number of results to return. default is 10.
     
 
@@ -27,7 +31,7 @@ class Query:
 
     def __init__(self, query_params, size=10):
         self.query_params = query_params
-        self.query_dsl_formatted = self.__build_query_dsl(query_params)
+        self.query_dsl_formatted = self._build_query_dsl(query_params)
         self.query_size = size 
 
     def query_dsl(self):
@@ -38,7 +42,7 @@ class Query:
         """Returns the number of results the query is allowed to return in the search"""
         return self.query_size
 
-    def __build_query_dsl(self, query_params):
+    def _build_query_dsl(self, query_params):
         """
         Builds a Query DSL using a dictionary with field:value pairings.
 
@@ -54,7 +58,7 @@ class Query:
         query_date_structure = {"range": {"date": {}}}
         
         # remove all params that are not valid
-        query_params = self.__filter_params(query_params)
+        query_params = {param: query_params[param] for param in query_params if param in VALID_PARAMS}
 
         # create the query
         for param in query_params:
@@ -81,21 +85,7 @@ class Query:
                 query_match["match"] = {param:query_params[param]}
                 query["query"]["bool"]["must"].append(query_match)
             
-        return query    
-
-    def __filter_params(self, query_params):
-        """
-        filter the search parameters to only use valid fields
-
-        Parameters
-        ----------
-        query_params: dict
-            dictionary containing field:value search parameters.
-        """
-        # need a better way to manage valid search params
-        valid_params = ["instrument", "level", "start_date", "end_date"]
-        # filter the query_params to only keep valid params
-        return {param: query_params[param] for param in query_params if param in valid_params}
+        return query           
 
     def __repr__(self):
         return self.query_dsl_formatted
