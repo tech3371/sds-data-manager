@@ -4,11 +4,11 @@ import boto3
 import logging 
 import os 
 import sys
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
-from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
-from sds_in_a_box.SDSCode.opensearch_utils.client import Client
+from opensearch_utils.document import Document
+from opensearch_utils.index import Index
+from opensearch_utils.payload import Payload
+from opensearch_utils.action import Action
+from opensearch_utils.client import Client
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 logger=logging.getLogger()
@@ -87,11 +87,12 @@ def lambda_handler(event, context):
             logger.info(f"Found no matching file types to index this file against.")
             return None
         
-        # Rather than returning the metadata, we should insert it into the DB
         logger.info("Found the following metadata to index: " + str(metadata))
 
+        # use the s3 path to file as the ID in opensearch
+        s3_path = os.path.join(os.environ["S3_BUCKET"], filename)
         # create a document for the metadata and add it to the payload
-        opensearch_doc = Document(index, filename, Action.CREATE, metadata)
+        opensearch_doc = Document(index, s3_path, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)
 
     # send the paylaod to the opensearch instance
