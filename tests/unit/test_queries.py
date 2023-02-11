@@ -6,7 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import pytest
-pytest.skip()
+pytest.skip(allow_module_level=True)
 import time
 from sds_in_a_box.SDSCode import queries
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
