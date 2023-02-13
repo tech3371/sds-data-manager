@@ -11,6 +11,7 @@ from constructs import Construct
 import aws_cdk as cdk
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_lambda as lambda_
+import aws_cdk.aws_lambda_python_alpha as lambda_alpha_
 import aws_cdk.aws_iam as iam
 import aws_cdk.aws_opensearchservice as opensearch
 import aws_cdk.aws_ec2 as ec2
@@ -82,6 +83,17 @@ class SdsInABoxStack(Stack):
             )
         )
 
+        # add an access policy for opensearch
+        domain.add_access_policies(
+            iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            principals=[
+                iam.AnyPrincipal()
+            ],
+            actions=["es:*"],
+            resources=[domain.domain_arn + "/*"]
+            ))
+
 ########### COGNITO
         # Create the Cognito UserPool
         userpool = cognito.UserPool(self,
@@ -137,21 +149,22 @@ class SdsInABoxStack(Stack):
                                 )
         
         # The purpose of this lambda function is to trigger off of a new file entering the SDC.
-        indexer_lambda = lambda_.Function(self,
+        indexer_lambda = lambda_alpha_.PythonFunction(self,
                                           id="IndexerLambda",
                                           function_name=f'file-indexer-{SDS_ID}',
-                                          code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode")),
-                                          handler="indexer.lambda_handler",
+                                          entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"),
+                                          index = "indexer.py",
+                                          handler="lambda_handler",
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(15),
                                           memory_size=1000,
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
-                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
+                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
                                             "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
-                                            "OS_INDEX": "metadata"
-                                            }
+                                            "OS_INDEX": "metadata",
+                                            "S3_BUCKET": data_bucket.s3_url_for_object()}
                                           )
         indexer_lambda.add_event_source(S3EventSource(data_bucket,
                                                       events=[s3.EventType.OBJECT_CREATED]
@@ -196,6 +209,44 @@ class SdsInABoxStack(Stack):
         api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         api_url = api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
                                               cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"])
+
+        # The purpose of this lambda function is to trigger off of a lambda URL.
+        query_api_lambda = lambda_alpha_.PythonFunction(self,
+                                          id="QueryAPILambda",
+                                          entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
+                                          index="queries.py",
+                                          handler="lambda_handler",
+                                          role=lambda_role,
+                                          runtime=lambda_.Runtime.PYTHON_3_9,
+                                          timeout=cdk.Duration.minutes(1),
+                                          memory_size=1000,
+                                          environment={
+                                            "OS_ADMIN_USERNAME": "master-user", 
+                                            "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
+                                            "OS_DOMAIN": domain.domain_endpoint,
+                                            "OS_PORT": "443",
+                                            "OS_INDEX": "metadata"
+                                            }
+                                          )
+        # add function url for lambda query API
+        lambda_query_api_function_url = lambda_.FunctionUrl(self,
+                                                 id="QueryAPI",
+                                                 function=query_api_lambda,
+                                                 auth_type=lambda_.FunctionUrlAuthType.NONE,
+                                                 cors=lambda_.FunctionUrlCorsOptions(
+                                                                     allowed_origins=["*"],
+                                                                     allowed_methods=[lambda_.HttpMethod.GET]))
+        # download query API lambda
+        download_query_api = lambda_.Function(self,
+            id="DownloadQueryAPILambda",
+            function_name='download-query-api',
+            code=lambda_.Code.from_asset(
+                os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")
+            ),
+            handler="download_query_api.lambda_handler",
+            role=lambda_role,
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            timeout=cdk.Duration.seconds(60)
         )
         # Adding Opensearch permissions 
         api_lambda.add_to_role_policy(
@@ -214,6 +265,16 @@ class SdsInABoxStack(Stack):
                     f"{data_bucket.bucket_arn}/*"
                 ],
             )
+        )
+        
+        lambda_.FunctionUrl(self,
+            id="DownloadQueryAPI",
+            function=download_query_api,
+            auth_type=lambda_.FunctionUrlAuthType.NONE,
+
+            cors=lambda_.FunctionUrlCorsOptions(
+                                allowed_origins=["*"],
+                                allowed_methods=[lambda_.HttpMethod.GET])
         )
     
         # Adding a lambda that sends out an email with a link where the user can reset their password

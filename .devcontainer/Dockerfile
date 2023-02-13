@@ -19,3 +19,4 @@ RUN pip install python-jose
 RUN pip install aws_cdk.aws_lambda_python_alpha
 ENV AWS_CONFIG_FILE=/workspaces/SDS-in-a-box/.aws/config
 ENV AWS_SHARED_CREDENTIALS_FILE=/workspaces/SDS-in-a-box/.aws/credentials
+WORKDIR /workspaces/SDS-in-a-box/

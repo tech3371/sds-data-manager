@@ -10,6 +10,11 @@ from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 from sds_in_a_box.SDSCode.opensearch_utils.document import Document
 from sds_in_a_box.SDSCode.opensearch_utils.payload import Payload
 from sds_in_a_box.SDSCode.opensearch_utils.client import Client
+from sds_in_a_box.SDSCode.opensearch_utils.query import Query
+import time
+from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+import boto3
+from botocore.exceptions import ClientError
 
 
 @pytest.mark.network
@@ -46,7 +51,17 @@ class TestClient(unittest.TestCase):
         auth = ("master-user", secret)
         self.client = Client(hosts=hosts, http_auth=auth, use_ssl=True, verify_certs=True, connnection_class=RequestsHttpConnection)
         self.index = Index("test_data")
+
+        if self.client.index_exists(self.index):
+            self.client.delete_index(self.index)
+
         self.payload = Payload()
+        body1 = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'20230112', 'version':'*', 'extension':'fits'}
+        body2 = {'mission':'imap', 'level':'l1', 'instrument':'mag', 'date':'20230112', 'version':'*', 'extension':'fits'}
+        body3 = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'20221230', 'version':'*', 'extension':'fits'}
+        self.document1 = Document(self.index, 1, Action.CREATE, body1)
+        self.document2 = Document(self.index, 2, Action.CREATE, body2)
+        self.document3 = Document(self.index, 3, Action.CREATE, body3)
 
     def test_create_index(self):
         """
@@ -183,6 +198,79 @@ class TestClient(unittest.TestCase):
         self.client.send_document(document1, Action.DELETE)
         self.client.send_document(document2, Action.DELETE)
 
+    def test_search(self):
+        """
+        test that the search method correctly queries the OpenSearch cluster and received the 
+        intended results.
+        """
+        ## Arrange ##
+        search_true = [{'_index': 'test_data', '_type': '_doc', '_id': '1', '_score': 0.5753642, '_source': {'mission': 'imap', 'level': 'l0', 'instrument': 'mag', 'date': '20230112', 'version': '*', 'extension': 'fits'}}]
+        self.payload.add_documents([self.document1, self.document2, self.document3])
+        self.client.send_payload(self.payload)
+        query = Query({"level":"l0", "instrument":"mag", "start_date":"20230101", "end_date":"20230201"})
+        # need to give opensearch a second to receive the payload before searching
+        time.sleep(1)
+        ## Act ##
+        search_out = self.client.search(query, self.index)
+
+        ## Assert ##
+        assert search_out == search_true
+
+        ## Teardown ##
+        self.client.send_document(self.document1, action_override=Action.DELETE)
+        self.client.send_document(self.document2, action_override=Action.DELETE)
+        self.client.send_document(self.document3, action_override=Action.DELETE)
+
+    def test_scroll_search(self):
+        """
+        test that the search method correctly scrolls through a large set of results
+        and returns all results without error
+        """
+        ## Arrange ##
+        search_true = [{'_index': 'test_data', '_type': '_doc', '_id': '3', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '5', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '9', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '11', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '13', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '16', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '17', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '19', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '4', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '7', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '8', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '10', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '14', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '2', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '6', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '1', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '12', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '15', '_score': 1.0, '_source': {'test body': 10}}, 
+                       {'_index': 'test_data', '_type': '_doc', '_id': '18', '_score': 1.0, '_source': {'test body': 10}}]
+        
+        payload = Payload()
+        for i in range(1, 20):
+            document = Document(self.index, i, Action.CREATE, {'test body': 10})
+            payload.add_documents(document)
+
+        self.client.send_payload(payload)
+
+        query = Query({"test body": "10"})
+        # need to give opensearch a second to receive the payload before searching
+        time.sleep(1)
+
+        ## Act ##
+        search_out = self.client.search(query, self.index)
+
+        ## Assert ##
+        assert search_out == search_true
+
+        ## Teardown ##
+        payload = Payload()
+        for i in range(1, 20):
+            document = Document(self.index, i, Action.DELETE, {'test body': 10})
+            self.payload.add_documents(document)
+        self.client.send_payload(payload)
+        
     def tearDown(self):
         self.client.delete_index(self.index)
         self.client.close()

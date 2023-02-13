@@ -1,13 +1,14 @@
 import json
 import os
 import unittest
-import time
+
 import boto3
 from botocore.exceptions import ClientError
 from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
 import pytest
 pytest.skip(allow_module_level=True)
-from sds_in_a_box.SDSCode import indexer
+import time
+from sds_in_a_box.SDSCode import queries
 from sds_in_a_box.SDSCode.opensearch_utils.action import Action
 from sds_in_a_box.SDSCode.opensearch_utils.index import Index
 from sds_in_a_box.SDSCode.opensearch_utils.document import Document
@@ -16,7 +17,7 @@ from sds_in_a_box.SDSCode.opensearch_utils.client import Client
 
 
 @pytest.mark.network
-class TestIndexer(unittest.TestCase):
+class TestQueries(unittest.TestCase):
 
     def setUp(self):
         #Opensearch client Params
@@ -52,56 +53,23 @@ class TestIndexer(unittest.TestCase):
 
         os.environ["OS_ADMIN_USERNAME"] = "master-user"
         os.environ["OS_ADMIN_PASSWORD_LOCATION"] = secret
+        body = {'mission':'imap', 'level':'l0', 'instrument':'mag', 'date':'20230112', 'version':'*', 'extension':'pkts'}
+        self.document = Document(Index(os.environ["OS_INDEX"]), 1, Action.INDEX, body)
 
-        # This is a pretend new file payload, like we just received "imap_l0_instrument_date_version.fits" from the bucket "IMAP-Data-Bucket"
-        self.sample_payload = {
-        "Records": [
-            {
-            "s3": {
-                "bucket": {
-                "name": "IMAP-Data-Bucket"
-                },
-                "object": {
-                "key": "imap_l0_instrument_date_version.pkts",
-                "size": 1305107
-                }
-            }
-            }
-        ]
-        }
 
-        self.body = {'mission': 'imap', 'level': 'l0', 'instrument': 'instrument', 'date': 'date', 'version': 'version', 'extension': 'pkts'}
-        self.index = Index(os.environ["OS_INDEX"])
-        self.action = Action.INDEX
-        identifier = self.sample_payload["Records"][0]["s3"]["object"]["key"]
-        self.document = Document(self.index, identifier, self.action, self.body)
-        try:
-            self.client.delete_index(self.index)
-        except:
-            pass
-        
-        self.client.create_index(self.index)
-
-    def test_indexer(self):
-        ## Arrange
+    def test_queries(self):
+        """tests that the queries lambda correctly returns the search results"""
+        ## Arrange ##
+        response_true = [{"_index": "test_data", "_type": "_doc", "_id": "1", "_score": 0.2876821, "_source": {"mission": "imap", "level": "l0", "instrument": "mag", "date": "20230112", "version": "*", "extension": "pkts"}}]
         self.client.send_document(self.document)
-        exists_true = True
-        document_true = {"_index":"test_data","_type":"_doc","_id":"imap_l0_instrument_date_version.pkts","_version":1,"_seq_no":0,"_primary_term":1,"found":True,"_source":{"mission": "imap", "level": "l0", "instrument": "instrument", "date": "date", "version": "version", "extension": "pkts"}}
-
-        ## Act
-        indexer.lambda_handler(self.sample_payload, "")
         time.sleep(1)
-        document_out = self.client.get_document(self.document)
+        event = {"queryStringParameters": {"instrument":"mag"}}
 
-        ## Assert
-        assert document_out == document_true
+        ## Act ##
+        response_out = queries.lambda_handler(event, "")
 
-        
+        ## Assert ##
+        assert response_out == response_true
 
     def tearDown(self):
-        self.client.send_document(self.document, Action.DELETE)
-        self.client.delete_index(self.index)
-        self.client.close()
-
-if __name__ == '__main__':
-    unittest.main()
+        self.client.send_document(self.document, action_override=Action.DELETE)

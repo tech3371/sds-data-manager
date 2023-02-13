@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  imap_sdc:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile # path to Dockerfile
+    image: sds_in_a_box
+    stdin_open: true # This line is same as docker run -i
+    tty: true # This line is same as docker run -t
+    volumes: # mount volumes
+      - .:/workspaces/SDS-in-a-box/
+      - $HOME/.aws:/workspaces/SDS-in-a-box/.aws/
+    # env_file: # Set environment variables using .env file
+    #   - ./sds_in_a_box/SDSCode/lambda.env

@@ -1,5 +1,5 @@
 import json
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
+from .document import Document
 from opensearchpy import OpenSearch, RequestsHttpConnection
 
 
@@ -37,13 +37,13 @@ class Payload():
             document(s) to be added to the payload in preparation for a bulk upload.
         """       
         if Document.is_document(documents):
-            self.__add_to_payload(documents)
+            self._add_to_payload(documents)
 
         elif type(documents) is list:
             # check that all the objects in documents are of type Document
             if all(Document.is_document(doc) for doc in documents): 
                 for doc in documents:
-                    self.__add_to_payload(doc)
+                    self._add_to_payload(doc)
             
             else:
                 raise TypeError("Document list contained at least one object that was not type Document")
@@ -55,11 +55,16 @@ class Payload():
         """Returns the contents of the payload as a string."""
         full_contents = "".join(self.payload_contents)
         return full_contents
+    
+    def payload_chunks(self):
+        """Returns a list of payload documents chunked to avoid bulk upload limits"""
+        return self.payload_contents
+    
 
     def __repr__(self):
         return str(self.payload_contents)
 
-    def __add_to_payload(self, document):
+    def _add_to_payload(self, document):
         # TODO: not sure what the actual request limit is or how it's 
         # determined, but the size of the encoded string seems to be 
         # the most consistent way to check if the limit is hit and that 
@@ -68,13 +73,13 @@ class Payload():
         request_limit = 5281500 #bytes
 
         # check if the payload is empty and if the payload with the new document added would still be under the request limit
-        if len(self.payload_contents) > 0 and self.__size_in_bytes(self.payload_contents[-1]) + document.size_in_bytes() < request_limit:
+        if len(self.payload_contents) > 0 and self._size_in_bytes(self.payload_contents[-1]) + document.size_in_bytes() < request_limit:
             # concat the new document
             self.payload_contents[-1] = self.payload_contents[-1] + document.get_contents()
         else:
             # start a new payload chunk with the new document
             self.payload_contents.append(document.get_contents())
 
-    def __size_in_bytes(self, payload):
+    def _size_in_bytes(self, payload):
         """Returns the size of the payload contents in bytes."""
         return len(payload.encode("ascii"))
