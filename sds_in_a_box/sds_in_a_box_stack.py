@@ -84,14 +84,14 @@ class SdsInABoxStack(Stack):
         )
 
         # add an access policy for opensearch
-        domain.add_access_policies(
+        sds_metadata_domain.add_access_policies(
             iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             principals=[
                 iam.AnyPrincipal()
             ],
             actions=["es:*"],
-            resources=[domain.domain_arn + "/*"]
+            resources=[sds_metadata_domain.domain_arn + "/*"]
             ))
 
 ########### COGNITO
@@ -161,7 +161,7 @@ class SdsInABoxStack(Stack):
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
-                                            "OS_DOMAIN": domain.domain_endpoint,
+                                            "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata",
                                             "S3_BUCKET": data_bucket.s3_url_for_object()}
@@ -208,7 +208,7 @@ class SdsInABoxStack(Stack):
         )
         api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         api_url = api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
-                                              cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"])
+                                              cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
 
         # The purpose of this lambda function is to trigger off of a lambda URL.
         query_api_lambda = lambda_alpha_.PythonFunction(self,
@@ -223,7 +223,7 @@ class SdsInABoxStack(Stack):
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
-                                            "OS_DOMAIN": domain.domain_endpoint,
+                                            "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
                                             }
