@@ -26,12 +26,8 @@ class SdsInABoxStack(Stack):
         
 ########### INIT
         # Determines the initial configuration
-        #SDS_ID = cdk.CfnParameter(self, "sdsid", type="String", description="The ID that should be appended to all services (ex - testing, production, etc)")
-        #SDS_ID = SDS_ID.value_as_string
-        #initial_user = cdk.CfnParameter(self, "initialuser", type="String", description="The email address of the initial user of the stack")
-        #initial_user = initial_user.value_as_string
         SDS_ID = self.node.try_get_context("SDSID")
-        initial_user_context = self.node.try_get_context("initial_user")
+
 ########### DATA STORAGE 
         # This is the S3 bucket where the data will be stored
         data_bucket = s3.Bucket(self, "DATA-BUCKET",
@@ -94,64 +90,7 @@ class SdsInABoxStack(Stack):
             resources=[sds_metadata_domain.domain_arn + "/*"]
             ))
 
-########### COGNITO
-        # Create the Cognito UserPool
-        userpool = cognito.UserPool(self,
-                                    id='TeamUserPool',
-                                    account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
-                                    auto_verify=cognito.AutoVerifiedAttrs(email=True),
-                                    standard_attributes=cognito.
-                                    StandardAttributes(email=cognito.StandardAttribute(required=True)),
-                                    sign_in_aliases=cognito.SignInAliases(username=False, email=True),
-                                    removal_policy=cdk.RemovalPolicy.DESTROY
-                                    )
-
-        # Add a client sign in for the userpool
-        command_line_client = cognito.UserPoolClient(user_pool=userpool, scope=self, id='sds-command-line',
-                                                     user_pool_client_name= f"sdscommandline-{SDS_ID}",
-                                                     id_token_validity=cdk.Duration.minutes(60),
-                                                     access_token_validity=cdk.Duration.minutes(60),
-                                                     refresh_token_validity=cdk.Duration.minutes(60),
-                                                     auth_flows=cognito.AuthFlow(admin_user_password=True,
-                                                                                 user_password=True,
-                                                                                 user_srp=True,
-                                                                                 custom=True),
-                                                     prevent_user_existence_errors=True)
-        
-        # Add a random unique domain name where users can sign up / reset passwords
-        # Users will be able to reset their passwords at https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={}&redirect_uri=https://example.com&response_type=code
-        userpooldomain = userpool.add_domain(id="TeamLoginCognitoDomain",
-                                             cognito_domain=cognito.CognitoDomainOptions(domain_prefix=f"sds-login-{SDS_ID}"))
-
-        # Add a lambda function that will trigger whenever an email is sent to the user (see the lambda section above)
-
-        # Create an initial user of the API
-        initial_user = cognito.CfnUserPoolUser(self, "MyCfnUserPoolUser",
-                                               user_pool_id=userpool.user_pool_id,
-                                               desired_delivery_mediums=["EMAIL"],
-                                               force_alias_creation=False,
-                                               user_attributes=[cognito.CfnUserPoolUser.AttributeTypeProperty(
-                                                  name="email",
-                                                  value=initial_user_context
-                                               )],
-                                               username=initial_user_context
-                                              )
-
 ########### LAMBDA FUNCTIONS
-
-        # This is where we install dependencies for the lambda functions
-        # We take advantage of something called "lambda layers"
-        #os.system("pip install requests -t ./external/python")
-        #os.system("pip install python-jose -t ./external/python")
-        #layer = lambda_.LayerVersion(self, f"SDSDependencies",
-        #                            code=lambda_.Code.from_asset("./external"),
-        #                            description="A layer that contains all dependencies needed for the lambda functions"
-        #                        )
-        
-        # This is the role that the lambdas will all assume
-        # TODO: We'll narrow things down later, right now we're just giving admin access
-        #lambda_role = iam.Role(self, "Indexer Role", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"))
-        #lambda_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AdministratorAccess"))
         
         # The purpose of this lambda function is to trigger off of a new file entering the SDC.
         indexer_lambda = lambda_alpha_.PythonFunction(self,
@@ -176,7 +115,7 @@ class SdsInABoxStack(Stack):
                                                       )
                                         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-        
+
         # Adding Opensearch permissions 
         indexer_lambda.add_to_role_policy(
             iam.PolicyStatement(
@@ -185,7 +124,6 @@ class SdsInABoxStack(Stack):
                 resources=[f"{sds_metadata_domain.domain_arn}/*"],
             )
         )
-
         # Adding S3 Permissions 
         indexer_lambda.add_to_role_policy(
             iam.PolicyStatement(
@@ -197,8 +135,7 @@ class SdsInABoxStack(Stack):
             )
         )
         
-
-        # Adding a lambda that acts as a template for future APIs
+        # Adding a lambda for uploading files to the SDS
         upload_api_lambda = lambda_alpha_.PythonFunction(self,
                                       id="APILambda",
                                       function_name=f'upload-api-handler-{SDS_ID}',
@@ -210,9 +147,7 @@ class SdsInABoxStack(Stack):
                                       memory_size=1000,
                                       environment={"OS_ADMIN_USERNAME": "master-user", 
                                                    "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
-                                                   "COGNITO_USERPOOL_ID": userpool.user_pool_id, 
-                                                   "COGNITO_APP_ID": command_line_client.user_pool_client_id,
-                                                   "S3_BUCKET": data_bucket.s3_url_for_object()}},
+                                                   "S3_BUCKET": data_bucket.s3_url_for_object()},
         )
         # Adding S3 Permissions 
         upload_api_lambda.add_to_role_policy(
@@ -253,7 +188,6 @@ class SdsInABoxStack(Stack):
                 resources=[f"{sds_metadata_domain.domain_arn}/*"],
             )
         )
-
         # Adding S3 Permissions 
         query_api_lambda.add_to_role_policy(
             iam.PolicyStatement(
@@ -300,7 +234,7 @@ class SdsInABoxStack(Stack):
                 ],
             )
         )
-        
+        # Adding a function URL
         download_api_url = lambda_.FunctionUrl(self,
             id="DownloadQueryAPI",
             function=download_query_api,
@@ -310,49 +244,9 @@ class SdsInABoxStack(Stack):
                                 allowed_origins=["*"],
                                 allowed_methods=[lambda_.HttpMethod.GET])
         )
-    
-        # Adding a lambda that sends out an email with a link where the user can reset their password
-        signup_lambda = lambda_alpha_.PythonFunction(self,
-                                         id="SignupLambda",
-                                         function_name=f'cognito_signup_message-{SDS_ID}',
-                                         entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
-                                         index="cognito_signup_message.py",
-                                         handler="lambda_handler",
-                                         runtime=lambda_.Runtime.PYTHON_3_9,
-                                         timeout=cdk.Duration.minutes(15),
-                                         memory_size=1000,
-                                         environment={"COGNITO_DOMAIN_PREFIX": f"sds-login-{SDS_ID}", 
-                                                      "COGNITO_DOMAIN": f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com", 
-                                                      "SDS_ID": SDS_ID}
-        )
-        signup_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-        # Adding Cognito Permissions
-        signup_lambda.add_to_role_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
-                actions=["cognito-idp:*"],
-                resources=[
-                    f"*"
-                ],
-            )
-        )
-
-        userpool.add_trigger(cognito.UserPoolOperation.CUSTOM_MESSAGE, signup_lambda)
-
-        #testing_lambda_alpha = aws_lambda_python_alpha.PythonFunction(
-        #                        self,
-        #                        "LambdaFunction",
-        #                        entry=f"sds_in_a_box/SDSCode",
-        #                        index="indexer.py",
-        #                        handler="lambda_handler",
-        #                        runtime=lambda_.Runtime.PYTHON_3_9,
-        #                    )
 
 ########### OUTPUTS
         # This is a list of the major outputs of the stack
         cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
         cdk.CfnOutput(self, "QUERY_API_URL", value=lambda_query_api_function_url.url)
         cdk.CfnOutput(self, "DOWNLOAD_API_URL", value=download_api_url.url)
-        cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=userpool.user_pool_id)
-        cdk.CfnOutput(self, "COGNITO_APP_ID", value=command_line_client.user_pool_client_id)
-        cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", value=f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={command_line_client.user_pool_client_id}&redirect_uri=https://example.com&response_type=code")

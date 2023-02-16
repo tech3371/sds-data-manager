@@ -4,76 +4,11 @@ import os
 import datetime
 
 # THESE MUST BE RESET EVERY TIME FOR NOW
-COGNITO_CLIENT_ID = "4rtf569eq2brgk3sq8ek4uqc91"
-UPLOAD_API_URL = "https://vo54qpw7fy4uarorbxnplilgae0hhwos.lambda-url.us-west-2.on.aws/"
-DOWNLOAD_API_URL = 'https://i5y2mfaoh3capmulqehouzcjya0zwedr.lambda-url.us-west-2.on.aws/' 
-QUERY_API_URL = 'https://stkjssplyeb5deqgn25wiaix2y0icvzg.lambda-url.us-west-2.on.aws/'
-
-USER_TOKEN = None
-LOGIN_TIME = None
-
-def _set_user_token(t):
-    global USER_TOKEN
-    global LOGIN_TIME
-
-    LOGIN_TIME = datetime.datetime.now()
-    USER_TOKEN = t
-
-
-def _get_user_token():
-    global USER_TOKEN
-    global LOGIN_TIME
-    if LOGIN_TIME is None:
-        print("New login needed.  Login is valid for 60 minutes.")
-    elif (datetime.datetime.now() - LOGIN_TIME).total_seconds() >= 3600:
-        print("Login expired.  Please log in again.")
-    else:
-        return USER_TOKEN
-
-    t = get_sdc_token()
-
-    return t
-
-
-def get_sdc_token(user_name=None, password=None):
-    '''
-    This function authenticates the user.  An access token is automatically stored in the USER_TOKEN
-    variable in this file, and functions will attempt to find a valid user token in that variable.
-
-    :param user_name: User's SDC username
-    :param password: User's SDC password
-
-    :return: A string that also gets stored in the USER_TOKEN variable in this file.  You don't need this string unless
-             you plan on making your own API calls, using functions outside of this file.
-    '''
-    global COGNITO_CLIENT_ID
-    if user_name is None:
-        user_name = input("Username:")
-    if password is None:
-        import getpass
-        password = getpass.getpass("Password for " + user_name + ":")
-
-    authentication_url = "https://cognito-idp.us-west-2.amazonaws.com/"
-    authentication_headers = {'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
-                              'Content-Type': 'application/x-amz-json-1.1'}
-    data = json.dumps({"ClientId": COGNITO_CLIENT_ID, "AuthFlow": "USER_PASSWORD_AUTH",
-                       "AuthParameters": {"USERNAME": user_name, "PASSWORD": password}})
-
-    # Attempt to grab the SDC token.
-    try:
-        token_response = requests.post(authentication_url, data=data, headers=authentication_headers)
-        t = token_response.json()['AuthenticationResult']['AccessToken']
-    except KeyError:
-        print("Invalid username and/or password.  Please try again.  ")
-        return
-
-    _set_user_token(t)
-
-    return t    
+UPLOAD_API_URL = "https://6enn3yprkecbvujsf5zsjzsude0borqk.lambda-url.us-west-2.on.aws/"
+DOWNLOAD_API_URL = 'https://g4iwsrbkdqkm3pj5zm55wg2ufe0jaypw.lambda-url.us-west-2.on.aws/' 
+QUERY_API_URL = 'https://ezzc7feb6hlhdrk56x4q23ljnu0ejbkn.lambda-url.us-west-2.on.aws/'
 
 def _execute_api(url, **kwargs):
-    token = _get_user_token()
-    headers = {"Authorization": token}
     query_parameters = []
     for kw in kwargs:
         query_parameters.append(kw + "=" + str(kwargs[kw]))
@@ -81,7 +16,7 @@ def _execute_api(url, **kwargs):
     url_with_parameters = url + "?" + query_parameters
     print(url_with_parameters)
     try:
-        response = requests.get(url_with_parameters, headers=headers)
+        response = requests.get(url_with_parameters)
     except Exception as e:
         print(f"Could not finish query due to error {str(e)}")
         return
@@ -154,7 +89,8 @@ def upload(file_location, file_name, **kwargs):
 if __name__ == "__main__":
     #x = upload(file_location='helloworld.txt', file_name='imap_l0_sci_mag_2024_2.pkts', testing='true')
     #print(x)
+
     #x = query(instrument='mag')
     #print(x)
-    x = download("s3://sds-data-harter-asdfasdf/imap/l0/imap_l0_sci_mag_2024_2.pkts")
+    x = download("s3://sds-data-harter-upload-testing/imap/l0/imap_l0_sci_mag_2024_2.pkts")
     print(x)
