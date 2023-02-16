@@ -20,10 +20,14 @@ class SdsInABoxStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        
+ ########### INIT
+        # Determines the initial configuration
+        SDS_ID = self.node.try_get_context("SDSID")
 
         # This is the S3 bucket where the data will be stored
         data_bucket = s3.Bucket(self, "DATA-BUCKET",
-                                #bucket_name="DataBucket",
+                                bucket_name=f"sds-data-{SDS_ID}",
                                 versioned=True,
                                 removal_policy=RemovalPolicy.DESTROY,
                                 auto_delete_objects=True
@@ -93,7 +97,7 @@ class SdsInABoxStack(Stack):
         # For now, it just prints the event.  
         indexer_lambda = lambda_alpha_.PythonFunction(self,
                                           id="IndexerLambda",
-                                          #function_name='file-indexer',
+                                          function_name=f'file-indexer-{SDS_ID}',
                                           entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"),
                                           index = "indexer.py",
                                           handler="lambda_handler",
@@ -122,6 +126,7 @@ class SdsInABoxStack(Stack):
                                           entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
                                           index="queries.py",
                                           handler="lambda_handler",
+                                          function_name=f'query-api-handler-{SDS_ID}',
                                           role=lambda_role,
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(1),
@@ -145,7 +150,7 @@ class SdsInABoxStack(Stack):
         # download query API lambda
         download_query_api = lambda_.Function(self,
             id="DownloadQueryAPILambda",
-            function_name='download-query-api',
+            function_name=f'download-query-api-{SDS_ID}',
             code=lambda_.Code.from_asset(
                 os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")
             ),
