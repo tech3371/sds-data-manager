@@ -5,7 +5,11 @@ import time
 import boto3
 from jose import jwk, jwt
 from jose.utils import base64url_decode
+import logging
 
+logger = logging.getLogger()
+logging.basicConfig()
+logger.setLevel(logging.INFO)
 
 def _load_allowed_filenames():
     # Rather than storing the configuration locally, we should store the configuration somewhere where things can be changed on the fly.  
