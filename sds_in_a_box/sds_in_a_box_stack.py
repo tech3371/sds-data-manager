@@ -31,7 +31,7 @@ class SdsInABoxStack(Stack):
         #initial_user = cdk.CfnParameter(self, "initialuser", type="String", description="The email address of the initial user of the stack")
         #initial_user = initial_user.value_as_string
         SDS_ID = self.node.try_get_context("SDSID")
-        initial_user = self.node.try_get_context("initial_user")
+        initial_user_context = self.node.try_get_context("initial_user")
 ########### DATA STORAGE 
         # This is the S3 bucket where the data will be stored
         data_bucket = s3.Bucket(self, "DATA-BUCKET",
@@ -132,21 +132,26 @@ class SdsInABoxStack(Stack):
                                                force_alias_creation=False,
                                                user_attributes=[cognito.CfnUserPoolUser.AttributeTypeProperty(
                                                   name="email",
-                                                  value="harter@lasp.colorado.edu"
+                                                  value=initial_user_context
                                                )],
-                                               username="harter@lasp.colorado.edu"
+                                               username=initial_user_context
                                               )
 
 ########### LAMBDA FUNCTIONS
 
         # This is where we install dependencies for the lambda functions
         # We take advantage of something called "lambda layers"
-        os.system("pip install requests -t ./external/python")
-        os.system("pip install python-jose -t ./external/python")
-        layer = lambda_.LayerVersion(self, f"SDSDependencies",
-                                    code=lambda_.Code.from_asset("./external"),
-                                    description="A layer that contains all dependencies needed for the lambda functions"
-                                )
+        #os.system("pip install requests -t ./external/python")
+        #os.system("pip install python-jose -t ./external/python")
+        #layer = lambda_.LayerVersion(self, f"SDSDependencies",
+        #                            code=lambda_.Code.from_asset("./external"),
+        #                            description="A layer that contains all dependencies needed for the lambda functions"
+        #                        )
+        
+        # This is the role that the lambdas will all assume
+        # TODO: We'll narrow things down later, right now we're just giving admin access
+        #lambda_role = iam.Role(self, "Indexer Role", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"))
+        #lambda_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AdministratorAccess"))
         
         # The purpose of this lambda function is to trigger off of a new file entering the SDC.
         indexer_lambda = lambda_alpha_.PythonFunction(self,
@@ -194,29 +199,42 @@ class SdsInABoxStack(Stack):
         
 
         # Adding a lambda that acts as a template for future APIs
-        api_lambda = lambda_.Function(self,
+        upload_api_lambda = lambda_alpha_.PythonFunction(self,
                                       id="APILambda",
-                                      function_name=f'api-handler-{SDS_ID}',
-                                      code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode")),
-                                      handler="api.lambda_handler",
+                                      function_name=f'upload-api-handler-{SDS_ID}',
+                                      entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
+                                      index="upload_api.py",
+                                      handler="lambda_handler",
                                       runtime=lambda_.Runtime.PYTHON_3_9,
                                       timeout=cdk.Duration.minutes(15),
                                       memory_size=1000,
-                                      layers=[layer],
-                                      environment={"OS_ADMIN_USERNAME": "master-user", "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
-                                                   "COGNITO_USERPOOL_ID": userpool.user_pool_id, "COGNITO_APP_ID": command_line_client.user_pool_client_id}
+                                      environment={"OS_ADMIN_USERNAME": "master-user", 
+                                                   "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
+                                                   "COGNITO_USERPOOL_ID": userpool.user_pool_id, 
+                                                   "COGNITO_APP_ID": command_line_client.user_pool_client_id,
+                                                   "S3_BUCKET": data_bucket.s3_url_for_object()}},
         )
-        api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-        api_url = api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
+        # Adding S3 Permissions 
+        upload_api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:*"],
+                resources=[
+                    f"{data_bucket.bucket_arn}/*"
+                ],
+            )
+        )
+        upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        upload_api_url = upload_api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
                                               cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
 
         # The purpose of this lambda function is to trigger off of a lambda URL.
         query_api_lambda = lambda_alpha_.PythonFunction(self,
                                           id="QueryAPILambda",
+                                          function_name=f'query-api-handler-{SDS_ID}',
                                           entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
                                           index="queries.py",
                                           handler="lambda_handler",
-                                          role=lambda_role,
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(1),
                                           memory_size=1000,
@@ -228,6 +246,24 @@ class SdsInABoxStack(Stack):
                                             "OS_INDEX": "metadata"
                                             }
                                           )
+        query_api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["es:*"],
+                resources=[f"{sds_metadata_domain.domain_arn}/*"],
+            )
+        )
+
+        # Adding S3 Permissions 
+        query_api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:*"],
+                resources=[
+                    f"{data_bucket.bucket_arn}/*"
+                ],
+            )
+        )
         # add function url for lambda query API
         lambda_query_api_function_url = lambda_.FunctionUrl(self,
                                                  id="QueryAPI",
@@ -237,19 +273,17 @@ class SdsInABoxStack(Stack):
                                                                      allowed_origins=["*"],
                                                                      allowed_methods=[lambda_.HttpMethod.GET]))
         # download query API lambda
-        download_query_api = lambda_.Function(self,
+        download_query_api = lambda_alpha_.PythonFunction(self,
             id="DownloadQueryAPILambda",
-            function_name='download-query-api',
-            code=lambda_.Code.from_asset(
-                os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")
-            ),
-            handler="download_query_api.lambda_handler",
-            role=lambda_role,
+            function_name=f'download-query-api-{SDS_ID}',
+            entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
+            index='download_query_api.py',
+            handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60)
         )
         # Adding Opensearch permissions 
-        api_lambda.add_to_role_policy(
+        download_query_api.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=["es:*"],
@@ -257,7 +291,7 @@ class SdsInABoxStack(Stack):
             )
         )
         # Adding S3 permissions 
-        api_lambda.add_to_role_policy(
+        download_query_api.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=["s3:*"],
@@ -267,7 +301,7 @@ class SdsInABoxStack(Stack):
             )
         )
         
-        lambda_.FunctionUrl(self,
+        download_api_url = lambda_.FunctionUrl(self,
             id="DownloadQueryAPI",
             function=download_query_api,
             auth_type=lambda_.FunctionUrlAuthType.NONE,
@@ -278,16 +312,18 @@ class SdsInABoxStack(Stack):
         )
     
         # Adding a lambda that sends out an email with a link where the user can reset their password
-        signup_lambda = lambda_.Function(self,
+        signup_lambda = lambda_alpha_.PythonFunction(self,
                                          id="SignupLambda",
                                          function_name=f'cognito_signup_message-{SDS_ID}',
-                                         code=lambda_.Code.from_asset(os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode")),
-                                         handler="cognito_signup_message.lambda_handler",
+                                         entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
+                                         index="cognito_signup_message.py",
+                                         handler="lambda_handler",
                                          runtime=lambda_.Runtime.PYTHON_3_9,
                                          timeout=cdk.Duration.minutes(15),
                                          memory_size=1000,
-                                         layers=[layer],
-                                         environment={"COGNITO_DOMAIN_PREFIX": f"sds-login-{SDS_ID}", "COGNITO_DOMAIN": f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com", "SDS_ID": SDS_ID}
+                                         environment={"COGNITO_DOMAIN_PREFIX": f"sds-login-{SDS_ID}", 
+                                                      "COGNITO_DOMAIN": f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com", 
+                                                      "SDS_ID": SDS_ID}
         )
         signup_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         # Adding Cognito Permissions
@@ -314,7 +350,9 @@ class SdsInABoxStack(Stack):
 
 ########### OUTPUTS
         # This is a list of the major outputs of the stack
-        cdk.CfnOutput(self, "API_URL", value=api_url.url)
+        cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
+        cdk.CfnOutput(self, "QUERY_API_URL", value=lambda_query_api_function_url.url)
+        cdk.CfnOutput(self, "DOWNLOAD_API_URL", value=download_api_url.url)
         cdk.CfnOutput(self, "COGNITO_USERPOOL_ID", value=userpool.user_pool_id)
         cdk.CfnOutput(self, "COGNITO_APP_ID", value=command_line_client.user_pool_client_id)
         cdk.CfnOutput(self, "SIGN_IN_WEBPAGE", value=f"https://sds-login-{SDS_ID}.auth.us-west-2.amazoncognito.com/login?client_id={command_line_client.user_pool_client_id}&redirect_uri=https://example.com&response_type=code")
