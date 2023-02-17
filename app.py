@@ -11,7 +11,6 @@ from sds_in_a_box.sds_in_a_box_stack import SdsInABoxStack
 app = cdk.App()
 
 SDS_ID = app.node.try_get_context("SDSID")
-initial_user=app.node.try_get_context("initial_user")
 
 if SDS_ID is None:
     raise Exception("ERROR: Need to specify an ID to name the stack (ex - production, testing, etc)")
