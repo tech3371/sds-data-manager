@@ -84,56 +84,85 @@ class SdsInABoxStack(Stack):
             resources=[domain.domain_arn + "/*"]
             ))
 
-        # This is the role that the lambdas will assume
-        # We'll narrow things down later
-        lambda_role = iam.Role(self, "Indexer Role", assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"))
-        lambda_role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AdministratorAccess"))
+########### LAMBDA FUNCTIONS
         
         # The purpose of this lambda function is to trigger off of a new file entering the SDC.
-        # For now, it just prints the event.  
         indexer_lambda = lambda_alpha_.PythonFunction(self,
                                           id="IndexerLambda",
-                                          #function_name='file-indexer',
                                           entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"),
                                           index = "indexer.py",
                                           handler="lambda_handler",
-                                          role=lambda_role,
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(15),
                                           memory_size=1000,
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
-                                            "OS_DOMAIN": domain.domain_endpoint,
+                                            "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata",
                                             "S3_BUCKET": data_bucket.s3_url_for_object()}
                                           )
-
         indexer_lambda.add_event_source(S3EventSource(data_bucket,
                                                       events=[s3.EventType.OBJECT_CREATED]
                                                       )
                                         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
 
+        # Adding Opensearch permissions 
+        indexer_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["es:*"],
+                resources=[f"{sds_metadata_domain.domain_arn}/*"],
+            )
+        )
+        # Adding S3 Permissions 
+        indexer_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:*"],
+                resources=[
+                    f"{data_bucket.bucket_arn}/*"
+                ],
+            )
+        )
+
         # The purpose of this lambda function is to trigger off of a lambda URL.
         query_api_lambda = lambda_alpha_.PythonFunction(self,
                                           id="QueryAPILambda",
+                                          function_name='download-query-api',
                                           entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
                                           index="queries.py",
                                           handler="lambda_handler",
-                                          role=lambda_role,
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(1),
                                           memory_size=1000,
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
-                                            "OS_DOMAIN": domain.domain_endpoint,
+                                            "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
                                             }
                                           )
+        query_api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["es:*"],
+                resources=[f"{sds_metadata_domain.domain_arn}/*"],
+            )
+        )
+        # Adding S3 Permissions 
+        query_api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:*"],
+                resources=[
+                    f"{data_bucket.bucket_arn}/*"
+                ],
+            )
+        )
         # add function url for lambda query API
         lambda_query_api_function_url = lambda_.FunctionUrl(self,
                                                  id="QueryAPI",
@@ -143,19 +172,35 @@ class SdsInABoxStack(Stack):
                                                                      allowed_origins=["*"],
                                                                      allowed_methods=[lambda_.HttpMethod.GET]))
         # download query API lambda
-        download_query_api = lambda_.Function(self,
+        download_query_api = lambda_alpha_.PythonFunction(self,
             id="DownloadQueryAPILambda",
-            function_name='download-query-api',
-            code=lambda_.Code.from_asset(
-                os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/")
-            ),
-            handler="download_query_api.lambda_handler",
-            role=lambda_role,
+            function_name=f'download-query-api-{SDS_ID}',
+            entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
+            index='download_query_api.py',
+            handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60)
         )
-
-        lambda_.FunctionUrl(self,
+        # Adding Opensearch permissions 
+        download_query_api.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["es:*"],
+                resources=[f"{sds_metadata_domain.domain_arn}/*"],
+            )
+        )
+        # Adding S3 permissions 
+        download_query_api.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:*"],
+                resources=[
+                    f"{data_bucket.bucket_arn}/*"
+                ],
+            )
+        )
+        # Adding a function URL
+        download_api_url = lambda_.FunctionUrl(self,
             id="DownloadQueryAPI",
             function=download_query_api,
             auth_type=lambda_.FunctionUrlAuthType.NONE,
@@ -164,3 +209,4 @@ class SdsInABoxStack(Stack):
                                 allowed_origins=["*"],
                                 allowed_methods=[lambda_.HttpMethod.GET])
         )
+
