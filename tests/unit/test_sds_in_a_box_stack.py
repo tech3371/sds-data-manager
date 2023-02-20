@@ -4,6 +4,7 @@
 
 import aws_cdk as core
 import random
+import string
 import aws_cdk.assertions as assertions
 from sds_in_a_box.sds_in_a_box_stack import SdsInABoxStack
 
