@@ -125,9 +125,7 @@ class SdsInABoxStack(Stack):
                                       runtime=lambda_.Runtime.PYTHON_3_9,
                                       timeout=cdk.Duration.minutes(15),
                                       memory_size=1000,
-                                      environment={"OS_ADMIN_USERNAME": "master-user", 
-                                                   "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
-                                                   "S3_BUCKET": data_bucket.s3_url_for_object()},
+                                      environment={"S3_BUCKET": data_bucket.s3_url_for_object()},
         )
         # Adding S3 Permissions 
         upload_api_lambda.add_to_role_policy(
