@@ -118,7 +118,7 @@ class SdsInABoxStack(Stack):
         
         # Adding a lambda for uploading files to the SDS
         upload_api_lambda = lambda_alpha_.PythonFunction(self,
-                                      id="APILambda",
+                                      id="UploadAPILambda",
                                       entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
                                       index="upload_api.py",
                                       handler="lambda_handler",
