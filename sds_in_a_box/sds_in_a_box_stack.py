@@ -177,7 +177,6 @@ class SdsInABoxStack(Stack):
         # download query API lambda
         download_query_api = lambda_alpha_.PythonFunction(self,
             id="DownloadQueryAPILambda",
-            function_name=f'download-query-api-{SDS_ID}',
             entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
             index='download_query_api.py',
             handler="lambda_handler",
