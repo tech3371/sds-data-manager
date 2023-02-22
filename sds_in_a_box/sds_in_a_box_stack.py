@@ -88,12 +88,12 @@ class SdsInABoxStack(Stack):
         opensearch_all_http_permissions = iam.PolicyStatement(
                                                effect=iam.Effect.ALLOW,
                                                actions=["es:ESHttp*"],
-                                               resources=[f"{sds_metadata_domain.domain_arn}/*"],
+                                               resources=[f"{domain.domain_arn}/*"],
                                           )
         opensearch_read_only_policy = iam.PolicyStatement(
                                              effect=iam.Effect.ALLOW,
                                              actions=["es:ESHttpGet"],
-                                             resources=[f"{sds_metadata_domain.domain_arn}/*"],
+                                             resources=[f"{domain.domain_arn}/*"],
                                       )
         s3_write_policy = iam.PolicyStatement(
                               effect=iam.Effect.ALLOW,
@@ -132,7 +132,7 @@ class SdsInABoxStack(Stack):
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
-                                            "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
+                                            "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata",
                                             "S3_BUCKET": data_bucket.s3_url_for_object()}
@@ -159,7 +159,7 @@ class SdsInABoxStack(Stack):
                                           environment={
                                             "OS_ADMIN_USERNAME": "master-user", 
                                             "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_value.unsafe_unwrap(),
-                                            "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
+                                            "OS_DOMAIN": domain.domain_endpoint,
                                             "OS_PORT": "443",
                                             "OS_INDEX": "metadata"
                                             }
