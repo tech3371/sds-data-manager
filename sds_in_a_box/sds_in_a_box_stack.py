@@ -21,12 +21,11 @@ from aws_cdk.aws_lambda_event_sources import S3EventSource, SnsEventSource
 
 class SdsInABoxStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, SDS_ID: str, initial_email: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
 ########### INIT
-        # Determines the initial configuration
-        SDS_ID = self.node.try_get_context("SDSID")
+        initial_user_context = initial_email
 
 ########### DATA STORAGE 
         # This is the S3 bucket where the data will be stored
