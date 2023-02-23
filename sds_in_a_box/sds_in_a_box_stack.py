@@ -5,7 +5,7 @@ from aws_cdk import (
     # Duration,
     Stack,
     RemovalPolicy,
-    #aws_lambda_python_alpha
+    aws_lambda_python_alpha
 )
 from constructs import Construct
 import aws_cdk as cdk
@@ -166,10 +166,6 @@ class SdsInABoxStack(Stack):
         upload_api_url = upload_api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
                                               cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
 
-        upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-        upload_api_url = upload_api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
-                                              cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
-
         # The purpose of this lambda function is to trigger off of a lambda URL.
         query_api_lambda = lambda_alpha_.PythonFunction(self,
                                           id="QueryAPILambda",
@@ -219,7 +215,6 @@ class SdsInABoxStack(Stack):
                                                                    allowed_origins=["*"],
                                                                    allowed_methods=[lambda_.HttpMethod.GET])
         )
-########### OUTPUTS
 ########### OUTPUTS
         # This is a list of the major outputs of the stack
         cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
