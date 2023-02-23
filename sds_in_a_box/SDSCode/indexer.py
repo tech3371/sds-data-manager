@@ -74,11 +74,11 @@ def lambda_handler(event, context):
         bucket = record['s3']['bucket']['name']
         filename = record['s3']['object']['key']
 
-        logger.info(f"Attempting to insert {filename} into database")
+        logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
 
         # Look for matching file types in the configuration
         for filetype in filetypes:
-            metadata = _check_for_matching_filetype(filetype['pattern'], filename)
+            metadata = _check_for_matching_filetype(filetype['pattern'], os.path.basename(filename))
             if metadata is not None:
                 break
         

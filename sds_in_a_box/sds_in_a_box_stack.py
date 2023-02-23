@@ -155,12 +155,16 @@ class SdsInABoxStack(Stack):
             timeout=cdk.Duration.seconds(60)
         )
 
-        lambda_.FunctionUrl(self,
-            id="DownloadQueryAPI",
-            function=download_query_api,
-            auth_type=lambda_.FunctionUrlAuthType.NONE,
-
-            cors=lambda_.FunctionUrlCorsOptions(
-                                allowed_origins=["*"],
-                                allowed_methods=[lambda_.HttpMethod.GET])
+        download_api_url = lambda_.FunctionUrl(self,
+                                               id="DownloadQueryAPI",
+                                               function=download_query_api,
+                                               auth_type=lambda_.FunctionUrlAuthType.NONE,
+                                               cors=lambda_.FunctionUrlCorsOptions(
+                                                                   allowed_origins=["*"],
+                                                                   allowed_methods=[lambda_.HttpMethod.GET])
         )
+########### OUTPUTS
+        # This is a list of the major outputs of the stack
+        #cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
+        cdk.CfnOutput(self, "QUERY_API_URL", value=lambda_query_api_function_url.url)
+        cdk.CfnOutput(self, "DOWNLOAD_API_URL", value=download_api_url.url)
