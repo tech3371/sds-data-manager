@@ -145,8 +145,33 @@ class SdsInABoxStack(Stack):
                                                       )
                                         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-
+        
         indexer_lambda.add_to_role_policy(opensearch_all_http_permissions)
+        # Adding a lambda for uploading files to the SDS
+        upload_api_lambda = lambda_alpha_.PythonFunction(self,
+                                      id="UploadAPILambda",
+                                      entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
+                                      index="upload_api.py",
+                                      handler="lambda_handler",
+                                      runtime=lambda_.Runtime.PYTHON_3_9,
+                                      timeout=cdk.Duration.minutes(15),
+                                      memory_size=1000,
+                                      environment={"S3_BUCKET": data_bucket.s3_url_for_object()},
+        )
+        # Adding S3 Permissions 
+        upload_api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:*"],
+                resources=[
+                    f"{data_bucket.bucket_arn}/*"
+                ],
+            )
+        )
+        upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        upload_api_url = upload_api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
+                                              cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
+
         # The purpose of this lambda function is to trigger off of a lambda URL.
         query_api_lambda = lambda_alpha_.PythonFunction(self,
                                           id="QueryAPILambda",
@@ -197,6 +222,6 @@ class SdsInABoxStack(Stack):
         )
 ########### OUTPUTS
         # This is a list of the major outputs of the stack
-        #cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
+        cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
         cdk.CfnOutput(self, "QUERY_API_URL", value=lambda_query_api_function_url.url)
         cdk.CfnOutput(self, "DOWNLOAD_API_URL", value=download_api_url.url)
