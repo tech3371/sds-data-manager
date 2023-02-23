@@ -173,7 +173,6 @@ class SdsInABoxStack(Stack):
                                           entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
                                           index="queries.py",
                                           handler="lambda_handler",
-                                          function_name=f'query-api-handler-{SDS_ID}',
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(1),
                                           memory_size=1000,
