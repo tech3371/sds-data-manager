@@ -12,8 +12,12 @@ logging.basicConfig()
 logger.setLevel(logging.INFO)
 
 def _load_allowed_filenames():
-    # Rather than storing the configuration locally, we should store the configuration somewhere where things can be changed on the fly.  
-    # For example, a dynamodb table or a section in opensearch
+    '''
+    This function loads the config.json file, and stores the contents as a python dictionary 
+    
+    :return: dictionary object of file types and their attributes. 
+    '''
+
     current_dir = os.path.dirname(__file__)
     config_file = os.path.join(current_dir, "config.json")
     
@@ -22,7 +26,14 @@ def _load_allowed_filenames():
     return data
 
 def _check_for_matching_filetype(pattern, filename):
+    '''
+    This function takes in a pattern from config.json and compares it to the desired file name
     
+    :param pattern: A file naming pattern from the config.json
+    :param filename: Required.  String name of the desired file name.  
+    
+    :return: None if there is no match, or the file_dictionary if there is.  
+    '''
     split_filename = filename.replace("_", ".").split(".")
 
     if len(split_filename) != len(pattern):
@@ -42,7 +53,14 @@ def _check_for_matching_filetype(pattern, filename):
     return file_dictionary
 
 def _generate_signed_upload_url(filename, tags={}):
+    '''
+    Based on a given filename, this function will open up a presigned url into the correct location on the SDS storage bucket
     
+    :param filename: Required.  A string representing the name of the object to upload.  
+    :param tags: Optional.  A dictionary object of key:value pairs that will be stored in the S3 object metadata.  
+    
+    :return: None if the filename does not match mission naming conventions.  Otherwise, a URL string.  
+     '''
     filetypes = _load_allowed_filenames()
     for filetype in filetypes:
         path_to_upload_file = filetype['path']
@@ -64,6 +82,18 @@ def _generate_signed_upload_url(filename, tags={}):
     return url
 
 def lambda_handler(event, context):
+    '''
+    The entry point to the upload API lambda.  
+    This function returns an S3 signed-URL based on the input filename, which the user can 
+    then use to load a file onto the SDS. 
+    
+    :param event: Dictionary object.  
+                  Specifically only requires event['queryStringParameters']['filename'] be present. 
+                  User-specified key:value pairs can also exist in the 'queryStringParameters', storing these pairs as object metadata.  
+    :param context: Unused
+    
+    :return: If all checks are successful, this returns a pre-signed url where users can upload a data file to the SDS.  
+    '''
     
     if 'filename' not in event['queryStringParameters']:
         return {

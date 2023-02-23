@@ -21,11 +21,8 @@ from aws_cdk.aws_lambda_event_sources import S3EventSource, SnsEventSource
 
 class SdsInABoxStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, SDS_ID: str, initial_email: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, SDS_ID: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        
-########### INIT
-        initial_user_context = initial_email
 
 ########### DATA STORAGE 
         # This is the S3 bucket where the data will be stored
@@ -148,7 +145,7 @@ class SdsInABoxStack(Stack):
                                                       )
                                         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
-
+        
         # Adding Opensearch permissions 
         indexer_lambda.add_to_role_policy(opensearch_all_http_permissions)  
         
@@ -162,11 +159,13 @@ class SdsInABoxStack(Stack):
                                       runtime=lambda_.Runtime.PYTHON_3_9,
                                       timeout=cdk.Duration.minutes(15),
                                       memory_size=1000,
-                                      environment={"OS_ADMIN_USERNAME": "master-user", 
-                                                   "OS_ADMIN_PASSWORD_LOCATION": os_secret.secret_name,
-                                                   "S3_BUCKET": data_bucket.s3_url_for_object()},
+                                      environment={"S3_BUCKET": data_bucket.s3_url_for_object()},
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
+        upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        upload_api_url = upload_api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
+                                              cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
+
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         upload_api_url = upload_api_lambda.add_function_url(auth_type=lambda_.FunctionUrlAuthType.NONE,
                                               cors=lambda_.FunctionUrlCorsOptions(allowed_origins=["*"]))
@@ -178,6 +177,7 @@ class SdsInABoxStack(Stack):
                                           entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
                                           index="queries.py",
                                           handler="lambda_handler",
+                                          function_name=f'query-api-handler-{SDS_ID}',
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           timeout=cdk.Duration.minutes(1),
                                           memory_size=1000,
@@ -190,6 +190,7 @@ class SdsInABoxStack(Stack):
                                             }
                                           )
         query_api_lambda.add_to_role_policy(opensearch_read_only_policy)
+        
         # add function url for lambda query API
         lambda_query_api_function_url = lambda_.FunctionUrl(self,
                                                  id="QueryAPI",
@@ -197,8 +198,7 @@ class SdsInABoxStack(Stack):
                                                  auth_type=lambda_.FunctionUrlAuthType.NONE,
                                                  cors=lambda_.FunctionUrlCorsOptions(
                                                                      allowed_origins=["*"],
-                                                                     allowed_methods=[lambda_.HttpMethod.GET]))
-        # download query API lambda
+                                                                     allowed_methods=[lambda_.HttpMethod.GET]))        # download query API lambda
         download_query_api = lambda_alpha_.PythonFunction(self,
             id="DownloadQueryAPILambda",
             function_name=f'download-query-api-{SDS_ID}',
@@ -212,15 +212,14 @@ class SdsInABoxStack(Stack):
         download_query_api.add_to_role_policy(s3_read_policy)
         # Adding a function URL
         download_api_url = lambda_.FunctionUrl(self,
-            id="DownloadQueryAPI",
-            function=download_query_api,
-            auth_type=lambda_.FunctionUrlAuthType.NONE,
-
-            cors=lambda_.FunctionUrlCorsOptions(
-                                allowed_origins=["*"],
-                                allowed_methods=[lambda_.HttpMethod.GET])
+                                               id="DownloadQueryAPI",
+                                               function=download_query_api,
+                                               auth_type=lambda_.FunctionUrlAuthType.NONE,
+                                               cors=lambda_.FunctionUrlCorsOptions(
+                                                                   allowed_origins=["*"],
+                                                                   allowed_methods=[lambda_.HttpMethod.GET])
         )
-
+########### OUTPUTS
 ########### OUTPUTS
         # This is a list of the major outputs of the stack
         cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
