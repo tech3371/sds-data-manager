@@ -17,5 +17,4 @@ RUN export PATH=$PATH:$HOME/.local/bin
 ENV AWS_CONFIG_FILE=/workspaces/SDS-in-a-box/.aws/config
 ENV AWS_SHARED_CREDENTIALS_FILE=/workspaces/SDS-in-a-box/.aws/credentials
 
-RUN source $(poetry env info --path)/bin/activate
 WORKDIR /workspaces/SDS-in-a-box/
