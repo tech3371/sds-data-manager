@@ -52,5 +52,5 @@ python-jose = "^3.3.0"
 
 [project.urls]
 homepage = "https://github.com/IMAP-Science-Operations-Center"
-repository = "https://github.com/IMAP-Science-Operations-Center/SDS-in-a-box"
+repository = "https://github.com/IMAP-Science-Operations-Center/sds-data-manager"
 
