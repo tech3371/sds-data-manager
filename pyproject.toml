@@ -35,6 +35,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "moto",
+    "opensearch-py",
     "pytest",
 ]
 

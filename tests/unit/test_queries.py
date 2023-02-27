@@ -7,11 +7,11 @@ import pytest
 from botocore.exceptions import ClientError
 from opensearchpy import RequestsHttpConnection
 
-from sds_in_a_box.SDSCode import queries
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
-from sds_in_a_box.SDSCode.opensearch_utils.client import Client
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
+from sds_data_manager.SDSCode import queries
+from sds_data_manager.SDSCode.opensearch_utils.action import Action
+from sds_data_manager.SDSCode.opensearch_utils.client import Client
+from sds_data_manager.SDSCode.opensearch_utils.document import Document
+from sds_data_manager.SDSCode.opensearch_utils.index import Index
 
 
 @pytest.mark.network()

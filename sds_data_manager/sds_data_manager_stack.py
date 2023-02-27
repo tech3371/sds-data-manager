@@ -13,7 +13,7 @@ from aws_cdk.aws_lambda_event_sources import S3EventSource
 from constructs import Construct
 
 
-class SdsInABoxStack(Stack):
+class SdsDataManagerStack(Stack):
     def __init__(
         self, scope: Construct, construct_id: str, sds_id: str, **kwargs
     ) -> None:

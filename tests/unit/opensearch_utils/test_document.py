@@ -1,8 +1,8 @@
 import unittest
 
-from sds_in_a_box.SDSCode.opensearch_utils.action import Action
-from sds_in_a_box.SDSCode.opensearch_utils.document import Document
-from sds_in_a_box.SDSCode.opensearch_utils.index import Index
+from sds_data_manager.SDSCode.opensearch_utils.action import Action
+from sds_data_manager.SDSCode.opensearch_utils.document import Document
+from sds_data_manager.SDSCode.opensearch_utils.index import Index
 
 
 class TestDocument(unittest.TestCase):

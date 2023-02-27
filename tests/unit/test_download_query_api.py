@@ -5,7 +5,7 @@ from operator import contains
 import boto3
 from moto import mock_s3
 
-from sds_in_a_box.SDSCode.download_query_api import lambda_handler
+from sds_data_manager.SDSCode.download_query_api import lambda_handler
 
 
 class TestDownloadQueryAPI(unittest.TestCase):

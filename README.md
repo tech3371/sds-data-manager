@@ -1,4 +1,4 @@
-# SDS-in-a-box
+# SDS-data-manager
 
 This project is the core of a Science Data System.  
 

@@ -1,6 +1,6 @@
 import unittest
 
-from sds_in_a_box.SDSCode.opensearch_utils.query import Query
+from sds_data_manager.SDSCode.opensearch_utils.query import Query
 
 
 class TestQuery(unittest.TestCase):
