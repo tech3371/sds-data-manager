@@ -32,18 +32,18 @@ tests-no-zope = ["cloudpickle", "cloudpickle", "hypothesis", "hypothesis", "mypy
 
 [[package]]
 name = "aws-cdk-asset-awscli-v1"
-version = "2.2.80"
+version = "2.2.83"
 description = "A library that contains the AWS CLI for use in Lambda Layers"
 category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.asset-awscli-v1-2.2.80.tar.gz", hash = "sha256:c530b7ef9de8951b36fd511c41ae0dcdf8524f16baf61a6e8dc4c2be51ed49fb"},
-    {file = "aws_cdk.asset_awscli_v1-2.2.80-py3-none-any.whl", hash = "sha256:2b75700a188e7400cd11f323a25fe462293b24228ed3d28f5cfe4f91ead48558"},
+    {file = "aws-cdk.asset-awscli-v1-2.2.83.tar.gz", hash = "sha256:f85fcc543418b24b945666929cb5a49f1d25becfd1517295126f3dca26b02c19"},
+    {file = "aws_cdk.asset_awscli_v1-2.2.83-py3-none-any.whl", hash = "sha256:b9e21f2873c73723f8966067bd0e40300665fa26398dcfd9218d8a89c6f9f67b"},
 ]
 
 [package.dependencies]
-jsii = ">=1.75.0,<2.0.0"
+jsii = ">=1.76.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 
@@ -66,18 +66,18 @@ typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-asset-node-proxy-agent-v5"
-version = "2.0.66"
+version = "2.0.69"
 description = "@aws-cdk/asset-node-proxy-agent-v5"
 category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.asset-node-proxy-agent-v5-2.0.66.tar.gz", hash = "sha256:2a27c2e0b1f6d62bf26b3069c4fb99ea4c66dd72eb0b6a4b251f420593fbd15e"},
-    {file = "aws_cdk.asset_node_proxy_agent_v5-2.0.66-py3-none-any.whl", hash = "sha256:1d8e003105fd00c7ea07e70d756a0514a06505a1b1cb7b38007752ea5709431b"},
+    {file = "aws-cdk.asset-node-proxy-agent-v5-2.0.69.tar.gz", hash = "sha256:eb6ff81b757d6ac237e5c6065445c9086c37825aaddfeff540af3ca32e90e267"},
+    {file = "aws_cdk.asset_node_proxy_agent_v5-2.0.69-py3-none-any.whl", hash = "sha256:710082f52fe88529078fdb27a71b39e3a187e0480d69231cc5bcf9c659c24dc7"},
 ]
 
 [package.dependencies]
-jsii = ">=1.75.0,<2.0.0"
+jsii = ">=1.76.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 
@@ -443,18 +443,18 @@ files = [
 
 [[package]]
 name = "constructs"
-version = "10.1.259"
+version = "10.1.262"
 description = "A programming model for software-defined state"
 category = "main"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "constructs-10.1.259-py3-none-any.whl", hash = "sha256:04df2b40748cb2d025895d7ec67973b30d154904bf833e73dd8333309942bf03"},
-    {file = "constructs-10.1.259.tar.gz", hash = "sha256:8af0b95ef2f3d9f3920c74835e1db0d6221ea3819513a37371bed33e8b15483d"},
+    {file = "constructs-10.1.262-py3-none-any.whl", hash = "sha256:8c4c99fbd32a1a10caa8b0008f8b5331eb2f7be9ce63254bb28e486ea6703bbe"},
+    {file = "constructs-10.1.262.tar.gz", hash = "sha256:be5a639b3f0bf0f8b595c91e5c8e9eb878ab2d4a34452b5a99ecf590723684f4"},
 ]
 
 [package.dependencies]
-jsii = ">=1.75.0,<2.0.0"
+jsii = ">=1.76.0,<2.0.0"
 publication = ">=0.0.3"
 typeguard = ">=2.13.3,<2.14.0"
 

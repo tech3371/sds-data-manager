@@ -35,15 +35,15 @@ aws-cdk-lib = ">=2.66.0,<3.0.0"
 boto3 = "^1.26.78"
 "aws-cdk.aws-lambda-python-alpha" = "^2.66.0a0"
 constructs = ">=10.0.0,<11.0.0"
-
-# Installed by default, can be installed without these dependencies using `poetry install --without tests`
 black = "^23.1.0"
+
 [tool.poetry.group.tests.dependencies]
+# Installed by default, can be installed without these dependencies using `poetry install --without tests`
 pytest = "==6.2.5"
 moto = "^4.1.3"
 
-# Not installed by default, can be installed using `poetry install --with cdk`
 [tool.poetry.group.cdk]
+# Not installed by default, can be installed using `poetry install --with cdk`
 optional = true
 
 [tool.poetry.group.cdk.dependencies]
