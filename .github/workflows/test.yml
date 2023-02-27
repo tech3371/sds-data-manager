@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies and app
         run: |
-          poetry install --with cdk
+          poetry install --with lambda-dev
       
       - name: Testing
         id: test
