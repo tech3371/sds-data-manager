@@ -1,9 +1,9 @@
 import unittest
 
-from sds_data_manager.SDSCode.opensearch_utils.action import Action
-from sds_data_manager.SDSCode.opensearch_utils.document import Document
-from sds_data_manager.SDSCode.opensearch_utils.index import Index
-from sds_data_manager.SDSCode.opensearch_utils.payload import Payload
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.document import Document
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.payload import Payload
 
 
 class TestPayload(unittest.TestCase):

@@ -118,8 +118,10 @@ class SdsDataManagerStack(Stack):
             self,
             id="IndexerLambda",
             function_name=f"file-indexer-{sds_id}",
-            entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode"),
-            index="indexer.py",
+            entry=os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "lambda_code"
+            ),
+            index="SDSCode/indexer.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(15),
@@ -146,8 +148,10 @@ class SdsDataManagerStack(Stack):
             self,
             id="UploadAPILambda",
             function_name=f"upload-api-handler-{sds_id}",
-            entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
-            index="upload_api.py",
+            entry=os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
+            ),
+            index="SDSCode/upload_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(15),
@@ -166,8 +170,10 @@ class SdsDataManagerStack(Stack):
             self,
             id="QueryAPILambda",
             function_name=f"query-api-handler-{sds_id}",
-            entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
-            index="queries.py",
+            entry=os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
+            ),
+            index="SDSCode/queries.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(1),
@@ -196,8 +202,10 @@ class SdsDataManagerStack(Stack):
             self,
             id="DownloadQueryAPILambda",
             function_name=f"download-query-api-{sds_id}",
-            entry=os.path.join(os.path.dirname(os.path.realpath(__file__)), "SDSCode/"),
-            index="download_query_api.py",
+            entry=os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
+            ),
+            index="SDSCode/download_query_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.seconds(60),

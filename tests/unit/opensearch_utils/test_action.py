@@ -1,6 +1,6 @@
 import unittest
 
-from sds_data_manager.SDSCode.opensearch_utils.action import Action
+from sds_data_manager.lambda_code.SDSCode.opensearch_utils.action import Action
 
 
 class TestAction(unittest.TestCase):
