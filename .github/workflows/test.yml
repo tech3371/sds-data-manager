@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies and app
         run: |
-          poetry install         
+          poetry install --with cdk
       
       - name: Testing
         id: test
