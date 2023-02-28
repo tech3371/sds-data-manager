@@ -15,7 +15,7 @@ files = [
 name = "attrs"
 version = "22.2.0"
 description = "Classes Without Boilerplate"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 files = [
@@ -32,14 +32,14 @@ tests-no-zope = ["cloudpickle", "cloudpickle", "hypothesis", "hypothesis", "mypy
 
 [[package]]
 name = "aws-cdk-asset-awscli-v1"
-version = "2.2.83"
+version = "2.2.84"
 description = "A library that contains the AWS CLI for use in Lambda Layers"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.asset-awscli-v1-2.2.83.tar.gz", hash = "sha256:f85fcc543418b24b945666929cb5a49f1d25becfd1517295126f3dca26b02c19"},
-    {file = "aws_cdk.asset_awscli_v1-2.2.83-py3-none-any.whl", hash = "sha256:b9e21f2873c73723f8966067bd0e40300665fa26398dcfd9218d8a89c6f9f67b"},
+    {file = "aws-cdk.asset-awscli-v1-2.2.84.tar.gz", hash = "sha256:ea665bfde97aa20c04a6fa416e257ca0131f2478b9092331f68142e0be904baf"},
+    {file = "aws_cdk.asset_awscli_v1-2.2.84-py3-none-any.whl", hash = "sha256:287be213fc507738c1dcfb03599734c518f7d801f649a633dedb9f0e0194709f"},
 ]
 
 [package.dependencies]
@@ -51,7 +51,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-asset-kubectl-v20"
 version = "2.1.1"
 description = "A library that contains kubectl for use in Lambda Layers"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -66,14 +66,14 @@ typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "aws-cdk-asset-node-proxy-agent-v5"
-version = "2.0.69"
+version = "2.0.70"
 description = "@aws-cdk/asset-node-proxy-agent-v5"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "aws-cdk.asset-node-proxy-agent-v5-2.0.69.tar.gz", hash = "sha256:eb6ff81b757d6ac237e5c6065445c9086c37825aaddfeff540af3ca32e90e267"},
-    {file = "aws_cdk.asset_node_proxy_agent_v5-2.0.69-py3-none-any.whl", hash = "sha256:710082f52fe88529078fdb27a71b39e3a187e0480d69231cc5bcf9c659c24dc7"},
+    {file = "aws-cdk.asset-node-proxy-agent-v5-2.0.70.tar.gz", hash = "sha256:92781782c805c5e12c8b9b7dc68073216c67343b909714258474b01e0ed5b992"},
+    {file = "aws_cdk.asset_node_proxy_agent_v5-2.0.70-py3-none-any.whl", hash = "sha256:9bd73150f6724fb29050882d2b8222075401ff6a957e79c5d28073a0be8dafc0"},
 ]
 
 [package.dependencies]
@@ -85,7 +85,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-aws-lambda-python-alpha"
 version = "2.66.1a0"
 description = "The CDK Construct Library for AWS Lambda in Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -104,7 +104,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-lib"
 version = "2.66.1"
 description = "Version 2 of the AWS Cloud Development Kit library"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -215,7 +215,7 @@ crt = ["awscrt (==0.16.9)"]
 name = "cattrs"
 version = "22.2.0"
 description = "Composable complex class support for attrs and dataclasses."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -443,14 +443,14 @@ files = [
 
 [[package]]
 name = "constructs"
-version = "10.1.262"
+version = "10.1.263"
 description = "A programming model for software-defined state"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
-    {file = "constructs-10.1.262-py3-none-any.whl", hash = "sha256:8c4c99fbd32a1a10caa8b0008f8b5331eb2f7be9ce63254bb28e486ea6703bbe"},
-    {file = "constructs-10.1.262.tar.gz", hash = "sha256:be5a639b3f0bf0f8b595c91e5c8e9eb878ab2d4a34452b5a99ecf590723684f4"},
+    {file = "constructs-10.1.263-py3-none-any.whl", hash = "sha256:82d316c5feb1ca5256122c4db5f62014d55647bfdd6b7e814ca6e7b9e2165c04"},
+    {file = "constructs-10.1.263.tar.gz", hash = "sha256:f3de6bacf23de82c2df337aaabd2156d6c86c77dc2c61c455d21a36ca9c42c3b"},
 ]
 
 [package.dependencies]
@@ -527,7 +527,7 @@ gmpy2 = ["gmpy2"]
 name = "exceptiongroup"
 version = "1.1.0"
 description = "Backport of PEP 654 (exception groups)"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -537,39 +537,6 @@ files = [
 
 [package.extras]
 test = ["pytest (>=6)"]
-
-[[package]]
-name = "hypothesis"
-version = "6.68.2"
-description = "A library for property-based testing"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "hypothesis-6.68.2-py3-none-any.whl", hash = "sha256:2a41cc766cde52705895e54547374af89c617e8ec7bc4186cb7f03884a667d4e"},
-    {file = "hypothesis-6.68.2.tar.gz", hash = "sha256:a7eb2b0c9a18560d8197fe35047ceb58e7e8ab7623a3e5a82613f6a2cd71cffa"},
-]
-
-[package.dependencies]
-attrs = ">=19.2.0"
-exceptiongroup = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
-sortedcontainers = ">=2.1.0,<3.0.0"
-
-[package.extras]
-all = ["backports.zoneinfo (>=0.2.1)", "black (>=19.10b0)", "click (>=7.0)", "django (>=3.2)", "dpcontracts (>=0.4)", "importlib-metadata (>=3.6)", "lark (>=0.10.1)", "libcst (>=0.3.16)", "numpy (>=1.9.0)", "pandas (>=1.0)", "pytest (>=4.6)", "python-dateutil (>=1.4)", "pytz (>=2014.1)", "redis (>=3.0.0)", "rich (>=9.0.0)", "tzdata (>=2022.7)"]
-cli = ["black (>=19.10b0)", "click (>=7.0)", "rich (>=9.0.0)"]
-codemods = ["libcst (>=0.3.16)"]
-dateutil = ["python-dateutil (>=1.4)"]
-django = ["django (>=3.2)"]
-dpcontracts = ["dpcontracts (>=0.4)"]
-ghostwriter = ["black (>=19.10b0)"]
-lark = ["lark (>=0.10.1)"]
-numpy = ["numpy (>=1.9.0)"]
-pandas = ["pandas (>=1.0)"]
-pytest = ["pytest (>=4.6)"]
-pytz = ["pytz (>=2014.1)"]
-redis = ["redis (>=3.0.0)"]
-zoneinfo = ["backports.zoneinfo (>=0.2.1)", "tzdata (>=2022.7)"]
 
 [[package]]
 name = "idna"
@@ -629,7 +596,7 @@ files = [
 name = "jsii"
 version = "1.76.0"
 description = "Python client for jsii runtime"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -847,7 +814,7 @@ testing = ["pytest", "pytest-benchmark"]
 name = "publication"
 version = "0.0.3"
 description = "Publication helps you maintain public-api-friendly modules by preventing unintentional access to private implementation details via introspection."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 files = [
@@ -920,7 +887,7 @@ testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xm
 name = "python-dateutil"
 version = "2.8.2"
 description = "Extensions to the standard Python datetime module"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 files = [
@@ -1060,24 +1027,12 @@ crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 files = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
-]
-
-[[package]]
-name = "sortedcontainers"
-version = "2.4.0"
-description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
-category = "dev"
-optional = false
-python-versions = "*"
-files = [
-    {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
-    {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
 ]
 
 [[package]]
@@ -1108,7 +1063,7 @@ files = [
 name = "typeguard"
 version = "2.13.3"
 description = "Run-time type checker for Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.5.3"
 files = [
@@ -1136,7 +1091,7 @@ files = [
 name = "typing-extensions"
 version = "4.5.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1194,4 +1149,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "7e3923004457e6d087aeb4d4c835a717425b6cd3f82b08587b1b4f14bd655a87"
+content-hash = "d389c4f48d6c961c8418fb4c8189e0fcd87509046a6c3d98d097be98b1581e62"
