@@ -11,9 +11,7 @@ RUN unzip awscliv2.zip
 RUN sudo ./aws/install
 RUN sudo apt-get install -y python3 python3-pip
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
-# Add poetry to path
-RUN export PATH=$PATH:$HOME/.local/bin
+RUN pip install poetry
 ENV AWS_CONFIG_FILE=/workspaces/SDS-in-a-box/.aws/config
 ENV AWS_SHARED_CREDENTIALS_FILE=/workspaces/SDS-in-a-box/.aws/credentials
 
