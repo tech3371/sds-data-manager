@@ -26,7 +26,8 @@ class SdsInABoxStack(Stack):
                                 #bucket_name="DataBucket",
                                 versioned=True,
                                 removal_policy=RemovalPolicy.DESTROY,
-                                auto_delete_objects=True
+                                auto_delete_objects=True,
+                                block_public_access=s3.BlockPublicAccess.BLOCK_ALL
                                 )
 
         # Need to make a secret username/password for OpenSearch
