@@ -28,6 +28,7 @@ class SdsDataManagerStack(Stack):
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
         ########### DATABASE
