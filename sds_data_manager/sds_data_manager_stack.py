@@ -7,6 +7,7 @@ import aws_cdk.aws_lambda as lambda_
 import aws_cdk.aws_lambda_python_alpha as lambda_alpha_
 import aws_cdk.aws_opensearchservice as opensearch
 import aws_cdk.aws_s3 as s3
+import aws_cdk.aws_s3_deployment as s3_deploy
 import aws_cdk.aws_secretsmanager as secretsmanager
 from aws_cdk import RemovalPolicy, Stack  # Duration,
 from aws_cdk.aws_lambda_event_sources import S3EventSource
@@ -29,6 +30,30 @@ class SdsDataManagerStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+        )
+
+        config_bucket = s3.Bucket(
+            self,
+            "CONFIG-BUCKET",
+            bucket_name=f"sds-config-{sds_id}",
+            versioned=True,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+            public_read_access=True,
+        )
+
+        s3_deploy.BucketDeployment(
+            self,
+            "DeployConfig",
+            sources=[
+                s3_deploy.Source.asset(
+                    os.path.join(
+                        os.path.dirname(os.path.realpath(__file__)),
+                        "lambda_code/SDSCode/config",
+                    )
+                )
+            ],
+            destination_bucket=config_bucket,
         )
 
         ########### DATABASE
@@ -134,6 +159,7 @@ class SdsDataManagerStack(Stack):
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
                 "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "SDSID": sds_id,
             },
         )
         indexer_lambda.add_event_source(

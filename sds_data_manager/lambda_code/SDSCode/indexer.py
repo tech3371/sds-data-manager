@@ -20,16 +20,11 @@ s3 = boto3.client("s3")
 
 
 def _load_allowed_filenames():
-    # Rather than storing the configuration locally,
-    # we should store the configuration somewhere where things
-    # can be changed on the fly.
-    # For example, a dynamodb table or a section in opensearch
-    current_dir = os.path.dirname(__file__)
-    config_file = os.path.join(current_dir, "config.json")
-
-    with open(config_file) as f:
-        data = json.load(f)
-    return data
+    # get the config file from the S3 bucket
+    s3 = boto3.resource("s3")
+    config_object = s3.Object(f'sds-config-{os.environ["SDSID"]}', "config.json")
+    file_content = config_object.get()["Body"].read().decode("utf-8")
+    return json.loads(file_content)
 
 
 def _check_for_matching_filetype(pattern, filename):
