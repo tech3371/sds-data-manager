@@ -21,9 +21,8 @@ s3 = boto3.client("s3")
 
 def _load_allowed_filenames():
     # get the config file from the S3 bucket
-    s3 = boto3.resource("s3")
-    config_object = s3.Object(f'sds-config-{os.environ["SDSID"]}', "config.json")
-    file_content = config_object.get()["Body"].read().decode("utf-8")
+    config_object = s3.get_object(Bucket=f'sds-config-{os.environ["SDSID"]}', Key="config.json")
+    file_content = config_object['Body'].read()
     return json.loads(file_content)
 
 
