@@ -32,6 +32,8 @@ class SdsDataManagerStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
+        ########### CONFIG STORAGE
+        # This is the S3 bucket where the configurations will be stored
         config_bucket = s3.Bucket(
             self,
             "CONFIG-BUCKET",
@@ -129,7 +131,6 @@ class SdsDataManagerStack(Stack):
             actions=["s3:GetObject"],
             resources=[f"{data_bucket.bucket_arn}/*", f"{config_bucket.bucket_arn}/*"],
         )
-
         iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["cognito-idp:*"],
@@ -169,6 +170,7 @@ class SdsDataManagerStack(Stack):
 
         # Adding Opensearch permissions
         indexer_lambda.add_to_role_policy(opensearch_all_http_permissions)
+        indexer_lambda.add_to_role_policy(s3_read_policy)
 
         # Adding a lambda for uploading files to the SDS
         upload_api_lambda = lambda_alpha_.PythonFunction(
