@@ -39,7 +39,7 @@ class SdsDataManagerStack(Stack):
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
-            public_read_access=True,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
         s3_deploy.BucketDeployment(
@@ -49,7 +49,7 @@ class SdsDataManagerStack(Stack):
                 s3_deploy.Source.asset(
                     os.path.join(
                         os.path.dirname(os.path.realpath(__file__)),
-                        "lambda_code/SDSCode/config",
+                        "config",
                     )
                 )
             ],
@@ -127,7 +127,7 @@ class SdsDataManagerStack(Stack):
         s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:GetObject"],
-            resources=[f"{data_bucket.bucket_arn}/*"],
+            resources=[f"{data_bucket.bucket_arn}/*", f"{config_bucket.bucket_arn}/*"],
         )
 
         iam.PolicyStatement(
