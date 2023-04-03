@@ -8,7 +8,7 @@ def test_sds_data_manager_stack(app, sds_id):
     stack = SdsDataManagerStack(app, stack_name, sds_id)
     template = Template.from_stack(stack)
 
-    template.resource_count_is("AWS::S3::Bucket", 1)
+    template.resource_count_is("AWS::S3::Bucket", 2)
     # Delete and update are outside of the Properties section
     template.has_resource(
         "AWS::S3::Bucket",
