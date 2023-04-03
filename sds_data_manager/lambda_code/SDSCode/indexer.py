@@ -4,6 +4,7 @@ import os
 import sys
 
 import boto3
+
 from opensearchpy import RequestsHttpConnection
 
 from .opensearch_utils.action import Action
@@ -21,8 +22,10 @@ s3 = boto3.client("s3")
 
 def _load_allowed_filenames():
     # get the config file from the S3 bucket
-    config_object = s3.get_object(Bucket=f'sds-config-{os.environ["SDSID"]}', Key="config.json")
-    file_content = config_object['Body'].read()
+    config_object = s3.get_object(
+        Bucket=f'sds-config-{os.environ["SDSID"]}', Key="config.json"
+    )
+    file_content = config_object["Body"].read()
     return json.loads(file_content)
 
 
@@ -62,6 +65,7 @@ def lambda_handler(event, context):
     logger.info("Received event: " + json.dumps(event, indent=2))
 
     # Retrieve a list of allowed file types
+    logger.info("Loading allowed filenames from configuration file in S3.")
     filetypes = _load_allowed_filenames()
     logger.info("Allowed file types: " + str(filetypes))
 

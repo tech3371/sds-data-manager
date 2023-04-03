@@ -170,6 +170,7 @@ class SdsDataManagerStack(Stack):
 
         # Adding Opensearch permissions
         indexer_lambda.add_to_role_policy(opensearch_all_http_permissions)
+        # Adding s3 read permissions to get config.json
         indexer_lambda.add_to_role_policy(s3_read_policy)
 
         # Adding a lambda for uploading files to the SDS
