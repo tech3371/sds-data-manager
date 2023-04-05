@@ -29,6 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
+pathlib = "^1.0.1"
 
 [tool.poetry.group.cdk-install.dependencies]
 # Required for aws-cdk.aws-lambda-python-alpha

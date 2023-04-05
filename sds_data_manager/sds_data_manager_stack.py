@@ -12,6 +12,7 @@ import aws_cdk.aws_secretsmanager as secretsmanager
 from aws_cdk import RemovalPolicy, Stack  # Duration,
 from aws_cdk.aws_lambda_event_sources import S3EventSource
 from constructs import Construct
+import pathlib
 
 
 class SdsDataManagerStack(Stack):
@@ -49,10 +50,7 @@ class SdsDataManagerStack(Stack):
             "DeployConfig",
             sources=[
                 s3_deploy.Source.asset(
-                    os.path.join(
-                        os.path.dirname(os.path.realpath(__file__)),
-                        "config",
-                    )
+                    str(pathlib.Path(__file__).parent.joinpath("config").resolve())
                 )
             ],
             destination_bucket=config_bucket,
@@ -145,9 +143,7 @@ class SdsDataManagerStack(Stack):
             self,
             id="IndexerLambda",
             function_name=f"file-indexer-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/indexer.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -178,9 +174,7 @@ class SdsDataManagerStack(Stack):
             self,
             id="UploadAPILambda",
             function_name=f"upload-api-handler-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/upload_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -200,9 +194,7 @@ class SdsDataManagerStack(Stack):
             self,
             id="QueryAPILambda",
             function_name=f"query-api-handler-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/queries.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -232,9 +224,7 @@ class SdsDataManagerStack(Stack):
             self,
             id="DownloadQueryAPILambda",
             function_name=f"download-query-api-{sds_id}",
-            entry=os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "lambda_code/"
-            ),
+            entry=str(pathlib.Path(__file__).parent.joinpath("lambda_code").resolve()),
             index="SDSCode/download_query_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
