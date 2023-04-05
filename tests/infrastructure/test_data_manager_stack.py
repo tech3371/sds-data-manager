@@ -17,11 +17,20 @@ def test_sds_data_manager_stack(app, sds_id):
             "UpdateReplacePolicy": "Delete",
         },
     )
-    # Now test the resource properties we expect
+    # Now test the sds-data bucket has the resource properties we expect
     template.has_resource_properties(
         "AWS::S3::Bucket",
         props={
             "BucketName": f"sds-data-{sds_id}",
+            "VersioningConfiguration": {"Status": "Enabled"},
+            "PublicAccessBlockConfiguration": {"RestrictPublicBuckets": True},
+        },
+    )
+    # Now test the sds-config bucket has the resource properties we expect
+    template.has_resource_properties(
+        "AWS::S3::Bucket",
+        props={
+            "BucketName": f"sds-config-{sds_id}",
             "VersioningConfiguration": {"Status": "Enabled"},
             "PublicAccessBlockConfiguration": {"RestrictPublicBuckets": True},
         },

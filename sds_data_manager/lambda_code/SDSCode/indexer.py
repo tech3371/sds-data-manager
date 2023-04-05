@@ -23,7 +23,7 @@ s3 = boto3.client("s3")
 def _load_allowed_filenames():
     # get the config file from the S3 bucket
     config_object = s3.get_object(
-        Bucket=f'sds-config-{os.environ["SDSID"]}', Key="config.json"
+        Bucket=os.environ['S3_CONFIG_BUCKET_NAME'], Key="config.json"
     )
     file_content = config_object["Body"].read()
     return json.loads(file_content)
@@ -102,7 +102,7 @@ def lambda_handler(event, context):
         logger.info("Found the following metadata to index: " + str(metadata))
 
         # use the s3 path to file as the ID in opensearch
-        s3_path = os.path.join(os.environ["S3_BUCKET"], filename)
+        s3_path = os.path.join(os.environ["S3_DATA_BUCKET"], filename)
         # create a document for the metadata and add it to the payload
         opensearch_doc = Document(index, s3_path, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)

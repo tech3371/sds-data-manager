@@ -159,8 +159,8 @@ class SdsDataManagerStack(Stack):
                 "OS_DOMAIN": sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
                 "OS_INDEX": "metadata",
-                "S3_BUCKET": data_bucket.s3_url_for_object(),
-                "SDSID": sds_id,
+                "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}",
             },
         )
         indexer_lambda.add_event_source(
