@@ -4,7 +4,6 @@ import os
 import sys
 
 import boto3
-
 from opensearchpy import RequestsHttpConnection
 
 from .opensearch_utils.action import Action
@@ -23,7 +22,7 @@ s3 = boto3.client("s3")
 def _load_allowed_filenames():
     # get the config file from the S3 bucket
     config_object = s3.get_object(
-        Bucket=os.environ['S3_CONFIG_BUCKET_NAME'], Key="config.json"
+        Bucket=os.environ["S3_CONFIG_BUCKET_NAME"], Key="config.json"
     )
     file_content = config_object["Body"].read()
     return json.loads(file_content)
