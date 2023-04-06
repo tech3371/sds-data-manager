@@ -1,4 +1,4 @@
-import os
+import pathlib
 
 import aws_cdk as cdk
 import aws_cdk.aws_ec2 as ec2
@@ -12,7 +12,6 @@ import aws_cdk.aws_secretsmanager as secretsmanager
 from aws_cdk import RemovalPolicy, Stack  # Duration,
 from aws_cdk.aws_lambda_event_sources import S3EventSource
 from constructs import Construct
-import pathlib
 
 
 class SdsDataManagerStack(Stack):
