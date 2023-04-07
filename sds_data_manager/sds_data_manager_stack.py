@@ -33,6 +33,18 @@ class SdsDataManagerStack(Stack):
         )
 
         ########### CONFIG STORAGE
+        # confirm that a config.json file exists in the expected
+        # location before S3 upload
+        if (
+            not pathlib.Path(__file__)
+            .parent.joinpath("config", "config.json")
+            .resolve()
+            .exists()
+        ):
+            raise RuntimeError(
+                "sds_data_manager/config directory must contain config.json"
+            )
+
         # This is the S3 bucket where the configurations will be stored
         config_bucket = s3.Bucket(
             self,
@@ -44,6 +56,9 @@ class SdsDataManagerStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
         )
 
+        # Upload all files in the config directory to the S3 config bucket.
+        # This directory should contain a config.json file that will
+        # be used for indexing files into the data bucket.
         s3_deploy.BucketDeployment(
             self,
             "DeployConfig",
