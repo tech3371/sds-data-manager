@@ -10,6 +10,7 @@ logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
 
+
 def _load_allowed_filenames():
     """
     Load the config.json file as a python dictionary.

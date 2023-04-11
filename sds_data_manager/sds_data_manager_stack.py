@@ -195,9 +195,9 @@ class SdsDataManagerStack(Stack):
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
             environment={
-            "S3_BUCKET": data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}"
-                },
+                "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}",
+            },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
         upload_api_lambda.add_to_role_policy(s3_read_policy)
