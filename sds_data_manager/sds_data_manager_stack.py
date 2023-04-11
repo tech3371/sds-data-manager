@@ -194,9 +194,13 @@ class SdsDataManagerStack(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
-            environment={"S3_BUCKET": data_bucket.s3_url_for_object()},
+            environment={
+            "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_CONFIG_BUCKET_NAME": f"sds-config-{sds_id}"
+                },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
+        upload_api_lambda.add_to_role_policy(s3_read_policy)
         upload_api_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         upload_api_url = upload_api_lambda.add_function_url(
             auth_type=lambda_.FunctionUrlAuthType.NONE,
