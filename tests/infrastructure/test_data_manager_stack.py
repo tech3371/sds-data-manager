@@ -8,6 +8,7 @@ def test_sds_data_manager_stack(app, sds_id):
     stack = SdsDataManagerStack(app, stack_name, sds_id)
     template = Template.from_stack(stack)
 
+    # Test for S3 data bucket
     template.resource_count_is("AWS::S3::Bucket", 1)
     # Delete and update are outside of the Properties section
     template.has_resource(
@@ -26,3 +27,9 @@ def test_sds_data_manager_stack(app, sds_id):
             "PublicAccessBlockConfiguration": {"RestrictPublicBuckets": True},
         },
     )
+
+    # test for opensearch cluster
+    template.resource_count_is("AWS::OpenSearchService::Domain", 1)
+
+    # test for lambdas
+    template.resource_count_is("AWS::Lambda::Function", 7)
