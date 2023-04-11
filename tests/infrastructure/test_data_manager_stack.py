@@ -28,8 +28,40 @@ def test_sds_data_manager_stack(app, sds_id):
         },
     )
 
-    # test for opensearch cluster
+    # tests for opensearch cluster
     template.resource_count_is("AWS::OpenSearchService::Domain", 1)
 
-    # test for lambdas
+    # tests for IAM
+    template.resource_count_is("AWS::IAM::Policy", 7)
+
+    # tests for lambdas
     template.resource_count_is("AWS::Lambda::Function", 7)
+    template.resource_count_is("AWS::Lambda::Url", 3)
+
+    template.has_resource_properties(
+        "AWS::Lambda::Function",
+        props={
+            "FunctionName": f"file-indexer-{sds_id}",
+        }
+    )
+
+    template.has_resource_properties(
+        "AWS::Lambda::Function",
+        props={
+            "FunctionName": f"upload-api-handler-{sds_id}",
+        }
+    )
+
+    template.has_resource_properties(
+        "AWS::Lambda::Function",
+        props={
+            "FunctionName": f"query-api-handler-{sds_id}",
+        }
+    )
+
+    template.has_resource_properties(
+        "AWS::Lambda::Function",
+        props={
+            "FunctionName": f"download-query-api-{sds_id}",
+        }
+    )
