@@ -38,7 +38,8 @@ class SdsDataManagerStack(Stack):
         # Create the opensearch cluster
         sds_metadata_domain = opensearch.Domain(
             self,
-            "SDSMetadataDomain",
+            f"SDSMetadataDomain",
+            domain_name=f"sdsmetadatadomain-{sds_id}",
             # Version 1.3 released 07/27/22
             version=opensearch.EngineVersion.OPENSEARCH_1_3,
             # Define the Nodes
@@ -228,3 +229,6 @@ class SdsDataManagerStack(Stack):
         cdk.CfnOutput(self, "UPLOAD_API_URL", value=upload_api_url.url)
         cdk.CfnOutput(self, "QUERY_API_URL", value=lambda_query_api_function_url.url)
         cdk.CfnOutput(self, "DOWNLOAD_API_URL", value=download_api_url.url)
+
+        data_bucket_arn_output = cdk.CfnOutput(self, "DATA_BUCKET_ARN", value=data_bucket.bucket_arn)
+        sds_metadata_domain_arn_output = cdk.CfnOutput(self, "OPENSEARCH_ARN", value=sds_metadata_domain.domain_arn)
