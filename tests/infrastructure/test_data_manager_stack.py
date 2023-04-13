@@ -57,27 +57,52 @@ def test_opensearch(stack, sds_id):
         }
     )
 
-def test_iam(stack):
+def test_iam(stack, sds_id):
     template = Template.from_stack(stack)
 
-    
     # tests for IAM
     template.resource_count_is("AWS::IAM::Policy", 7)
 
     template.has_resource_properties(
-        "AWS::IAM::Policy",
-        props={
-            "Policies":[
-                {
-                    "PolicyDocument": {
-                        "Effect": "Allow",
-                        "Action": "S3:PutObject",
-                        "Resource": f"{data_bucket_arn}/*"
-                    }
+            "AWS::IAM::Policy",
+            {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "es:ESHttp*",
+                            "Resource": f"arn:aws:es:::sdsmetadatadomain-{sds_id}/*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "es:ESHttpGet",
+                            "Resource": f"arn:aws:es:::sdsmetadatadomain-{sds_id}/*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "es:*",
+                            "Resource": f"arn:aws:es:::sdsmetadatadomain-{sds_id}/*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "s3:PutObject",
+                            "Resource": f"arn:aws:s3:::sds-data-{sds_id}/*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "s3:GetObject",
+                            "Resource": f"arn:aws:s3:::sds-data-{sds_id}/*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "cognito-idp:*",
+                            "Resource": "*"
+                        },
+                    ]
                 }
-            ]
-        }
-    )
+            }
+        )
 
 def test_lambdas(stack, sds_id):
     template = Template.from_stack(stack)
