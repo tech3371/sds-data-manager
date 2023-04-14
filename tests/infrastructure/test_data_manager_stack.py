@@ -35,6 +35,61 @@ def test_s3_buckets(stack, sds_id):
     )
 
 
+def test_s3_bucket_policy(stack, sds_id):
+    template = Template.from_stack(stack)
+    # test s3 bucket policy resource count
+    template.resource_count_is("AWS::S3::BucketPolicy", 1)
+
+    # Now test the resource properties we expect
+    template.has_resource_properties(
+        "AWS::S3::BucketPolicy",
+        props={
+            "Bucket": {"Ref": Match.string_like_regexp("DATABUCKET*")},
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Action": ["s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": {
+                                "Fn::GetAtt": [
+                                    Match.string_like_regexp(
+                                        "CustomS3AutoDeleteObjectsCustomResourceProviderRole*"
+                                    ),
+                                    "Arn",
+                                ]
+                            }
+                        },
+                        "Resource": [
+                            {
+                                "Fn::GetAtt": [
+                                    Match.string_like_regexp("DATABUCKET*"),
+                                    "Arn",
+                                ]
+                            },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp("DATABUCKET*"),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
+                        ],
+                    }
+                ],
+            },
+        },
+    )
+
+
 def test_opensearch(stack, sds_id):
     template = Template.from_stack(stack)
     # test opensearch domain count
@@ -53,9 +108,61 @@ def test_opensearch(stack, sds_id):
     )
 
 
-def test_iam(stack, sds_id):
+def test_custom_resources(stack, sds_id):
     template = Template.from_stack(stack)
 
+    # test custom resources count
+    template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
+    template.resource_count_is("Custom::S3BucketNotifications", 1)
+
+    template.has_resource_properties(
+        "Custom::S3AutoDeleteObjects",
+        {
+            "ServiceToken": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp(
+                        "CustomS3AutoDeleteObjectsCustomResourceProviderHandler*"
+                    ),
+                    "Arn",
+                ]
+            },
+            "BucketName": {"Ref": Match.string_like_regexp("DATABUCKET*")},
+        },
+    )
+
+    template.has_resource_properties(
+        "Custom::S3BucketNotifications",
+        {
+            "ServiceToken": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("BucketNotificationsHandler*"),
+                    "Arn",
+                ]
+            },
+            "BucketName": {"Ref": Match.string_like_regexp("DATABUCKET*")},
+            "NotificationConfiguration": {
+                "LambdaFunctionConfigurations": [
+                    {
+                        "Events": ["s3:ObjectCreated:*"],
+                        "LambdaFunctionArn": {
+                            "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
+                        },
+                    }
+                ]
+            },
+            "Managed": True,
+        },
+    )
+
+
+def test_aim_roles(stack, sds_id):
+    template = Template.from_stack(stack)
+    # test IAM role count
+    template.resource_count_is("AWS::IAM::Role", 7)
+
+
+def test_iam_policies(stack, sds_id):
+    template = Template.from_stack(stack)
     # test IAM policy count
     template.resource_count_is("AWS::IAM::Policy", 7)
     # test IAM role count
@@ -85,9 +192,11 @@ def test_iam(stack, sds_id):
                             ]
                         },
                     },
-                ]
+                ],
             },
-            "PolicyName" : Match.string_like_regexp("UploadAPILambdaServiceRoleDefaultPolicy*")
+            "PolicyName": Match.string_like_regexp(
+                "UploadAPILambdaServiceRoleDefaultPolicy*"
+            ),
         },
     )
 
@@ -105,10 +214,9 @@ def test_iam(stack, sds_id):
                     {
                         "Effect": "Allow",
                         "Action": "logs:DeleteResourcePolicy",
-                        "Resource": "*"
+                        "Resource": "*",
                     },
-
-                ]
+                ],
             },
         },
     )
@@ -123,15 +231,17 @@ def test_iam(stack, sds_id):
                         "Effect": "Allow",
                         "Action": "es:UpdateDomainConfig",
                         "Resource": {
-                                        "Fn::GetAtt": [
-                                            Match.string_like_regexp("SDSMetadataDomain*"),
-                                            "Arn",
-                                        ]
-                                    },
-                        }
-                ]
+                            "Fn::GetAtt": [
+                                Match.string_like_regexp("SDSMetadataDomain*"),
+                                "Arn",
+                            ]
+                        },
+                    }
+                ],
             },
-            "PolicyName": Match.string_like_regexp("SDSMetadataDomainAccessPolicyCustomResourcePolicy*")
+            "PolicyName": Match.string_like_regexp(
+                "SDSMetadataDomainAccessPolicyCustomResourcePolicy*"
+            ),
         },
     )
 
@@ -144,11 +254,28 @@ def test_iam(stack, sds_id):
                     {
                         "Effect": "Allow",
                         "Action": "es:ESHttp*",
-                        "Resource": {"Fn::Join": ["", [{"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]}, "/*"]]}
-                        }
-                ]
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp(
+                                                "SDSMetadataDomain*"
+                                            ),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        },
+                    }
+                ],
             },
-            "PolicyName": Match.string_like_regexp("IndexerLambdaServiceRoleDefaultPolicy*")
+            "PolicyName": Match.string_like_regexp(
+                "IndexerLambdaServiceRoleDefaultPolicy*"
+            ),
         },
     )
 
@@ -163,9 +290,9 @@ def test_iam(stack, sds_id):
                         "Action": "s3:PutBucketNotification",
                         "Resource": "*",
                     }
-                ]
+                ],
             },
-            "PolicyName": Match.string_like_regexp("BucketNotificationsHandler*")
+            "PolicyName": Match.string_like_regexp("BucketNotificationsHandler*"),
         },
     )
 
@@ -178,11 +305,28 @@ def test_iam(stack, sds_id):
                     {
                         "Effect": "Allow",
                         "Action": "es:ESHttpGet",
-                        "Resource": {"Fn::Join": ["", [{"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]}, "/*"]]}
-                        }
-                ]
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp(
+                                                "SDSMetadataDomain*"
+                                            ),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        },
+                    }
+                ],
             },
-            "PolicyName": Match.string_like_regexp("QueryAPILambdaServiceRoleDefaultPolicy*")
+            "PolicyName": Match.string_like_regexp(
+                "QueryAPILambdaServiceRoleDefaultPolicy*"
+            ),
         },
     )
 
@@ -195,8 +339,23 @@ def test_iam(stack, sds_id):
                     {
                         "Effect": "Allow",
                         "Action": "es:ESHttp*",
-                        "Resource": {"Fn::Join": ["", [{"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]}, "/*"]]}
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp(
+                                                "SDSMetadataDomain*"
+                                            ),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
                         },
+                    },
                     {
                         "Effect": "Allow",
                         "Action": "s3:GetObject",
@@ -213,11 +372,13 @@ def test_iam(stack, sds_id):
                                     "/*",
                                 ],
                             ]
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             },
-            "PolicyName": Match.string_like_regexp("DownloadQueryAPILambdaServiceRoleDefaultPolicy*")
+            "PolicyName": Match.string_like_regexp(
+                "DownloadQueryAPILambdaServiceRoleDefaultPolicy*"
+            ),
         },
     )
 
