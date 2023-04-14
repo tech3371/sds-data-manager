@@ -1,5 +1,6 @@
 import pytest
 from aws_cdk.assertions import Template
+from aws_cdk.assertions import Match
 
 from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 
@@ -57,49 +58,168 @@ def test_iam(stack, sds_id):
 
     # test IAM policy count
     template.resource_count_is("AWS::IAM::Policy", 7)
-    # test IAM policy count
+    # test IAM role count
     template.resource_count_is("AWS::IAM::Role", 7)
 
-    # template.has_resource_properties(
-    #         "AWS::IAM::Policy",
-    #         {
-    #             "PolicyDocument": {
-    #                 "Version": "2012-10-17",
-    #                 "Statement": [
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": "es:ESHttp*",
-    #                         "Resource": f"arn:aws:es:::sdsmetadatadomain-{sds_id}/*"
-    #                     },
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": "es:ESHttpGet",
-    #                         "Resource": f"arn:aws:es:::sdsmetadatadomain-{sds_id}/*"
-    #                     },
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": "es:*",
-    #                         "Resource": f"arn:aws:es:::sdsmetadatadomain-{sds_id}/*"
-    #                     },
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": "s3:PutObject",
-    #                         "Resource": f"arn:aws:s3:::sds-data-{sds_id}/*"
-    #                     },
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": "s3:GetObject",
-    #                         "Resource": f"arn:aws:s3:::sds-data-{sds_id}/*"
-    #                     },
-    #                     {
-    #                         "Effect": "Allow",
-    #                         "Action": "cognito-idp:*",
-    #                         "Resource": "*"
-    #                     },
-    #                 ]
-    #             }
-    #         }
-    #     )
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "s3:PutObject",
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp("DATABUCKET*"),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        },
+                    },
+                ]
+            },
+            "PolicyName" : Match.string_like_regexp("UploadAPILambdaServiceRoleDefaultPolicy*")
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "logs:PutResourcePolicy",
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": "logs:DeleteResourcePolicy",
+                        "Resource": "*"
+                    },
+
+                ]
+            },
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "es:UpdateDomainConfig",
+                        "Resource": {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp("SDSMetadataDomain*"),
+                                            "Arn",
+                                        ]
+                                    },
+                        }
+                ]
+            },
+            "PolicyName": Match.string_like_regexp("SDSMetadataDomainAccessPolicyCustomResourcePolicy*")
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "es:ESHttp*",
+                        "Resource": {"Fn::Join": ["", [{"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]}, "/*"]]}
+                        }
+                ]
+            },
+            "PolicyName": Match.string_like_regexp("IndexerLambdaServiceRoleDefaultPolicy*")
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "s3:PutBucketNotification",
+                        "Resource": "*",
+                    }
+                ]
+            },
+            "PolicyName": Match.string_like_regexp("BucketNotificationsHandler*")
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "es:ESHttpGet",
+                        "Resource": {"Fn::Join": ["", [{"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]}, "/*"]]}
+                        }
+                ]
+            },
+            "PolicyName": Match.string_like_regexp("QueryAPILambdaServiceRoleDefaultPolicy*")
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "es:ESHttp*",
+                        "Resource": {"Fn::Join": ["", [{"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]}, "/*"]]}
+                        },
+                    {
+                        "Effect": "Allow",
+                        "Action": "s3:GetObject",
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp("DATABUCKET*"),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        }
+                    }
+                ]
+            },
+            "PolicyName": Match.string_like_regexp("DownloadQueryAPILambdaServiceRoleDefaultPolicy*")
+        },
+    )
 
 
 def test_lambdas(stack, sds_id):
@@ -166,3 +286,11 @@ def test_secrets_manager(stack, sds_id):
 
     # test secrets manager resource count
     template.resource_count_is("AWS::SecretsManager::Secret", 1)
+
+    template.has_resource(
+        "AWS::SecretsManager::Secret",
+        {
+            "DeletionPolicy": "Delete",
+            "UpdateReplacePolicy": "Delete",
+        },
+    )
