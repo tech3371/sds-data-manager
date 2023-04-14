@@ -6,14 +6,14 @@ from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 
 
 @pytest.fixture()
-def stack(app, sds_id):
+def template(app, sds_id):
     stack_name = f"stack-{sds_id}"
     stack = SdsDataManagerStack(app, stack_name, sds_id)
-    return stack
-
-
-def test_s3_buckets(stack, sds_id):
     template = Template.from_stack(stack)
+    return template
+
+
+def test_s3_buckets(template, sds_id):
     # test s3 bucket resource count
     template.resource_count_is("AWS::S3::Bucket", 1)
     # Delete and update are outside of the Properties section
@@ -35,8 +35,7 @@ def test_s3_buckets(stack, sds_id):
     )
 
 
-def test_s3_bucket_policy(stack, sds_id):
-    template = Template.from_stack(stack)
+def test_s3_bucket_policy(template, sds_id):
     # test s3 bucket policy resource count
     template.resource_count_is("AWS::S3::BucketPolicy", 1)
 
@@ -90,8 +89,62 @@ def test_s3_bucket_policy(stack, sds_id):
     )
 
 
-def test_opensearch(stack, sds_id):
-    template = Template.from_stack(stack)
+def test_lambda_permissions(template, sds_id):
+    template.resource_count_is("AWS::Lambda::Permission", 4)
+
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
+        {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
+            },
+            "Principal": "s3.amazonaws.com",
+            "SourceAccount": {"Ref": "AWS::AccountId"},
+            "SourceArn": {
+                "Fn::GetAtt": [Match.string_like_regexp("DATABUCKET*"), "Arn"]
+            },
+        },
+    )
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
+        {
+            "Action": "lambda:InvokeFunctionUrl",
+            "FunctionName": {
+                "Fn::GetAtt": [Match.string_like_regexp("UploadAPILambda*"), "Arn"]
+            },
+            "Principal": "*",
+            "FunctionUrlAuthType": "NONE",
+        },
+    )
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
+        {
+            "Action": "lambda:InvokeFunctionUrl",
+            "FunctionName": {
+                "Fn::GetAtt": [Match.string_like_regexp("QueryAPILambda*"), "Arn"]
+            },
+            "Principal": "*",
+            "FunctionUrlAuthType": "NONE",
+        },
+    )
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
+        {
+            "Action": "lambda:InvokeFunctionUrl",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("DownloadQueryAPILambda*"),
+                    "Arn",
+                ]
+            },
+            "Principal": "*",
+            "FunctionUrlAuthType": "NONE",
+        },
+    )
+
+
+def test_opensearch(template, sds_id):
     # test opensearch domain count
     template.resource_count_is("AWS::OpenSearchService::Domain", 1)
     # test opensearch domain properties
@@ -108,9 +161,7 @@ def test_opensearch(stack, sds_id):
     )
 
 
-def test_custom_resources(stack, sds_id):
-    template = Template.from_stack(stack)
-
+def test_custom_resources(template, sds_id):
     # test custom resources count
     template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
     template.resource_count_is("Custom::S3BucketNotifications", 1)
@@ -145,7 +196,10 @@ def test_custom_resources(stack, sds_id):
                     {
                         "Events": ["s3:ObjectCreated:*"],
                         "LambdaFunctionArn": {
-                            "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
+                            "Fn::GetAtt": [
+                                Match.string_like_regexp("IndexerLambda*"),
+                                "Arn",
+                            ]
                         },
                     }
                 ]
@@ -155,14 +209,12 @@ def test_custom_resources(stack, sds_id):
     )
 
 
-def test_aim_roles(stack, sds_id):
-    template = Template.from_stack(stack)
+def test_aim_roles(template, sds_id):
     # test IAM role count
     template.resource_count_is("AWS::IAM::Role", 7)
 
 
-def test_iam_policies(stack, sds_id):
-    template = Template.from_stack(stack)
+def test_iam_policies(template, sds_id):
     # test IAM policy count
     template.resource_count_is("AWS::IAM::Policy", 7)
     # test IAM role count
@@ -383,8 +435,7 @@ def test_iam_policies(stack, sds_id):
     )
 
 
-def test_lambdas(stack, sds_id):
-    template = Template.from_stack(stack)
+def test_lambdas(template, sds_id):
     # tests for lambdas
     # 4 lambda function files, but there are 7 lambda
     # function resources. The other three lambdas are:
@@ -440,11 +491,39 @@ def test_lambdas(stack, sds_id):
             "Timeout": 60,
         },
     )
+    # AWS Lambda
+    template.has_resource_properties(
+        "AWS::Lambda::Function",
+        props={
+            "Handler": "index.handler",
+            "Runtime": "nodejs14.x",
+            "Timeout": 120,
+            "Role": {
+                "Fn::GetAtt": [
+                    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+                    "Arn",
+                ]
+            },
+        },
+    )
+    # Bucket Notification Lambda
+    template.has_resource_properties(
+        "AWS::Lambda::Function",
+        props={
+            "Handler": "index.handler",
+            "Runtime": "python3.9",
+            "Timeout": 300,
+            "Role": {
+                "Fn::GetAtt": [
+                    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC",
+                    "Arn",
+                ]
+            },
+        },
+    )
 
 
-def test_secrets_manager(stack, sds_id):
-    template = Template.from_stack(stack)
-
+def test_secrets_manager(template, sds_id):
     # test secrets manager resource count
     template.resource_count_is("AWS::SecretsManager::Secret", 1)
 
