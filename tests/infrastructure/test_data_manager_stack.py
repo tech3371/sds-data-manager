@@ -165,6 +165,16 @@ def test_custom_resources(template, sds_id):
     # test custom resources count
     template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
     template.resource_count_is("Custom::S3BucketNotifications", 1)
+    template.resource_count_is("Custom::CloudwatchLogResourcePolicy", 1)
+    template.resource_count_is("Custom::OpenSearchAccessPolicy", 1)
+
+    template.has_resource(
+        "Custom::OpenSearchAccessPolicy",
+        {
+            "DeletionPolicy": "Delete",
+            "UpdateReplacePolicy": "Delete",
+        }
+    )
 
     template.has_resource_properties(
         "Custom::S3AutoDeleteObjects",
@@ -208,6 +218,48 @@ def test_custom_resources(template, sds_id):
         },
     )
 
+    template.has_resource_properties(
+        "Custom::OpenSearchAccessPolicy",
+        {
+            "ServiceToken": {"Fn::GetAtt": [Match.string_like_regexp("AWS*"), "Arn"]},
+            "Create": {
+                "Fn::Join": [
+                    "",
+                    [
+                        '{"action":"updateDomainConfig","service":"OpenSearch","parameters":{"DomainName":"',
+                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
+                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
+                        {"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]},
+                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
+                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
+                        'AccessPolicy"}}',
+                    ],
+                ]
+            },
+            "Update": {
+                "Fn::Join": [
+                    "",
+                    [
+                        '{"action":"updateDomainConfig","service":"OpenSearch","parameters":{"DomainName":"',
+                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
+                        '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
+                        {
+                            "Fn::GetAtt": [
+                                Match.string_like_regexp("SDSMetadataDomain*"),
+                                "Arn",
+                            ]
+                        },
+                        '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
+                        {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
+                        'AccessPolicy"}}',
+                    ],
+                ]
+            },
+            "InstallLatestAwsSdk": True,
+        },
+    )
+
+
 def test_log_groups(template):
     template.resource_count_is("AWS::Logs::LogGroup", 3)
 
@@ -233,24 +285,10 @@ def test_log_groups(template):
         },
     )
 
-    template.has_resource_properties(
-        "AWS::Logs::LogGroup",
-        {
-            "RetentionInDays": 30
-        }
-    )
-    template.has_resource_properties(
-        "AWS::Logs::LogGroup",
-        {
-            "RetentionInDays": 30
-        }
-    )
-    template.has_resource_properties(
-        "AWS::Logs::LogGroup",
-        {
-            "RetentionInDays": 30
-        }
-    )
+    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
+    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
+    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
+
 
 def test_aim_roles(template, sds_id):
     # test IAM role count
@@ -258,32 +296,110 @@ def test_aim_roles(template, sds_id):
 
     template.has_resource_properties(
         "AWS::IAM::Role",
-        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
     )
     template.has_resource_properties(
         "AWS::IAM::Role",
-        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
     )
     template.has_resource_properties(
         "AWS::IAM::Role",
-        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
     )
     template.has_resource_properties(
         "AWS::IAM::Role",
-        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
     )
     template.has_resource_properties(
         "AWS::IAM::Role",
-        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
     )
     template.has_resource_properties(
         "AWS::IAM::Role",
-        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
     )
     template.has_resource_properties(
         "AWS::IAM::Role",
-        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
     )
+
 
 def test_iam_policies(template, sds_id):
     # test IAM policy count
