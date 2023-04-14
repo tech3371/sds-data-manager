@@ -208,11 +208,82 @@ def test_custom_resources(template, sds_id):
         },
     )
 
+def test_log_groups(template):
+    template.resource_count_is("AWS::Logs::LogGroup", 3)
+
+    template.has_resource(
+        "AWS::Logs::LogGroup",
+        {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+        },
+    )
+    template.has_resource(
+        "AWS::Logs::LogGroup",
+        {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+        },
+    )
+    template.has_resource(
+        "AWS::Logs::LogGroup",
+        {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::Logs::LogGroup",
+        {
+            "RetentionInDays": 30
+        }
+    )
+    template.has_resource_properties(
+        "AWS::Logs::LogGroup",
+        {
+            "RetentionInDays": 30
+        }
+    )
+    template.has_resource_properties(
+        "AWS::Logs::LogGroup",
+        {
+            "RetentionInDays": 30
+        }
+    )
 
 def test_aim_roles(template, sds_id):
     # test IAM role count
     template.resource_count_is("AWS::IAM::Role", 7)
 
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+    )
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+    )
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+    )
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+    )
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+    )
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+    )
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {"AssumeRolePolicyDocument": {"Statement": [{"Action": "sts:AssumeRole", "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}}], "Version": "2012-10-17"}}
+    )
 
 def test_iam_policies(template, sds_id):
     # test IAM policy count
