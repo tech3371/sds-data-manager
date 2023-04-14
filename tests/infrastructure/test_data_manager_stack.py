@@ -1,6 +1,5 @@
 import pytest
-from aws_cdk.assertions import Template
-from aws_cdk.assertions import Match
+from aws_cdk.assertions import Match, Template
 
 from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 
@@ -161,20 +160,8 @@ def test_opensearch(template, sds_id):
     )
 
 
-def test_custom_resources(template, sds_id):
-    # test custom resources count
+def test_custom_s3_auto_delete(template):
     template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
-    template.resource_count_is("Custom::S3BucketNotifications", 1)
-    template.resource_count_is("Custom::CloudwatchLogResourcePolicy", 1)
-    template.resource_count_is("Custom::OpenSearchAccessPolicy", 1)
-
-    template.has_resource(
-        "Custom::OpenSearchAccessPolicy",
-        {
-            "DeletionPolicy": "Delete",
-            "UpdateReplacePolicy": "Delete",
-        }
-    )
 
     template.has_resource_properties(
         "Custom::S3AutoDeleteObjects",
@@ -190,6 +177,10 @@ def test_custom_resources(template, sds_id):
             "BucketName": {"Ref": Match.string_like_regexp("DATABUCKET*")},
         },
     )
+
+
+def test_custom_s3_bucket_notifications(template):
+    template.resource_count_is("Custom::S3BucketNotifications", 1)
 
     template.has_resource_properties(
         "Custom::S3BucketNotifications",
@@ -218,6 +209,22 @@ def test_custom_resources(template, sds_id):
         },
     )
 
+
+def test_custom_cloudwatch_log_resource_policy(template):
+    template.resource_count_is("Custom::CloudwatchLogResourcePolicy", 1)
+
+
+def test_custom_opensearch_access_policy(template):
+    template.resource_count_is("Custom::OpenSearchAccessPolicy", 1)
+
+    template.has_resource(
+        "Custom::OpenSearchAccessPolicy",
+        {
+            "DeletionPolicy": "Delete",
+            "UpdateReplacePolicy": "Delete",
+        },
+    )
+
     template.has_resource_properties(
         "Custom::OpenSearchAccessPolicy",
         {
@@ -229,7 +236,12 @@ def test_custom_resources(template, sds_id):
                         '{"action":"updateDomainConfig","service":"OpenSearch","parameters":{"DomainName":"',
                         {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
                         '","AccessPolicies":"{\\"Statement\\":[{\\"Action\\":\\"es:*\\",\\"Effect\\":\\"Allow\\",\\"Principal\\":{\\"AWS\\":\\"*\\"},\\"Resource\\":\\"',
-                        {"Fn::GetAtt": [Match.string_like_regexp("SDSMetadataDomain*"), "Arn"]},
+                        {
+                            "Fn::GetAtt": [
+                                Match.string_like_regexp("SDSMetadataDomain*"),
+                                "Arn",
+                            ]
+                        },
                         '/*\\"}],\\"Version\\":\\"2012-10-17\\"}"},"outputPaths":["DomainConfig.AccessPolicies"],"physicalResourceId":{"id":"',
                         {"Ref": Match.string_like_regexp("SDSMetadataDomain*")},
                         'AccessPolicy"}}',
