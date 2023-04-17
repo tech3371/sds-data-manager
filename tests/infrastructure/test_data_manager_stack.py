@@ -12,7 +12,7 @@ def template(app, sds_id):
     return template
 
 
-def test_s3_buckets(template, sds_id):
+def test_s3_data_bucket(template, sds_id):
     # test s3 bucket resource count
     template.resource_count_is("AWS::S3::Bucket", 1)
     # Delete and update are outside of the Properties section
@@ -34,7 +34,7 @@ def test_s3_buckets(template, sds_id):
     )
 
 
-def test_s3_bucket_policy(template, sds_id):
+def test_s3_data_bucket_policy(template, sds_id):
     # test s3 bucket policy resource count
     template.resource_count_is("AWS::S3::BucketPolicy", 1)
 
@@ -634,17 +634,51 @@ def test_iam_policies(template, sds_id):
     )
 
 
-def test_lambdas(template, sds_id):
-    # tests for lambdas
-    # 4 lambda function files, but there are 7 lambda
-    # function resources. The other three lambdas are:
-    # - CustomS3AutoDeletion lambda function
-    # - AWS lambda function?
-    # - Bucket Notification Handler lambda function
-    # test lambda function resource count
-    template.resource_count_is("AWS::Lambda::Function", 7)
+def test_lambda_urls(template, sds_id):
     # test lambda url resource count
     template.resource_count_is("AWS::Lambda::Url", 3)
+
+    # Upload API
+    template.has_resource_properties(
+        "AWS::Lambda::Url",
+        {
+            "AuthType": "NONE",
+            "TargetFunctionArn": {
+                "Fn::GetAtt": [Match.string_like_regexp("UploadAPILambda*"), "Arn"]
+            },
+            "Cors": {"AllowMethods": ["*"], "AllowOrigins": ["*"]},
+        },
+    )
+    # Query API
+    template.has_resource_properties(
+        "AWS::Lambda::Url",
+        {
+            "AuthType": "NONE",
+            "TargetFunctionArn": {
+                "Fn::GetAtt": [Match.string_like_regexp("QueryAPILambda*"), "Arn"]
+            },
+            "Cors": {"AllowMethods": ["GET"], "AllowOrigins": ["*"]},
+        },
+    )
+    # Download API
+    template.has_resource_properties(
+        "AWS::Lambda::Url",
+        {
+            "AuthType": "NONE",
+            "TargetFunctionArn": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("DownloadQueryAPILambda*"),
+                    "Arn",
+                ]
+            },
+            "Cors": {"AllowMethods": ["GET"], "AllowOrigins": ["*"]},
+        },
+    )
+
+
+def test_lambdas(template, sds_id):
+    # test for lambda function resource count
+    template.resource_count_is("AWS::Lambda::Function", 7)
 
     # test lambda function resource properties
     # indexer.py
@@ -715,6 +749,23 @@ def test_lambdas(template, sds_id):
             "Role": {
                 "Fn::GetAtt": [
                     "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC",
+                    "Arn",
+                ]
+            },
+        },
+    )
+
+    # Custom S3 AutoDelete
+    template.has_resource_properties(
+        "AWS::Lambda::Function",
+        props={
+            "Handler": "__entrypoint__.handler",
+            "Runtime": "nodejs14.x",
+            "Timeout": 900,
+            "MemorySize": 128,
+            "Role": {
+                "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
                     "Arn",
                 ]
             },
