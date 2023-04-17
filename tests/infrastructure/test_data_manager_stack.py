@@ -4,7 +4,7 @@ from aws_cdk.assertions import Match, Template
 from sds_data_manager.sds_data_manager_stack import SdsDataManagerStack
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def template(app, sds_id):
     stack_name = f"stack-{sds_id}"
     stack = SdsDataManagerStack(app, stack_name, sds_id)
@@ -12,13 +12,11 @@ def template(app, sds_id):
     return template
 
 
-def test_s3_data_bucket_count(template):
-    # test s3 bucket resource count
+def test_s3_data_bucket_resource_count(template):
     template.resource_count_is("AWS::S3::Bucket", 1)
 
 
-def test_s3_data_bucket(template, sds_id):
-    # Delete and update are outside of the Properties section
+def test_s3_data_bucket_resource_properties(template, sds_id):
     template.has_resource(
         "AWS::S3::Bucket",
         {
@@ -26,7 +24,6 @@ def test_s3_data_bucket(template, sds_id):
             "UpdateReplacePolicy": "Delete",
         },
     )
-    # Now test the resource properties we expect
     template.has_resource_properties(
         "AWS::S3::Bucket",
         props={
@@ -37,11 +34,11 @@ def test_s3_data_bucket(template, sds_id):
     )
 
 
-def test_s3_data_bucket_policy(template, sds_id):
-    # test s3 bucket policy resource count
+def test_s3_data_bucket_policy_resource_count(template):
     template.resource_count_is("AWS::S3::BucketPolicy", 1)
 
-    # Now test the resource properties we expect
+
+def test_s3_data_bucket_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::S3::BucketPolicy",
         props={
@@ -91,7 +88,7 @@ def test_s3_data_bucket_policy(template, sds_id):
     )
 
 
-def test_custom_s3_auto_delete(template):
+def test_custom_s3_auto_delete_resource_count(template):
     template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
 
     template.has_resource_properties(
@@ -110,7 +107,7 @@ def test_custom_s3_auto_delete(template):
     )
 
 
-def test_custom_s3_bucket_notifications(template):
+def test_custom_s3_bucket_notifications_resource_properties(template):
     template.resource_count_is("Custom::S3BucketNotifications", 1)
 
     template.has_resource_properties(
@@ -141,10 +138,11 @@ def test_custom_s3_bucket_notifications(template):
     )
 
 
-def test_secrets_manager(template, sds_id):
-    # test secrets manager resource count
+def test_secrets_manager_resource_count(template):
     template.resource_count_is("AWS::SecretsManager::Secret", 1)
 
+
+def test_secrets_manager_resource_properties(template):
     template.has_resource(
         "AWS::SecretsManager::Secret",
         {
@@ -154,10 +152,11 @@ def test_secrets_manager(template, sds_id):
     )
 
 
-def test_opensearch(template, sds_id):
-    # test opensearch domain count
+def test_opensearch_domain_resource_count(template):
     template.resource_count_is("AWS::OpenSearchService::Domain", 1)
-    # test opensearch domain properties
+
+
+def test_opensearch_domain_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::OpenSearchService::Domain",
         {
@@ -171,13 +170,15 @@ def test_opensearch(template, sds_id):
     )
 
 
-def test_custom_cloudwatch_log_resource_policy(template):
+def test_custom_cloudwatch_log_resource_policy_count(template):
     template.resource_count_is("Custom::CloudwatchLogResourcePolicy", 1)
 
 
-def test_custom_opensearch_access_policy(template):
+def test_custom_opensearch_access_policy_resource_count(template):
     template.resource_count_is("Custom::OpenSearchAccessPolicy", 1)
 
+
+def test_custom_opensearch_access_policy_resource_properties(template):
     template.has_resource(
         "Custom::OpenSearchAccessPolicy",
         {
@@ -233,11 +234,11 @@ def test_custom_opensearch_access_policy(template):
     )
 
 
-def test_log_groups_count(template):
+def test_log_groups_resource_count(template):
     template.resource_count_is("AWS::Logs::LogGroup", 3)
 
 
-def test_sdsmetadatadomain_slow_search_logs(template):
+def test_sdsmetadatadomain_slow_search_logs_resource_properties(template):
     template.has_resource(
         "AWS::Logs::LogGroup",
         {
@@ -248,7 +249,7 @@ def test_sdsmetadatadomain_slow_search_logs(template):
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
 
 
-def test_sdsmetadatadomain_slow_index_logs(template):
+def test_sdsmetadatadomain_slow_index_logs_resource_properties(template):
     template.has_resource(
         "AWS::Logs::LogGroup",
         {
@@ -259,7 +260,7 @@ def test_sdsmetadatadomain_slow_index_logs(template):
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
 
 
-def test_sdsmetadatadomain_app_logs(template):
+def test_sdsmetadatadomain_app_logs_resource_properties(template):
     template.has_resource(
         "AWS::Logs::LogGroup",
         {
@@ -270,12 +271,11 @@ def test_sdsmetadatadomain_app_logs(template):
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
 
 
-def test_iam_roles_count(template):
-    # test IAM role count
+def test_iam_roles_resource_count(template):
     template.resource_count_is("AWS::IAM::Role", 7)
 
 
-def test_s3_auto_delete_iam_role(template):
+def test_s3_auto_delete_iam_role_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -293,7 +293,7 @@ def test_s3_auto_delete_iam_role(template):
     )
 
 
-def test_indexer_lambda_iam_role(template):
+def test_indexer_lambda_iam_role_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -311,7 +311,7 @@ def test_indexer_lambda_iam_role(template):
     )
 
 
-def test_bucket_notification_iam_role(template):
+def test_bucket_notification_iam_role_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -329,7 +329,7 @@ def test_bucket_notification_iam_role(template):
     )
 
 
-def test_upload_api_iam_role(template):
+def test_upload_api_iam_role_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -347,7 +347,7 @@ def test_upload_api_iam_role(template):
     )
 
 
-def test_query_api_iam_role(template):
+def test_query_api_iam_role_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -365,7 +365,7 @@ def test_query_api_iam_role(template):
     )
 
 
-def test_download_api_iam_role(template):
+def test_download_api_iam_role_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -383,7 +383,7 @@ def test_download_api_iam_role(template):
     )
 
 
-def test_aws_iam_role(template):
+def test_aws_iam_role_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -401,11 +401,11 @@ def test_aws_iam_role(template):
     )
 
 
-def test_iam_policy_resource_count(template, sds_id):
+def test_iam_policy_resource_count(template):
     template.resource_count_is("AWS::IAM::Policy", 7)
 
 
-def test_upload_lambda_api_aim_policy(template):
+def test_upload_lambda_api_aim_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -439,7 +439,7 @@ def test_upload_lambda_api_aim_policy(template):
     )
 
 
-def test_sdsmetadatadomain_esloggroup_iam_policy(template):
+def test_sdsmetadatadomain_esloggroup_iam_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -465,7 +465,7 @@ def test_sdsmetadatadomain_esloggroup_iam_policy(template):
     )
 
 
-def test_sdsmetadatadomain_accesspolicy_iam_policy(template):
+def test_sdsmetadatadomain_accesspolicy_iam_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -491,7 +491,7 @@ def test_sdsmetadatadomain_accesspolicy_iam_policy(template):
     )
 
 
-def test_indexer_lambda_iam_policy(template):
+def test_indexer_lambda_iam_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -527,7 +527,7 @@ def test_indexer_lambda_iam_policy(template):
     )
 
 
-def test_bucket_notification_iam_policy(template):
+def test_bucket_notification_iam_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -546,7 +546,7 @@ def test_bucket_notification_iam_policy(template):
     )
 
 
-def test_queryapilambda_iam_policy(template):
+def test_queryapilambda_iam_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -582,7 +582,7 @@ def test_queryapilambda_iam_policy(template):
     )
 
 
-def test_downloadquerylambda_iam_policy(template):
+def test_downloadquerylambda_iam_policy_resource_properties(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -636,13 +636,11 @@ def test_downloadquerylambda_iam_policy(template):
     )
 
 
-def test_lambda_urls_count(template, sds_id):
-    # test lambda url resource count
+def test_lambda_urls_resource_count(template):
     template.resource_count_is("AWS::Lambda::Url", 3)
 
 
-def test_upload_api_lambda_url(template):
-    # Upload API
+def test_upload_api_lambda_url_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Url",
         {
@@ -655,8 +653,7 @@ def test_upload_api_lambda_url(template):
     )
 
 
-def test_query_api_lambda_url(template):
-    # Query API
+def test_query_api_lambda_url_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Url",
         {
@@ -669,8 +666,7 @@ def test_query_api_lambda_url(template):
     )
 
 
-def test_download_api_lambda_url(template):
-    # Download API
+def test_download_api_lambda_url_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Url",
         {
@@ -686,14 +682,11 @@ def test_download_api_lambda_url(template):
     )
 
 
-def test_lambda_function_count(template, sds_id):
-    # test for lambda function resource count
+def test_lambda_function_resource_count(template):
     template.resource_count_is("AWS::Lambda::Function", 7)
 
 
-def test_indexer_lambda_function(template, sds_id):
-    # test lambda function resource properties
-    # indexer.py
+def test_indexer_lambda_function_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
@@ -706,8 +699,7 @@ def test_indexer_lambda_function(template, sds_id):
     )
 
 
-def test_upload_api_lambda_function(template, sds_id):
-    # upload_api.py
+def test_upload_api_lambda_function_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
@@ -720,8 +712,7 @@ def test_upload_api_lambda_function(template, sds_id):
     )
 
 
-def test_query_api_lambda_function(template, sds_id):
-    # queries.py
+def test_query_api_lambda_function_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
@@ -734,8 +725,7 @@ def test_query_api_lambda_function(template, sds_id):
     )
 
 
-def test_download_api_lambda_function(template, sds_id):
-    # download_query_api.py
+def test_download_api_lambda_function_resource_properties(template, sds_id):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
@@ -747,8 +737,7 @@ def test_download_api_lambda_function(template, sds_id):
     )
 
 
-def test_aws_lambda_function(template):
-    # AWS Lambda
+def test_aws_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
@@ -765,8 +754,7 @@ def test_aws_lambda_function(template):
     )
 
 
-def test_aws_bucket_notification_lambda_function(template):
-    # Bucket Notification Lambda
+def test_aws_bucket_notification_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
@@ -782,7 +770,8 @@ def test_aws_bucket_notification_lambda_function(template):
         },
     )
 
-    # Custom S3 AutoDelete
+
+def test_custom_s3_auto_delete_lambda_function_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Function",
         props={
@@ -800,11 +789,11 @@ def test_aws_bucket_notification_lambda_function(template):
     )
 
 
-def test_lambda_permission_count(template):
+def test_lambda_permission_resource_count(template):
     template.resource_count_is("AWS::Lambda::Permission", 4)
 
 
-def test_indexer_lambda_permission(template):
+def test_indexer_lambda_permission_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
@@ -821,7 +810,7 @@ def test_indexer_lambda_permission(template):
     )
 
 
-def test_upload_api_lambda_permission(template):
+def test_upload_api_lambda_permission_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
@@ -835,7 +824,7 @@ def test_upload_api_lambda_permission(template):
     )
 
 
-def test_query_api_lambda_permission(template):
+def test_query_api_lambda_permission_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
@@ -849,7 +838,7 @@ def test_query_api_lambda_permission(template):
     )
 
 
-def test_download_api_lambda_permission(template):
+def test_download_api_lambda_permission_resource_properties(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
