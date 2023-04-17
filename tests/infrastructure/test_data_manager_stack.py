@@ -12,9 +12,12 @@ def template(app, sds_id):
     return template
 
 
-def test_s3_data_bucket(template, sds_id):
+def test_s3_data_bucket_count(template):
     # test s3 bucket resource count
     template.resource_count_is("AWS::S3::Bucket", 1)
+
+
+def test_s3_data_bucket(template, sds_id):
     # Delete and update are outside of the Properties section
     template.has_resource(
         "AWS::S3::Bucket",
@@ -87,6 +90,7 @@ def test_s3_data_bucket_policy(template, sds_id):
         },
     )
 
+
 def test_custom_s3_auto_delete(template):
     template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
 
@@ -136,6 +140,7 @@ def test_custom_s3_bucket_notifications(template):
         },
     )
 
+
 def test_secrets_manager(template, sds_id):
     # test secrets manager resource count
     template.resource_count_is("AWS::SecretsManager::Secret", 1)
@@ -147,6 +152,7 @@ def test_secrets_manager(template, sds_id):
             "UpdateReplacePolicy": "Delete",
         },
     )
+
 
 def test_opensearch(template, sds_id):
     # test opensearch domain count
@@ -163,6 +169,7 @@ def test_opensearch(template, sds_id):
             "EncryptionAtRestOptions": {"Enabled": True},
         },
     )
+
 
 def test_custom_cloudwatch_log_resource_policy(template):
     template.resource_count_is("Custom::CloudwatchLogResourcePolicy", 1)
@@ -226,9 +233,11 @@ def test_custom_opensearch_access_policy(template):
     )
 
 
-def test_log_groups(template):
+def test_log_groups_count(template):
     template.resource_count_is("AWS::Logs::LogGroup", 3)
 
+
+def test_sdsmetadatadomain_slow_search_logs(template):
     template.has_resource(
         "AWS::Logs::LogGroup",
         {
@@ -236,6 +245,10 @@ def test_log_groups(template):
             "UpdateReplacePolicy": "Retain",
         },
     )
+    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
+
+
+def test_sdsmetadatadomain_slow_index_logs(template):
     template.has_resource(
         "AWS::Logs::LogGroup",
         {
@@ -243,6 +256,10 @@ def test_log_groups(template):
             "UpdateReplacePolicy": "Retain",
         },
     )
+    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
+
+
+def test_sdsmetadatadomain_app_logs(template):
     template.has_resource(
         "AWS::Logs::LogGroup",
         {
@@ -250,106 +267,15 @@ def test_log_groups(template):
             "UpdateReplacePolicy": "Retain",
         },
     )
-
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
-    template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
     template.has_resource_properties("AWS::Logs::LogGroup", {"RetentionInDays": 30})
 
 
-def test_aim_roles(template, sds_id):
+def test_iam_roles_count(template):
     # test IAM role count
     template.resource_count_is("AWS::IAM::Role", 7)
 
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
+
+def test_s3_auto_delete_iam_role(template):
     template.has_resource_properties(
         "AWS::IAM::Role",
         {
@@ -367,12 +293,119 @@ def test_aim_roles(template, sds_id):
     )
 
 
-def test_iam_policies(template, sds_id):
-    # test IAM policy count
+def test_indexer_lambda_iam_role(template):
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
+    )
+
+
+def test_bucket_notification_iam_role(template):
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
+    )
+
+
+def test_upload_api_iam_role(template):
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
+    )
+
+
+def test_query_api_iam_role(template):
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
+    )
+
+
+def test_download_api_iam_role(template):
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
+    )
+
+
+def test_aws_iam_role(template):
+    template.has_resource_properties(
+        "AWS::IAM::Role",
+        {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sts:AssumeRole",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                    }
+                ],
+                "Version": "2012-10-17",
+            }
+        },
+    )
+
+
+def test_iam_policy_resource_count(template, sds_id):
     template.resource_count_is("AWS::IAM::Policy", 7)
-    # test IAM role count
-    template.resource_count_is("AWS::IAM::Role", 7)
 
+
+def test_upload_lambda_api_aim_policy(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -405,6 +438,8 @@ def test_iam_policies(template, sds_id):
         },
     )
 
+
+def test_sdsmetadatadomain_esloggroup_iam_policy(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -423,9 +458,14 @@ def test_iam_policies(template, sds_id):
                     },
                 ],
             },
+            "PolicyName": Match.string_like_regexp(
+                "SDSMetadataDomainESLogGroupPolicyc*"
+            ),
         },
     )
 
+
+def test_sdsmetadatadomain_accesspolicy_iam_policy(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -450,6 +490,8 @@ def test_iam_policies(template, sds_id):
         },
     )
 
+
+def test_indexer_lambda_iam_policy(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -484,6 +526,8 @@ def test_iam_policies(template, sds_id):
         },
     )
 
+
+def test_bucket_notification_iam_policy(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -501,6 +545,8 @@ def test_iam_policies(template, sds_id):
         },
     )
 
+
+def test_queryapilambda_iam_policy(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -535,6 +581,8 @@ def test_iam_policies(template, sds_id):
         },
     )
 
+
+def test_downloadquerylambda_iam_policy(template):
     template.has_resource_properties(
         "AWS::IAM::Policy",
         {
@@ -588,10 +636,12 @@ def test_iam_policies(template, sds_id):
     )
 
 
-def test_lambda_urls(template, sds_id):
+def test_lambda_urls_count(template, sds_id):
     # test lambda url resource count
     template.resource_count_is("AWS::Lambda::Url", 3)
 
+
+def test_upload_api_lambda_url(template):
     # Upload API
     template.has_resource_properties(
         "AWS::Lambda::Url",
@@ -603,6 +653,9 @@ def test_lambda_urls(template, sds_id):
             "Cors": {"AllowMethods": ["*"], "AllowOrigins": ["*"]},
         },
     )
+
+
+def test_query_api_lambda_url(template):
     # Query API
     template.has_resource_properties(
         "AWS::Lambda::Url",
@@ -614,6 +667,9 @@ def test_lambda_urls(template, sds_id):
             "Cors": {"AllowMethods": ["GET"], "AllowOrigins": ["*"]},
         },
     )
+
+
+def test_download_api_lambda_url(template):
     # Download API
     template.has_resource_properties(
         "AWS::Lambda::Url",
@@ -630,10 +686,12 @@ def test_lambda_urls(template, sds_id):
     )
 
 
-def test_lambdas(template, sds_id):
+def test_lambda_function_count(template, sds_id):
     # test for lambda function resource count
     template.resource_count_is("AWS::Lambda::Function", 7)
 
+
+def test_indexer_lambda_function(template, sds_id):
     # test lambda function resource properties
     # indexer.py
     template.has_resource_properties(
@@ -646,6 +704,9 @@ def test_lambdas(template, sds_id):
             "Timeout": 15 * 60,
         },
     )
+
+
+def test_upload_api_lambda_function(template, sds_id):
     # upload_api.py
     template.has_resource_properties(
         "AWS::Lambda::Function",
@@ -657,6 +718,9 @@ def test_lambdas(template, sds_id):
             "Timeout": 15 * 60,
         },
     )
+
+
+def test_query_api_lambda_function(template, sds_id):
     # queries.py
     template.has_resource_properties(
         "AWS::Lambda::Function",
@@ -668,6 +732,9 @@ def test_lambdas(template, sds_id):
             "Timeout": 60,
         },
     )
+
+
+def test_download_api_lambda_function(template, sds_id):
     # download_query_api.py
     template.has_resource_properties(
         "AWS::Lambda::Function",
@@ -678,6 +745,9 @@ def test_lambdas(template, sds_id):
             "Timeout": 60,
         },
     )
+
+
+def test_aws_lambda_function(template):
     # AWS Lambda
     template.has_resource_properties(
         "AWS::Lambda::Function",
@@ -693,6 +763,9 @@ def test_lambdas(template, sds_id):
             },
         },
     )
+
+
+def test_aws_bucket_notification_lambda_function(template):
     # Bucket Notification Lambda
     template.has_resource_properties(
         "AWS::Lambda::Function",
@@ -726,9 +799,12 @@ def test_lambdas(template, sds_id):
         },
     )
 
-def test_lambda_permissions(template, sds_id):
+
+def test_lambda_permission_count(template):
     template.resource_count_is("AWS::Lambda::Permission", 4)
 
+
+def test_indexer_lambda_permission(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
@@ -743,6 +819,9 @@ def test_lambda_permissions(template, sds_id):
             },
         },
     )
+
+
+def test_upload_api_lambda_permission(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
@@ -754,6 +833,9 @@ def test_lambda_permissions(template, sds_id):
             "FunctionUrlAuthType": "NONE",
         },
     )
+
+
+def test_query_api_lambda_permission(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
@@ -765,6 +847,9 @@ def test_lambda_permissions(template, sds_id):
             "FunctionUrlAuthType": "NONE",
         },
     )
+
+
+def test_download_api_lambda_permission(template):
     template.has_resource_properties(
         "AWS::Lambda::Permission",
         {
