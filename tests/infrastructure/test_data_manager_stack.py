@@ -87,79 +87,6 @@ def test_s3_data_bucket_policy(template, sds_id):
         },
     )
 
-
-def test_lambda_permissions(template, sds_id):
-    template.resource_count_is("AWS::Lambda::Permission", 4)
-
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunction",
-            "FunctionName": {
-                "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
-            },
-            "Principal": "s3.amazonaws.com",
-            "SourceAccount": {"Ref": "AWS::AccountId"},
-            "SourceArn": {
-                "Fn::GetAtt": [Match.string_like_regexp("DATABUCKET*"), "Arn"]
-            },
-        },
-    )
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunctionUrl",
-            "FunctionName": {
-                "Fn::GetAtt": [Match.string_like_regexp("UploadAPILambda*"), "Arn"]
-            },
-            "Principal": "*",
-            "FunctionUrlAuthType": "NONE",
-        },
-    )
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunctionUrl",
-            "FunctionName": {
-                "Fn::GetAtt": [Match.string_like_regexp("QueryAPILambda*"), "Arn"]
-            },
-            "Principal": "*",
-            "FunctionUrlAuthType": "NONE",
-        },
-    )
-    template.has_resource_properties(
-        "AWS::Lambda::Permission",
-        {
-            "Action": "lambda:InvokeFunctionUrl",
-            "FunctionName": {
-                "Fn::GetAtt": [
-                    Match.string_like_regexp("DownloadQueryAPILambda*"),
-                    "Arn",
-                ]
-            },
-            "Principal": "*",
-            "FunctionUrlAuthType": "NONE",
-        },
-    )
-
-
-def test_opensearch(template, sds_id):
-    # test opensearch domain count
-    template.resource_count_is("AWS::OpenSearchService::Domain", 1)
-    # test opensearch domain properties
-    template.has_resource_properties(
-        "AWS::OpenSearchService::Domain",
-        {
-            "DomainName": f"sdsmetadatadomain-{sds_id}",
-            "EngineVersion": "OpenSearch_1.3",
-            "ClusterConfig": {"InstanceType": "t3.small.search", "InstanceCount": 1},
-            "EBSOptions": {"EBSEnabled": True, "VolumeSize": 10, "VolumeType": "gp2"},
-            "NodeToNodeEncryptionOptions": {"Enabled": True},
-            "EncryptionAtRestOptions": {"Enabled": True},
-        },
-    )
-
-
 def test_custom_s3_auto_delete(template):
     template.resource_count_is("Custom::S3AutoDeleteObjects", 1)
 
@@ -209,6 +136,33 @@ def test_custom_s3_bucket_notifications(template):
         },
     )
 
+def test_secrets_manager(template, sds_id):
+    # test secrets manager resource count
+    template.resource_count_is("AWS::SecretsManager::Secret", 1)
+
+    template.has_resource(
+        "AWS::SecretsManager::Secret",
+        {
+            "DeletionPolicy": "Delete",
+            "UpdateReplacePolicy": "Delete",
+        },
+    )
+
+def test_opensearch(template, sds_id):
+    # test opensearch domain count
+    template.resource_count_is("AWS::OpenSearchService::Domain", 1)
+    # test opensearch domain properties
+    template.has_resource_properties(
+        "AWS::OpenSearchService::Domain",
+        {
+            "DomainName": f"sdsmetadatadomain-{sds_id}",
+            "EngineVersion": "OpenSearch_1.3",
+            "ClusterConfig": {"InstanceType": "t3.small.search", "InstanceCount": 1},
+            "EBSOptions": {"EBSEnabled": True, "VolumeSize": 10, "VolumeType": "gp2"},
+            "NodeToNodeEncryptionOptions": {"Enabled": True},
+            "EncryptionAtRestOptions": {"Enabled": True},
+        },
+    )
 
 def test_custom_cloudwatch_log_resource_policy(template):
     template.resource_count_is("Custom::CloudwatchLogResourcePolicy", 1)
@@ -772,15 +726,56 @@ def test_lambdas(template, sds_id):
         },
     )
 
+def test_lambda_permissions(template, sds_id):
+    template.resource_count_is("AWS::Lambda::Permission", 4)
 
-def test_secrets_manager(template, sds_id):
-    # test secrets manager resource count
-    template.resource_count_is("AWS::SecretsManager::Secret", 1)
-
-    template.has_resource(
-        "AWS::SecretsManager::Secret",
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
         {
-            "DeletionPolicy": "Delete",
-            "UpdateReplacePolicy": "Delete",
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Fn::GetAtt": [Match.string_like_regexp("IndexerLambda*"), "Arn"]
+            },
+            "Principal": "s3.amazonaws.com",
+            "SourceAccount": {"Ref": "AWS::AccountId"},
+            "SourceArn": {
+                "Fn::GetAtt": [Match.string_like_regexp("DATABUCKET*"), "Arn"]
+            },
+        },
+    )
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
+        {
+            "Action": "lambda:InvokeFunctionUrl",
+            "FunctionName": {
+                "Fn::GetAtt": [Match.string_like_regexp("UploadAPILambda*"), "Arn"]
+            },
+            "Principal": "*",
+            "FunctionUrlAuthType": "NONE",
+        },
+    )
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
+        {
+            "Action": "lambda:InvokeFunctionUrl",
+            "FunctionName": {
+                "Fn::GetAtt": [Match.string_like_regexp("QueryAPILambda*"), "Arn"]
+            },
+            "Principal": "*",
+            "FunctionUrlAuthType": "NONE",
+        },
+    )
+    template.has_resource_properties(
+        "AWS::Lambda::Permission",
+        {
+            "Action": "lambda:InvokeFunctionUrl",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("DownloadQueryAPILambda*"),
+                    "Arn",
+                ]
+            },
+            "Principal": "*",
+            "FunctionUrlAuthType": "NONE",
         },
     )
