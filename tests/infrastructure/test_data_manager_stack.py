@@ -370,130 +370,28 @@ def test_iam_roles_resource_count(template):
     template.resource_count_is("AWS::IAM::Role", 8)
 
 
-def test_s3_auto_delete_iam_role_resource_properties(template):
-    template.has_resource_properties(
+def test_expected_properties_for_iam_roles(template):
+    found_resources = template.find_resources(
         "AWS::IAM::Role",
         {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {"Service": "lambda.amazonaws.com"},
+                        }
+                    ],
+                    "Version": "2012-10-17",
+                }
             }
         },
     )
 
-
-def test_indexer_lambda_iam_role_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-
-
-def test_bucket_notification_iam_role_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-
-
-def test_upload_api_iam_role_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-
-
-def test_query_api_iam_role_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-
-
-def test_download_api_iam_role_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
-
-
-def test_aws_iam_role_resource_properties(template):
-    template.has_resource_properties(
-        "AWS::IAM::Role",
-        {
-            "AssumeRolePolicyDocument": {
-                "Statement": [
-                    {
-                        "Action": "sts:AssumeRole",
-                        "Effect": "Allow",
-                        "Principal": {"Service": "lambda.amazonaws.com"},
-                    }
-                ],
-                "Version": "2012-10-17",
-            }
-        },
-    )
+    # There are 8 IAM Role expected resources with the same properties
+    # confirm that all are found in the stack
+    assert len(found_resources) == 8
 
 
 def test_iam_policy_resource_count(template):
