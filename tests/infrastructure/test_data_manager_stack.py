@@ -695,6 +695,12 @@ def test_indexer_lambda_function_resource_properties(template, sds_id):
             "Handler": "SDSCode.indexer.lambda_handler",
             "MemorySize": 1000,
             "Timeout": 15 * 60,
+            "Role": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("IndexerLambdaServiceRole*"),
+                    "Arn",
+                ]
+            },
         },
     )
 
@@ -708,6 +714,12 @@ def test_upload_api_lambda_function_resource_properties(template, sds_id):
             "Handler": "SDSCode.upload_api.lambda_handler",
             "MemorySize": 1000,
             "Timeout": 15 * 60,
+            "Role": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("UploadAPILambdaServiceRole*"),
+                    "Arn",
+                ]
+            },
         },
     )
 
@@ -721,6 +733,12 @@ def test_query_api_lambda_function_resource_properties(template, sds_id):
             "Handler": "SDSCode.queries.lambda_handler",
             "MemorySize": 1000,
             "Timeout": 60,
+            "Role": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("QueryAPILambdaServiceRole*"),
+                    "Arn",
+                ]
+            },
         },
     )
 
@@ -733,6 +751,12 @@ def test_download_api_lambda_function_resource_properties(template, sds_id):
             "Runtime": "python3.9",
             "Handler": "SDSCode.download_query_api.lambda_handler",
             "Timeout": 60,
+            "Role": {
+                "Fn::GetAtt": [
+                    Match.string_like_regexp("DownloadQueryAPILambdaServiceRole*"),
+                    "Arn",
+                ]
+            },
         },
     )
 
@@ -746,7 +770,7 @@ def test_aws_lambda_function_resource_properties(template):
             "Timeout": 120,
             "Role": {
                 "Fn::GetAtt": [
-                    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+                    Match.string_like_regexp("AWS.*ServiceRole.*"),
                     "Arn",
                 ]
             },
@@ -763,7 +787,7 @@ def test_aws_bucket_notification_lambda_function_resource_properties(template):
             "Timeout": 300,
             "Role": {
                 "Fn::GetAtt": [
-                    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC",
+                    Match.string_like_regexp("BucketNotificationsHandler*"),
                     "Arn",
                 ]
             },
@@ -781,7 +805,9 @@ def test_custom_s3_auto_delete_lambda_function_resource_properties(template):
             "MemorySize": 128,
             "Role": {
                 "Fn::GetAtt": [
-                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    Match.string_like_regexp(
+                        "CustomS3AutoDeleteObjectsCustomResourceProviderRole*"
+                    ),
                     "Arn",
                 ]
             },
