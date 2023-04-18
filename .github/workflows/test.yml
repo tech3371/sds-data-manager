@@ -32,4 +32,4 @@ jobs:
           poetry run pytest --color=yes --cov --cov-report=xml -m "not network"
 
       - name: Upload code coverage
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
