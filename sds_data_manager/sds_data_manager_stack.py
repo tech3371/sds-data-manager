@@ -78,6 +78,7 @@ class SdsDataManagerStack(Stack):
         sds_metadata_domain = opensearch.Domain(
             self,
             "SDSMetadataDomain",
+            domain_name=f"sdsmetadatadomain-{sds_id}",
             # Version 1.3 released 07/27/22
             version=opensearch.EngineVersion.OPENSEARCH_1_3,
             # Define the Nodes
