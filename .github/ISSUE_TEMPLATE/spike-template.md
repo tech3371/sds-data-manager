@@ -23,7 +23,7 @@ Short description of the issue you would like to solve.
 Any additional notes on the issue, if you have them. 
 
 ## Related tickets
-- #123 
+- `#123` 
 
 ## Follow up tickets
 This spike is not considered complete until at least one follow up issue is created. 
