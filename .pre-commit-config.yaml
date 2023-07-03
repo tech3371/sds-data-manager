@@ -8,12 +8,12 @@ repos:
     hooks:
     - id: black
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: 'v0.0.260'
+    rev: 'v0.0.276'
     hooks:
     - id: ruff
       args: [--fix]
   - repo: https://github.com/python-poetry/poetry
-    rev: '1.4.0'  # add version here
+    rev: '1.5.0'  # add version here
     hooks:
       - id: poetry-check
       - id: poetry-lock
