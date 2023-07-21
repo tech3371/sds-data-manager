@@ -178,7 +178,7 @@ def lambda_handler(event, context):
 
     # create opensearch client
     client = _create_open_search_client()
-    # create an index (AKA 'table' in other database)
+    # create index (AKA 'table' in other database)
     metadata_index = Index(os.environ["METADATA_INDEX"])
     data_tracker_index = Index(os.environ["DATA_TRACKER_INDEX"])
 
@@ -218,7 +218,7 @@ def lambda_handler(event, context):
         # TODO: Decide if we want to keep both or keep one after SIT-2
         # Right now, we can write processing status of injested data to both databases.
         # In the future, we can decide which one to write to.
-        # Initialized processing status for injested data to pending. This will be updated
+        # Initialize processing status for injested data to pending. This will be updated
         # when the data is processed.
         item = initialize_data_processing_status(filename)
 
