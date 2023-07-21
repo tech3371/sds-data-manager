@@ -31,6 +31,7 @@ from constructs import Construct
 
 # Local
 from .opensearch_stack import OpenSearch
+from .dynamodb_stack import DynamoDB
 
 
 class SdsDataManager(Stack):
@@ -42,6 +43,7 @@ class SdsDataManager(Stack):
         construct_id: str,
         sds_id: str,
         opensearch: OpenSearch,
+        dynamodb_stack: DynamoDB,
         env: Environment,
         **kwargs,
     ) -> None:
@@ -54,6 +56,8 @@ class SdsDataManager(Stack):
         sds_id: str
         opensearch: OpenSearch
             This class depends on opensearch, which is built with opensearch_stack.py
+        dynamodb_stack: DynamoDb
+            This class depends on dynamodb_stack, which is built with opensearch_stack.py
         env : Environment
             Account and region
         """
@@ -141,7 +145,9 @@ class SdsDataManager(Stack):
                 "OS_ADMIN_USERNAME": "master-user",
                 "OS_DOMAIN": opensearch.sds_metadata_domain.domain_endpoint,
                 "OS_PORT": "443",
-                "OS_INDEX": "metadata",
+                "METADATA_INDEX": "metadata",
+                "DATA_TRACKER_INDEX": "data_tracker",
+                "DYNAMODB_TABLE": dynamodb_stack.table_name,
                 "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
                 "SECRET_ID": opensearch.secret_name,
