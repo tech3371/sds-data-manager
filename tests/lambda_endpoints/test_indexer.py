@@ -93,7 +93,7 @@ class TestIndexer(unittest.TestCase):
     def test_indexer(self):
         ## Arrange
         self.client.send_document(self.document)
-        document_true = {
+        document_expected = {
             "_index": "test_data",
             "_type": "_doc",
             "_id": "imap_l0_instrument_date_version.pkts",
@@ -117,7 +117,7 @@ class TestIndexer(unittest.TestCase):
         document_out = self.client.get_document(self.document)
 
         ## Assert
-        assert document_out == document_true
+        assert document_out == document_expected
 
     def tearDown(self):
         self.client.send_document(self.document, Action.DELETE)
