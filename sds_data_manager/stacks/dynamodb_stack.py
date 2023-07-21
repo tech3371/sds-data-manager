@@ -39,6 +39,10 @@ class DynamoDB(Stack):
             to provide a unique value for the partition key to uniquely identify the item. If
             you attempt to insert an item with a partition key value that already exists in the
             table, it will overwrite the existing item with the new data.
+
+            If we want partition key to be not unique, then we need to make sure combination of
+            partition key and sort key is unique.
+
         sort_key : str
             the sort key (also known as the range key) does not have to be unique within a partition.
             Unlike the partition key, the sort key can have duplicate values within a partition.
@@ -63,11 +67,11 @@ class DynamoDB(Stack):
         self.sort_key = sort_key
         self.on_demand = on_demand
         if self.on_demand:
-            self._create_on_demand_dynamo_db()
+            self._create_on_demand_dynamodb()
         else:
-            self._create_provisioned_dynamo_db(read_capacity, write_capacity)
+            self._create_provisioned_dynamodb(read_capacity, write_capacity)
 
-    def _create_on_demand_dynamo_db(self):
+    def _create_on_demand_dynamodb(self):
         """Creates On Demand DynamoDb table. On Demand DynamoDb table is created with PAY_PER_REQUEST billing mode.
 
         When you turn on point-in-time recovery (PITR), DynamoDB backs up your table data automatically so that you
@@ -92,7 +96,7 @@ class DynamoDB(Stack):
             point_in_time_recovery=True,
         )
 
-    def _create_provisioned_dynamo_db(self, read_capacity: int, write_capacity: int):
+    def _create_provisioned_dynamodb(self, read_capacity: int, write_capacity: int):
         """Creates Provisioned DynamoDb table. Provisioned DynamoDb table is created with PROVISIONED billing mode.
 
         When you turn on point-in-time recovery (PITR), DynamoDB backs up your table data automatically so that you

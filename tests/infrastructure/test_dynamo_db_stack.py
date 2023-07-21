@@ -1,7 +1,7 @@
 import pytest
 from aws_cdk.assertions import Template
 
-from sds_data_manager.stacks.dynamo_db_stack import DynamoDB
+from sds_data_manager.stacks.dynamodb_stack import DynamoDB
 
 
 @pytest.fixture(scope="module")
@@ -20,7 +20,7 @@ def template(app, sds_id):
     return template
 
 
-def test_table_name(template):
+def test_table_count(template):
     template.resource_count_is("AWS::DynamoDB::Table", 1)
 
 
