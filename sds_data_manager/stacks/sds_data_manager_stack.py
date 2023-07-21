@@ -30,8 +30,8 @@ from aws_cdk import (
 from constructs import Construct
 
 # Local
-from .opensearch_stack import OpenSearch
 from .dynamodb_stack import DynamoDB
+from .opensearch_stack import OpenSearch
 
 
 class SdsDataManager(Stack):
@@ -57,7 +57,8 @@ class SdsDataManager(Stack):
         opensearch: OpenSearch
             This class depends on opensearch, which is built with opensearch_stack.py
         dynamodb_stack: DynamoDb
-            This class depends on dynamodb_stack, which is built with opensearch_stack.py
+            This class depends on dynamodb_stack, which is built with
+            opensearch_stack.py
         env : Environment
             Account and region
         """
