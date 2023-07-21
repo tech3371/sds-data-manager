@@ -8,13 +8,14 @@ import sys
 import boto3
 from opensearchpy import RequestsHttpConnection
 
+from .dynamodb_utils.processing_status import ProcessingStatus
+
 # Local
 from .opensearch_utils.action import Action
 from .opensearch_utils.client import Client
 from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
-from .dynamodb_utils.processing_status import ProcessingStatus
 
 # Logger setup
 logger = logging.getLogger()
@@ -122,17 +123,17 @@ def initialize_data_processing_status(filename: str):
     # Get instrument name by parsing the filename.
     # Eg. filename = imap_l0_sci_codice_20230602_v02.pkts
     # Get instrument name, codice, from the filename.
-    instrument_name = filename.split('_')[3]
+    instrument_name = filename.split("_")[3]
 
     return {
-        'instrument': instrument_name,
-        'filename': filename,
-        'processing_status': ProcessingStatus.PENDING.name,
-        'l1a_status': ProcessingStatus.PENDING.name,
-        'l1b_status': ProcessingStatus.PENDING.name,
-        'l1c_status': ProcessingStatus.PENDING.name,
-        'l2_status': ProcessingStatus.PENDING.name,
-        'l3_status': ProcessingStatus.PENDING.name
+        "instrument": instrument_name,
+        "filename": filename,
+        "processing_status": ProcessingStatus.PENDING.name,
+        "l1a_status": ProcessingStatus.PENDING.name,
+        "l1b_status": ProcessingStatus.PENDING.name,
+        "l1c_status": ProcessingStatus.PENDING.name,
+        "l2_status": ProcessingStatus.PENDING.name,
+        "l3_status": ProcessingStatus.PENDING.name,
     }
 
 
@@ -144,8 +145,8 @@ def write_data_to_dynamodb(item: dict):
     item : dict
         data for database
     """
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(os.environ['DYNAMODB_TABLE'])
+    dynamodb = boto3.resource("dynamodb")
+    table = dynamodb.Table(os.environ["DYNAMODB_TABLE"])
     table.put_item(Item=item)
 
 
@@ -218,8 +219,8 @@ def lambda_handler(event, context):
         # TODO: Decide if we want to keep both or keep one after SIT-2
         # Right now, we can write processing status of injested data to both databases.
         # In the future, we can decide which one to write to.
-        # Initialize processing status for injested data to pending. This will be updated
-        # when the data is processed.
+        # Initialize processing status for injested data to pending. This will be
+        # updated when the data is processed.
         item = initialize_data_processing_status(filename)
 
         # Write processing status data to DynamoDB.
