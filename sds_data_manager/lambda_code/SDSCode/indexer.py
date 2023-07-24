@@ -128,12 +128,9 @@ def initialize_data_processing_status(filename: str):
     return {
         "instrument": instrument_name,
         "filename": filename,
-        "processing_status": ProcessingStatus.PENDING.name,
-        "l1a_status": ProcessingStatus.PENDING.name,
-        "l1b_status": ProcessingStatus.PENDING.name,
-        "l1c_status": ProcessingStatus.PENDING.name,
-        "l2_status": ProcessingStatus.PENDING.name,
-        "l3_status": ProcessingStatus.PENDING.name,
+        "data_level": "l0",
+        "version": "1.0.0",
+        "status": ProcessingStatus.PENDING.name,
     }
 
 
