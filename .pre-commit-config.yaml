@@ -17,6 +17,7 @@ repos:
     hooks:
       - id: poetry-check
       - id: poetry-lock
+        args: [--no-update]
       - id: poetry-export
         args: ["-f", "requirements.txt", "-o", "sds_data_manager/lambda_code/requirements.txt", "--only", "lambda-dev"]
         verbose: true

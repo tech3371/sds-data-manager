@@ -5,6 +5,7 @@ import unittest
 import boto3
 import pytest
 from botocore.exceptions import ClientError
+from openmock import openmock
 from opensearchpy import RequestsHttpConnection
 
 from sds_data_manager.lambda_code.SDSCode import queries
@@ -15,19 +16,20 @@ from sds_data_manager.lambda_code.SDSCode.opensearch_utils.index import Index
 
 
 @pytest.mark.network()
+@openmock
 class TestQueries(unittest.TestCase):
     def setUp(self):
         # Opensearch client Params
         os.environ[
             "OS_DOMAIN"
-        ] = "search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-west-2.es.amazonaws.com"
+        ] = "search-sds-metadata-uum2vnbdbqbnh7qnbde6t74xim.us-east-1.es.amazonaws.com"
         os.environ["OS_PORT"] = "443"
         os.environ["OS_INDEX"] = "test_data"
 
         hosts = [{"host": os.environ["OS_DOMAIN"], "port": os.environ["OS_PORT"]}]
 
         secret_name = "OpenSearchPassword9643DC3D-uVH94BjrbF9u"
-        region_name = "us-west-2"
+        region_name = "us-east-1"
 
         # Create a Secrets Manager client
         session = boto3.session.Session()
@@ -66,7 +68,7 @@ class TestQueries(unittest.TestCase):
     def test_queries(self):
         """tests that the queries lambda correctly returns the search results"""
         ## Arrange ##
-        response_true = [
+        response_expected = [
             {
                 "_index": "test_data",
                 "_type": "_doc",
@@ -90,7 +92,7 @@ class TestQueries(unittest.TestCase):
         response_out = queries.lambda_handler(event, "")
 
         ## Assert ##
-        assert response_out == response_true
+        assert response_out == response_expected
 
     def tearDown(self):
         self.client.send_document(self.document, action_override=Action.DELETE)
