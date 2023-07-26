@@ -1,7 +1,6 @@
 import aws_cdk as cdk
 import pytest
-from aws_cdk.assertions import Match as match
-from aws_cdk.assertions import Template
+from aws_cdk.assertions import Match, Template
 
 from sds_data_manager.stacks.dynamodb_stack import DynamoDB
 
@@ -56,13 +55,13 @@ def test_billing_mode(on_demand_dynamodb, provisioned_dynamodb):
     )
     # If provisioned, it doesn't have BillingMode in resource properties. It instead has
     # read and write capacity units.
-    # Note: match.any_value() matches any non-null value at the target.
+    # Note: Match.any_value() matches any non-null value at the target.
     provisioned_dynamodb.has_resource_properties(
         "AWS::DynamoDB::Table",
         {
             "ProvisionedThroughput": {
-                "ReadCapacityUnits": match.any_value(),
-                "WriteCapacityUnits": match.any_value(),
+                "ReadCapacityUnits": Match.any_value(),
+                "WriteCapacityUnits": Match.any_value(),
             }
         },
     )
