@@ -38,3 +38,6 @@ cdk.context.json
 
 # Individual development CDK apps
 app*dev.py
+
+# Sphinx documentation
+docs/_build/
