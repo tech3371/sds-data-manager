@@ -20,10 +20,8 @@ open ../build/html/index.html
 Using pip:
 
 ```bash
-# Export requirements from poetry
-poetry export --with=dev > requirements.txt
 # Install the optional documentation dependencies
-pip install -r requirements.txt
+pip install .[doc]
 # Make the html documentation
 make -C docs html
 # View the documentation
