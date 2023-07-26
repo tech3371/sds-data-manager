@@ -4,9 +4,9 @@ from aws_cdk import App, Environment
 
 # Local
 from sds_data_manager.stacks import (
-    dynamodb_stack,
     api_gateway_stack,
     domain_stack,
+    dynamodb_stack,
     opensearch_stack,
     sds_data_manager_stack,
 )
@@ -38,7 +38,7 @@ def build_sds(
         table_name=f"imap-data-watcher-{sds_id}",
         partition_key="instrument",
         sort_key="filename",
-        env=env
+        env=env,
     )
 
     data_manager = sds_data_manager_stack.SdsDataManager(
