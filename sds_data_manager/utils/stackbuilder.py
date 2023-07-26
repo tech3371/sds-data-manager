@@ -7,6 +7,7 @@ from sds_data_manager.stacks import (
     api_gateway_stack,
     domain_stack,
     opensearch_stack,
+    processing_pipeline_stack,
     sds_data_manager_stack,
 )
 
@@ -51,4 +52,8 @@ def build_sds(
         hosted_zone=domain.hosted_zone,
         certificate=domain.certificate,
         use_custom_domain=use_custom_domain,
+    )
+
+    processing_pipeline_stack.ProcessingPipelineStack(
+        scope, f"ProcessingPipelineStack-{sds_id}", sds_id, env=env
     )
