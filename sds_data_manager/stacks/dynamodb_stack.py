@@ -30,30 +30,34 @@ class DynamoDB(Stack):
         table_name : str
             Database table name
         partition_key : str
-            Partition key for DynamoDB table. The partition key must be unique within a table.
-            Every item in a DynamoDB table is uniquely identified by its partition key value.
-            DynamoDB uses the partition key to distribute the data across multiple partitions
-            for scalability and performance.
+            Partition key for DynamoDB table. The partition key must be unique within a
+            table. Every item in a DynamoDB table is uniquely identified by its
+            partition key value. DynamoDB uses the partition key to distribute the
+            data across multiple partitions for scalability and performance.
 
-            When performing operations such as PutItem, GetItem, or Query in DynamoDB, you need
-            to provide a unique value for the partition key to uniquely identify the item. If
-            you attempt to insert an item with a partition key value that already exists in the
-            table, it will overwrite the existing item with the new data.
+            When performing operations such as PutItem, GetItem, or Query in DynamoDB,
+            you need to provide a unique value for the partition key to uniquely
+            identify the item. If you attempt to insert an item with a partition key
+            value that already exists in thetable, it will overwrite the existing
+            item with the new data.
 
-            If we want partition key to be not unique, then we need to make sure combination of
-            partition key and sort key is unique.
+            If we want partition key to be not unique, then we need to make sure
+            combination of partition key and sort key is unique.
 
         sort_key : str
-            the sort key (also known as the range key) does not have to be unique within a partition.
-            Unlike the partition key, the sort key can have duplicate values within a partition.
+            the sort key (also known as the range key) does not have to be unique
+            within a partition. Unlike the partition key, the sort key can have
+            duplicate values within a partition.
 
-            The combination of the partition key and sort key together must be unique for each item
-            in a DynamoDB table. This means that while multiple items within a partition can have the
-            same sort key value, their partition key values must be different.
+            The combination of the partition key and sort key together must be
+            unique for each item in a DynamoDB table. This means that while multiple
+            items within a partition can have the same sort key value, their partition
+            key values must be different.
         env : Environment
             Account and region
         on_demand : bool
-            If true, creates on demand DynamoDB table. If false, creates provisioned DynamoDB table.
+            If true, creates on demand DynamoDB table. If false, creates provisioned
+            DynamoDB table.
         read_capacity : int
             Read capacity for provisioned DynamoDB table.
             Default value is 1.
@@ -69,7 +73,7 @@ class DynamoDB(Stack):
 
         if not on_demand and read_capacity is None and write_capacity is None:
             raise ValueError(
-                "Read capacity and write capacity are using default values. Please use a different value"
+                "Required parameters read_capacity and write_capacity are not set"
             )
 
         if on_demand:
@@ -80,8 +84,8 @@ class DynamoDB(Stack):
             billing_mode = dynamodb.BillingMode.PROVISIONED
 
         # When you turn on point-in-time recovery (PITR), DynamoDB backs up your table
-        # data automatically so that you can restore to any given second in the preceding
-        # 35 days
+        # data automatically so that you can restore to any given second in the
+        # preceding 35 days
         dynamodb.Table(
             self,
             f"DynamoDB-{self.sds_id}",
