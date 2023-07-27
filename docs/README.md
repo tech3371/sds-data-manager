@@ -25,5 +25,5 @@ pip install .[doc]
 # Make the html documentation
 make -C docs html
 # View the documentation
-open docs/_build/html/index.html
+open docs/build/html/index.html
 ```
