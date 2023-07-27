@@ -1,4 +1,3 @@
-
 from aws_cdk import Stack
 from aws_cdk import aws_ecr as ecr
 from aws_cdk.aws_ecr_assets import DockerImageAsset
@@ -41,8 +40,9 @@ class EcrRepo(Stack):
         self.source_code_path = source_code_path
         self.tag_immutability = tag_immutability
         self.env = env
-        self._create_ecr_repo()
-        self._build_and_push_latest_image()
+        self.image_uri = None
+        self.ecr_repo = self._create_ecr_repo()
+        self.ecr_image = self._build_and_push_latest_image()
 
     def _create_ecr_repo(self):
         """Create ECR repo
