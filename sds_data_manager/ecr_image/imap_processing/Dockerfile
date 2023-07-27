@@ -12,4 +12,4 @@ RUN pip install git+https://github.com/IMAP-Science-Operations-Center/imap_proce
 
 COPY script.py ./script.py
 
-ENTRYPOINT [ "python", "script.py" ]
+ENTRYPOINT [ "/usr/local/bin/python", "script.py" ]
