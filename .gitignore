@@ -40,6 +40,4 @@ cdk.context.json
 app*dev.py
 
 # Sphinx documentation
-docs/_build/
-
-requirements.txt
+docs/build/

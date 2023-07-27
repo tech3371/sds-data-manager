@@ -14,7 +14,7 @@ poetry install -E docs
 cd docs/source
 poetry run sphinx-build . build
 # View the documentation
-open build/html/index.html
+open ../build/html/index.html
 ```
 
 Using pip:
@@ -25,5 +25,5 @@ pip install .[doc]
 # Make the html documentation
 make -C docs html
 # View the documentation
-open docs/_build/html/index.html
+open docs/build/html/index.html
 ```
