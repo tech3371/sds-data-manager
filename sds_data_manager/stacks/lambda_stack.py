@@ -24,8 +24,8 @@ class LambdaWithEcrImageStack(Stack):
         ecr_repo_name: str,
         ecr_image_version: str,
         lambda_name: str,
-        lambda_environment_vars={},
-        managed_policy_names: dict = {},
+        lambda_environment_vars: dict,
+        managed_policy_names: dict,
         timeout: int = 3,
         **kwargs,
     ):
@@ -55,8 +55,11 @@ class LambdaWithEcrImageStack(Stack):
         # look up ecr image with specific tag
         self.ecr_image = self.ecr_repo.repository_uri_for_tag(ecr_image_version)
         # create lambda
+        lambda_code_main_folder = (
+            f"{Path(__file__).parent}/../lambda_code/imap_processing/"
+        )
         lambda_image = lambda_.DockerImageCode.from_image_asset(
-            directory=f"{Path(__file__).parent}/../ecr_image/imap_processing/",
+            directory=lambda_code_main_folder,
             build_args={"--platform": "linux/amd64"},
         )
         self.fn = lambda_.DockerImageFunction(
