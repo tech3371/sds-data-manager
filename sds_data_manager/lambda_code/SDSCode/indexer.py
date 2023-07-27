@@ -107,11 +107,17 @@ def _create_open_search_client():
     )
 
 
-def initialize_data_processing_status(filename: str):
+def initialize_data_processing_status(metadata: dict, filename):
     """Generate data that will be sent to database.
 
     Parameters
     ----------
+    metadata : dict
+        metadata from filename. metadata comes from this
+        _check_for_matching_filetype function call.
+        Dictionary returned from that function call
+        can be used to get data level or instrument name
+        via metadata['instrument'] and metadata['level'].
     filename : str
         filename of injested data.
 
@@ -120,16 +126,12 @@ def initialize_data_processing_status(filename: str):
     dict
         data for database
     """
-    # Get instrument name by parsing the filename.
-    # Eg. filename = imap_l0_sci_codice_20230602_v02.pkts
-    # Get instrument name, codice, from the filename.
-    instrument_name = filename.split("_")[3]
 
     return {
-        "instrument": instrument_name,
+        "instrument": metadata["instrument"],
         "filename": filename,
-        "data_level": "l0",
-        "version": "1.0.0",
+        "data_level": metadata["level"],
+        "version": metadata["version"],
         "status": ProcessingStatus.PENDING.name,
     }
 
@@ -218,7 +220,7 @@ def lambda_handler(event, context):
         # In the future, we can decide which one to write to.
         # Initialize processing status for injested data to pending. This will be
         # updated when the data is processed.
-        item = initialize_data_processing_status(filename)
+        item = initialize_data_processing_status(metadata=metadata, filename=filename)
 
         # Write processing status data to DynamoDB.
         write_data_to_dynamodb(item)
