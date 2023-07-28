@@ -16,17 +16,16 @@ from aws_cdk import (
 from constructs import Construct
 
 
-class LambdaWithEcrImageStack(Stack):
+class LambdaWithDockerImageStack(Stack):
     def __init__(
         self,
         scope: Construct,
         sds_id: str,
-        ecr_repo_name: str,
-        ecr_image_version: str,
         lambda_name: str,
-        lambda_environment_vars: dict,
         managed_policy_names: dict,
         timeout: int = 3,
+        lambda_code_folder: str,
+        lambda_environment_vars: dict = {},
         **kwargs,
     ):
         super().__init__(scope, sds_id, **kwargs)
@@ -47,19 +46,9 @@ class LambdaWithEcrImageStack(Stack):
                 iam.ManagedPolicy.from_aws_managed_policy_name(policy)
             )
 
-        # look up ecr by name
-        self.ecr_repo = ecr.Repository.from_repository_name(
-            self, f"lookUpEcrRepoName-{sds_id}", repository_name=ecr_repo_name
-        )
-
-        # look up ecr image with specific tag
-        self.ecr_image = self.ecr_repo.repository_uri_for_tag(ecr_image_version)
-        # create lambda
-        lambda_code_main_folder = (
-            f"{Path(__file__).parent}/../lambda_code/imap_processing/"
-        )
+        # create lambda image
         lambda_image = lambda_.DockerImageCode.from_image_asset(
-            directory=lambda_code_main_folder,
+            directory=lambda_code_folder,
             build_args={"--platform": "linux/amd64"},
         )
         self.fn = lambda_.DockerImageFunction(
