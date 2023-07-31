@@ -8,8 +8,8 @@ from sds_data_manager.stacks import (
     domain_stack,
     dynamodb_stack,
     opensearch_stack,
-    processing_pipeline_stack,
     sds_data_manager_stack,
+    step_function_stack,
 )
 
 
@@ -65,6 +65,10 @@ def build_sds(
         use_custom_domain=use_custom_domain,
     )
 
-    processing_pipeline_stack.ProcessingPipelineStack(
-        scope, f"ProcessingPipelineStack-{sds_id}", sds_id, env=env
+    step_function_stack.ProcessingStepFunctionStack(
+        scope,
+        f"ProcessingStepFunctionStack-{sds_id}",
+        sds_id,
+        dynamodb_table_name="imap-data-watcher-tc-dev",
+        env=env,
     )

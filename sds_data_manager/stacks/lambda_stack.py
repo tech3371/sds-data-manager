@@ -1,11 +1,7 @@
-from pathlib import Path
 
 from aws_cdk import (
     Duration,
     Stack,
-)
-from aws_cdk import (
-    aws_ecr as ecr,
 )
 from aws_cdk import (
     aws_iam as iam,
@@ -23,8 +19,8 @@ class LambdaWithDockerImageStack(Stack):
         sds_id: str,
         lambda_name: str,
         managed_policy_names: dict,
-        timeout: int = 3,
         lambda_code_folder: str,
+        timeout: int = 3,
         lambda_environment_vars: dict = {},
         **kwargs,
     ):
