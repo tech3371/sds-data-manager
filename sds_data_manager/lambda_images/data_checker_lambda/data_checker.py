@@ -11,10 +11,13 @@ def handler(event, context):
     # Read Dynamodb table to get all data with L1a_status = 'PENDING'
     instrument = event["instrument"]
     query_response = table.query(
-        KeyConditionExpression=Key("instrument").eq(instrument)
-        & Attr("status").eq("PENDING")
+        KeyConditionExpression=Key("instrument").eq(instrument),
+        FilterExpression=Attr("status").eq("PENDING"),
     )
 
     if query_response["Count"] == 0:
+        print("No data to process")
         return {"status_code": 204}
+
+    print(query_response)
     return {"status_code": 200}

@@ -4,9 +4,10 @@ from imap_processing.swe import decom_swe
 
 
 def handler(event, context):
-    # This is a dummpy code that runs in batch job
+    # This is a dummpy code that runs processing job
     instrument = event.get("instrument", "SWE")
     if instrument == "SWE":
+        # Grabing test data from pip package path
         pip_path = "/var/lang/lib/python3.11/site-packages"
         data_file = "science_block_20221116_163611Z_idle.bin"
         data_file = f"{pip_path}/imap_processing/swe/tests/{data_file}"
