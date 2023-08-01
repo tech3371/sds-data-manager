@@ -1,4 +1,3 @@
-
 from aws_cdk import (
     Duration,
     Stack,
@@ -20,13 +19,36 @@ class LambdaWithDockerImageStack(Stack):
         lambda_name: str,
         managed_policy_names: dict,
         lambda_code_folder: str,
-        timeout: int = 3,
-        lambda_environment_vars: dict = {},
+        timeout: int = 60,
+        lambda_environment_vars: dict = None,
         **kwargs,
     ):
         super().__init__(scope, sds_id, **kwargs)
+        """This create role for lambda with given policies
+        and creates a lambda image from the given folder.
+        It also sets the timeout and environment variables.
 
-        # This stack creates Lambda that runs from an ECR image
+        Parameters
+        ----------
+        scope : Construct
+            The scope of the construct.
+        sdd_id : str
+            The id of the construct.
+        lambda_name : str
+            The name of the lambda.
+        managed_policy_names : dict
+            AWS managed policies to be attached to the role.
+        lambda_code_folder : str
+            The folder where the lambda code is located. In that folder,
+            a Dockerfile is required.
+        timeout : int, optional
+            The timeout of the lambda. The default is 60 seconds.
+        lambda_environment_vars : dict, optional
+            The environment variables of the lambda. The default is {}.
+        """
+
+        if lambda_environment_vars is None:
+            lambda_environment_vars = {}
 
         # create role, add permissions
         iam_role_name = f"{lambda_name}-role"
@@ -47,6 +69,7 @@ class LambdaWithDockerImageStack(Stack):
             directory=lambda_code_folder,
             build_args={"--platform": "linux/amd64"},
         )
+
         self.fn = lambda_.DockerImageFunction(
             self,
             lambda_name,
