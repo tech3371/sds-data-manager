@@ -34,7 +34,7 @@ tests-no-zope = ["cloudpickle", "hypothesis", "mypy (>=1.1.1)", "pympler", "pyte
 name = "aws-cdk-asset-awscli-v1"
 version = "2.2.200"
 description = "A library that contains the AWS CLI for use in Lambda Layers"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -51,7 +51,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-asset-kubectl-v20"
 version = "2.1.2"
 description = "A library that contains kubectl for use in Lambda Layers"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -68,7 +68,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-asset-node-proxy-agent-v5"
 version = "2.0.166"
 description = "@aws-cdk/asset-node-proxy-agent-v5"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -104,7 +104,7 @@ typeguard = ">=2.13.3,<2.14.0"
 name = "aws-cdk-lib"
 version = "2.88.0"
 description = "Version 2 of the AWS Cloud Development Kit library"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -212,7 +212,7 @@ crt = ["awscrt (==0.16.26)"]
 name = "cattrs"
 version = "23.1.2"
 description = "Composable complex class support for attrs and dataclasses."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -233,25 +233,6 @@ orjson = ["orjson (>=3.5.2,<4.0.0)"]
 pyyaml = ["PyYAML (>=6.0,<7.0)"]
 tomlkit = ["tomlkit (>=0.11.4,<0.12.0)"]
 ujson = ["ujson (>=5.4.0,<6.0.0)"]
-
-[[package]]
-name = "cdk-ecr-deployment"
-version = "2.5.30"
-description = "CDK construct to deploy docker image to Amazon ECR"
-category = "main"
-optional = false
-python-versions = "~=3.7"
-files = [
-    {file = "cdk-ecr-deployment-2.5.30.tar.gz", hash = "sha256:9312d3b36a91fdd729c8bc229cd62e3af822fddcd67dc9ff26e8e9516acf35fe"},
-    {file = "cdk_ecr_deployment-2.5.30-py3-none-any.whl", hash = "sha256:1c67a841b9f7edb310f7cce1f52442876ce028607c4b6a267601627ca2289ea3"},
-]
-
-[package.dependencies]
-aws-cdk-lib = ">=2.0.0,<3.0.0"
-constructs = ">=10.0.5,<11.0.0"
-jsii = ">=1.84.0,<2.0.0"
-publication = ">=0.0.3"
-typeguard = ">=2.13.3,<2.14.0"
 
 [[package]]
 name = "certifi"
@@ -470,7 +451,7 @@ files = [
 name = "constructs"
 version = "10.2.69"
 description = "A programming model for software-defined state"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -621,7 +602,7 @@ files = [
 name = "exceptiongroup"
 version = "1.1.2"
 description = "Backport of PEP 654 (exception groups)"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -679,7 +660,7 @@ files = [
 name = "importlib-resources"
 version = "6.0.0"
 description = "Read resources from Python packages"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -740,7 +721,7 @@ files = [
 name = "jsii"
 version = "1.85.0"
 description = "Python client for jsii runtime"
-category = "main"
+category = "dev"
 optional = false
 python-versions = "~=3.7"
 files = [
@@ -1012,7 +993,7 @@ virtualenv = ">=20.10.0"
 name = "publication"
 version = "0.0.3"
 description = "Publication helps you maintain public-api-friendly modules by preventing unintentional access to private implementation details via introspection."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 files = [
@@ -1310,7 +1291,7 @@ files = [
 name = "typeguard"
 version = "2.13.3"
 description = "Run-time type checker for Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.5.3"
 files = [
@@ -1338,7 +1319,7 @@ files = [
 name = "typing-extensions"
 version = "4.7.1"
 description = "Backported and Experimental Type Hints for Python 3.7+"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -1418,7 +1399,7 @@ files = [
 name = "zipp"
 version = "3.16.2"
 description = "Backport of pathlib-compatible object wrapper for zip files"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.8"
 files = [
@@ -1433,4 +1414,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "40c15d03e8f3db4730c6f9aca61b2a10c6866edad39f4e911ceced287ed9ccd9"
+content-hash = "f4303f507f79b80238bda9f92e738508ebd86fc8c2bad7aa265915e3b69686ee"

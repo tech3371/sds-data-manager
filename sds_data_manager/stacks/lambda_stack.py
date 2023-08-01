@@ -44,7 +44,7 @@ class LambdaWithDockerImageStack(Stack):
         timeout : int, optional
             The timeout of the lambda. The default is 60 seconds.
         lambda_environment_vars : dict, optional
-            The environment variables of the lambda. The default is {}.
+            The environment variables of the lambda. The default is None.
         """
 
         if lambda_environment_vars is None:
@@ -70,6 +70,7 @@ class LambdaWithDockerImageStack(Stack):
             build_args={"--platform": "linux/amd64"},
         )
 
+        # create lambda
         self.fn = lambda_.DockerImageFunction(
             self,
             lambda_name,

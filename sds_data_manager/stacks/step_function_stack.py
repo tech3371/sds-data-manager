@@ -33,7 +33,9 @@ class ProcessingStepFunctionStack(Stack):
     ) -> None:
         super().__init__(scope, id, env=env, **kwargs)
         """
-        This stack creates the processing step function.
+        This stack creates lambda functions that will be invoked in the processing
+        step function. Then it creates step functions task for those lambdas and
+        creates a state machine definition to run those tasks in sequence.
 
         Parameters
         ----------
@@ -63,6 +65,7 @@ class ProcessingStepFunctionStack(Stack):
         imap_processing_lambda_code_path = (
             f"{lambda_code_main_folder}/imap_processing_lambda/"
         )
+        # Create a lambda function for processing.
         imap_processing_lambda = lambda_stack.LambdaWithDockerImageStack(
             scope,
             sds_id=f"ProcessingLambda-{sds_id}",
@@ -76,6 +79,7 @@ class ProcessingStepFunctionStack(Stack):
         data_checker_lambda_code_path = (
             f"{lambda_code_main_folder}/data_checker_lambda/"
         )
+        # Create a lambda function for data checker.
         data_checker_lambda = lambda_stack.LambdaWithDockerImageStack(
             scope,
             sds_id=f"DataCheckerLambda-{sds_id}",
@@ -93,7 +97,7 @@ class ProcessingStepFunctionStack(Stack):
             assumed_by=iam.ServicePrincipal("states.amazonaws.com"),
             description="IAM role for the Step Functions state machine",
         )
-        # Add a policy statement to the role with at least one resource
+        # Add a policy statement to the role
         lambda_invoke_policy_statement = iam.PolicyStatement(
             effect=iam.Effect.ALLOW, actions=["lambda:InvokeFunction"], resources=["*"]
         )
@@ -101,9 +105,7 @@ class ProcessingStepFunctionStack(Stack):
         # Attach the policy statement to the role
         step_function_role.add_to_policy(lambda_invoke_policy_statement)
 
-        # Create a Lambda task for the state machine
-        # This Lambda returns status equal success if instrument is
-        # SWE or else failed.
+        # This lambda task invokes processing lambda
         processing_task = tasks.LambdaInvoke(
             self,
             "Decom Lambda",
@@ -111,8 +113,7 @@ class ProcessingStepFunctionStack(Stack):
             payload=sfn.TaskInput.from_object({"instrument": "codice"}),
             output_path="$.Payload",
         )
-        # This lambda check DynamoDB table for data. If data found,
-        # it returns status_code 200 or else 204 for empty response.
+        # This lambda task invokes data checker lambda
         checker_task = tasks.LambdaInvoke(
             self,
             "DataCheckerTask Lambda",
@@ -155,6 +156,7 @@ class ProcessingStepFunctionStack(Stack):
 
         # Data checker lambda returns status code. This Choice path
         # checks status code and based on status code invokes fail or next state.
+        # Otherwise it invokes invalid status state if status code is not 200 or 204
         data_checker = sfn.Choice(self, "Data Status Check?")
         data_checker.when(
             sfn.Condition.number_equals("$.status_code", 200),
@@ -165,7 +167,8 @@ class ProcessingStepFunctionStack(Stack):
             invalid_status_state
         )
 
-        # First call data checker lambda. Based on response invoke processing lambda.
+        # Define state machine definition. This determines process flow
+        # on step function.
         definition = checker_task.next(data_checker)
 
         # Create the Step Functions state machine

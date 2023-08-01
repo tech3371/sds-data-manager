@@ -5,8 +5,8 @@ from boto3.dynamodb.conditions import Attr, Key
 
 
 def handler(event, context):
-    """Dummy code that checks if DynamoDB table has any processing
-    status pending for given input instrument.
+    """Dummy code that checks if DynamoDB table has any
+    status == PENDING for given input instrument.
 
     Parameters
     ----------
@@ -21,7 +21,8 @@ def handler(event, context):
     dynamodb = boto3.resource("dynamodb")
     table = dynamodb.Table(os.environ["DYNAMODB_TABLE"])
 
-    # Read Dynamodb table to get all data with L1a_status = 'PENDING'
+    # Read Dynamodb table to get all data for given instrument
+    # with status == 'PENDING'
     instrument = event["instrument"]
     query_response = table.query(
         KeyConditionExpression=Key("instrument").eq(instrument),
