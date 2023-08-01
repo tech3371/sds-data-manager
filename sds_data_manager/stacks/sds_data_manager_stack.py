@@ -130,6 +130,12 @@ class SdsDataManager(Stack):
             resources=["*"],
         )
 
+        dynamodb_write_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["dynamodb:PutItem"],
+            resources=["*"],
+        )
+
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
             id="IndexerLambda",
@@ -167,6 +173,8 @@ class SdsDataManager(Stack):
         indexer_lambda.add_to_role_policy(opensearch.opensearch_all_http_permissions)
         # Adding s3 read permissions to get config.json
         indexer_lambda.add_to_role_policy(s3_read_policy)
+        # Adding dynamodb write permissions
+        indexer_lambda.add_to_role_policy(dynamodb_write_policy)
 
         opensearch_secret = secrets.Secret.from_secret_name_v2(
             self, "opensearch_secret", opensearch.secret_name
