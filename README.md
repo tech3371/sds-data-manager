@@ -1,13 +1,13 @@
-## Requirements
-- AWS CLI [download link](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- nodejs [download link](https://nodejs.org/en/download/)
-- Docker [download link](https://docs.docker.com/get-docker/)
-
 # SDS-data-manager
 
 This project is the core of a Science Data System.  
 
 Our goal with the project is that users will only need to modify the file config.json to define the data products stored on the SDS, and the rest should be mission agnostic.  
+
+## Requirements
+- AWS CLI [download link](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+- nodejs [download link](https://nodejs.org/en/download/)
+- Docker [download link](https://docs.docker.com/get-docker/)
 
 ## Architecture
 
@@ -53,7 +53,7 @@ If running in codespaces, this should already be done.
 
 ### AWS Setup
 
-[AWS Setup page](docs/source/cdk/aws-setup.rst)
+[AWS Setup page](https://sds-data-manager.readthedocs.io/en/latest/cdk/aws-setup.html)
 
 You may also need to set the `CDK_DEFAULT_ACCOUNT` environment variable. 
 
@@ -61,7 +61,7 @@ You may also need to set the `CDK_DEFAULT_ACCOUNT` environment variable.
 
 
 ```bash
-nvm use 14
+nvm use <version>
 npm install -g aws-cdk
 ```
 
@@ -75,7 +75,7 @@ If you get errors with the 'cdk bootstrap' command, running with `-v` will provi
 
 ### Deploy
 
-[CDK Deployment page](docs/source/cdk/cdk-deployment.rst)
+[CDK Deployment page](https://sds-data-manager.readthedocs.io/en/latest/cdk/cdk-deployment.html)
 
 ### Virtual Desktop for Development
 

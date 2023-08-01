@@ -1,5 +1,6 @@
 AWS Setup
 =========
+
 Download/requirements
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -10,6 +11,7 @@ Ensure you have installed nodejs (newer than version 14), AWS CLI, and Docker
 - `Docker <https://docs.docker.com/get-docker/>`_
 
 .. _aws-new-user:
+
 New User
 ~~~~~~~~~
 
