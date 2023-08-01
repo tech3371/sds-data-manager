@@ -1,8 +1,8 @@
 # SDS-data-manager
 
-This project is the core of a Science Data System.  
+This project is the core of a Science Data System.
 
-Our goal with the project is that users will only need to modify the file config.json to define the data products stored on the SDS, and the rest should be mission agnostic.  
+Our goal with the project is that users will only need to modify the file config.json to define the data products stored on the SDS, and the rest should be mission agnostic.
 
 ## Requirements
 - AWS CLI [download link](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
@@ -17,17 +17,17 @@ The code in this repository takes the form of an AWS CDK project. It provides th
 2. An S3 bucket to contain uploaded files
 3. An HTTPS API to query and download files from the S3 bucket (*in development*)
 4. A lambda function that inserts file metadata into an opensearch instance
-5. A Cognito User Pool that keeps track of who can access the restricted APIs.  
+5. A Cognito User Pool that keeps track of who can access the restricted APIs.
 
 ## Development
 
-The development environment uses a GitHub codespace, to ensure that we're all using the proper libraries as we develop and deploy.  
+The development environment uses a GitHub codespace, to ensure that we're all using the proper libraries as we develop and deploy.
 
-Everyone gets 50 free hours per month of github Codespace time.  Alternatively, your organization can pay for it to run longer than this.  
+Everyone gets 50 free hours per month of github Codespace time.  Alternatively, your organization can pay for it to run longer than this.
 
-To start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".  
+To start a new development environment, click the button for "Code" in the upper right corner of the repository, and click "Codespaces".
 
-If you are running locally, you will need to install [cdk](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and [poetry](https://python-poetry.org/docs/#installation). 
+If you are running locally, you will need to install [cdk](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) and [poetry](https://python-poetry.org/docs/#installation).
 
 ### Poetry set up
 If you're running locally, you can install the Python requirements with Poetry:
@@ -55,9 +55,9 @@ If running in codespaces, this should already be done.
 
 [AWS Setup page](https://sds-data-manager.readthedocs.io/en/latest/cdk/aws-setup.html)
 
-You may also need to set the `CDK_DEFAULT_ACCOUNT` environment variable. 
+You may also need to set the `CDK_DEFAULT_ACCOUNT` environment variable.
 
-**NOTE**-- For new AWS users, you'll need to make certain the AWS Cloud Development Kit is installed: 
+**NOTE**-- For new AWS users, you'll need to make certain the AWS Cloud Development Kit is installed:
 
 
 ```bash
@@ -65,7 +65,7 @@ nvm use <version>
 npm install -g aws-cdk
 ```
 
-**NOTE**-- If this is a brand-new AWS account (IMPORTANT: new account, not new user), then you'll need to bootstrap your account to allow CDK deployment with the command: 
+**NOTE**-- If this is a brand-new AWS account (IMPORTANT: new account, not new user), then you'll need to bootstrap your account to allow CDK deployment with the command:
 
 ```bash
 cdk bootstrap
