@@ -151,7 +151,7 @@ class ProcessingStepFunctionStack(Stack):
         process_status = sfn.Choice(self, "Processing status?")
         process_status.when(
             sfn.Condition.string_equals("$.status", "SUCCEEDED"), success_state
-        ).when(sfn.Condition.string_equals("$.status", "UNSUPPORTED"), not_supported)
+        ).when(sfn.Condition.string_equals("$.status", "FAILED"), not_supported)
 
         # Data checker lambda returns status code. This Choice path
         # checks status code and based on status code invokes fail or next state.
@@ -172,6 +172,7 @@ class ProcessingStepFunctionStack(Stack):
         sfn.StateMachine(
             self,
             "MyStateMachine",
+            state_machine_name=f"processing-state-machine-{sds_id}",
             definition=definition,
             timeout=Duration.minutes(5),
             role=step_function_role,
