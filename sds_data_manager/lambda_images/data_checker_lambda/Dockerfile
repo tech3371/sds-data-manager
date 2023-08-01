@@ -13,9 +13,6 @@ RUN yum install -y git
 RUN python -m pip install --upgrade pip
 RUN pip install git+https://github.com/IMAP-Science-Operations-Center/imap_processing.git@dev
 
-# Way to get pip path
-# docker run --rm --it --entrypoint python public.ecr.aws/lambda/python:3.11 -c 'import sys; print("\n".join(sys.path))'
-
 # Lambda's default working directory in /var/task
 # We can retrive using this environment variable
 # ${LAMBDA_TASK_ROOT}
