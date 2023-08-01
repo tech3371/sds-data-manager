@@ -1,3 +1,5 @@
+from typing import Optional
+
 from aws_cdk import (
     Duration,
     Stack,
@@ -20,7 +22,7 @@ class LambdaWithDockerImageStack(Stack):
         managed_policy_names: dict,
         lambda_code_folder: str,
         timeout: int = 60,
-        lambda_environment_vars: dict = None,
+        lambda_environment_vars: Optional[dict] = None,
         **kwargs,
     ):
         super().__init__(scope, sds_id, **kwargs)
