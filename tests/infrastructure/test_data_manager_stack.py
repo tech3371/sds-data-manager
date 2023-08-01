@@ -7,6 +7,7 @@ from aws_cdk.assertions import Match, Template
 # Local
 from sds_data_manager.stacks.opensearch_stack import OpenSearch
 from sds_data_manager.stacks.sds_data_manager_stack import SdsDataManager
+from sds_data_manager.stacks.dynamodb_stack import DynamoDB
 
 
 @pytest.fixture(scope="module")
@@ -19,7 +20,17 @@ def opensearch_stack(app, sds_id, env):
 @pytest.fixture(scope="module")
 def template(app, sds_id, opensearch_stack, env):
     stack_name = f"stack-{sds_id}"
-    stack = SdsDataManager(app, stack_name, sds_id, opensearch_stack, env=env)
+    # create dynamoDB stack
+    dynamodb = DynamoDB(
+        app,
+        construct_id=f"DynamoDB-{sds_id}",
+        sds_id=sds_id,
+        table_name=f"imap-data-watcher-{sds_id}",
+        partition_key="instrument",
+        sort_key="filename",
+        env=env,
+    )
+    stack = SdsDataManager(app, stack_name, sds_id, opensearch_stack, dynamodb_stack=dynamodb, env=env)
     template = Template.from_stack(stack)
     return template
 
