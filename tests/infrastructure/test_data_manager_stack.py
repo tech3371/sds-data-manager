@@ -424,10 +424,15 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                             },
                         ],
                     },
-                    {
-                        "Effect": "Allow",
-                    },
                     {"Action": "dynamodb:PutItem", "Effect": "Allow", "Resource": "*"},
+                    {
+                        "Action": [
+                            "secretsmanager:DescribeSecret",
+                            "secretsmanager:GetSecretValue"
+                        ],
+                        "Effect": "Allow",
+                        "Resource": Match.string_like_regexp("arn:aws:secretsmanager:.*:.*:secret:.*"),
+                    }
                 ],
             },
             "PolicyName": Match.string_like_regexp(
