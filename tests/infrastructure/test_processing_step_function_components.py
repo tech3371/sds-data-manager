@@ -46,7 +46,7 @@ def lambda_stack(app, sds_id, env):
         lambda_code_folder=imap_processing_lambda_code_path,
         lambda_environment_vars={
             "DYNAMODB_TABLE": "test-table",
-        }
+        },
     )
     template = Template.from_stack(stack)
     return template
@@ -128,4 +128,3 @@ def test_lambda_has_environment_variable_set(lambda_stack):
             }
         },
     )
-
