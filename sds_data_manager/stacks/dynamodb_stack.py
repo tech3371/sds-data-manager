@@ -1,4 +1,6 @@
 # Create stack for DynamoDB
+from typing import Optional
+
 from aws_cdk import Environment, RemovalPolicy, Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from constructs import Construct
@@ -15,8 +17,8 @@ class DynamoDB(Stack):
         sort_key: str,
         env: Environment,
         on_demand: bool = True,
-        read_capacity: int = None,
-        write_capacity: int = None,
+        read_capacity: Optional[int] = None,
+        write_capacity: Optional[int] = None,
         **kwargs,
     ):
         super().__init__(scope, construct_id, **kwargs)
