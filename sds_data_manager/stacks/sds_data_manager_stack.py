@@ -5,7 +5,6 @@ import pathlib
 import aws_cdk as cdk
 from aws_cdk import (
     Environment,
-    RemovalPolicy,
     Stack,
     aws_lambda_event_sources,
 )
@@ -22,12 +21,11 @@ from aws_cdk import (
     aws_s3 as s3,
 )
 from aws_cdk import (
-    aws_s3_deployment as s3_deploy,
-)
-from aws_cdk import (
     aws_secretsmanager as secrets,
 )
 from constructs import Construct
+
+from sds_data_manager.stacks.s3_data_buckets_stack import S3DataBuckets
 
 # Local
 from .dynamodb_stack import DynamoDB
@@ -44,6 +42,7 @@ class SdsDataManager(Stack):
         sds_id: str,
         opensearch: OpenSearch,
         dynamodb_stack: DynamoDB,
+        s3_data_bucket: S3DataBuckets,
         env: Environment,
         **kwargs,
     ) -> None:
@@ -64,99 +63,20 @@ class SdsDataManager(Stack):
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
-        # This is the S3 bucket used by upload_api_lambda
-        data_bucket = s3.Bucket(
-            self,
-            f"DataBucket-{sds_id}",
-            bucket_name=f"sds-data-{sds_id}",
-            versioned=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-        )
-
-        # Confirm that a config.json file exists in the expected
-        # location before S3 upload
-        if (
-            not pathlib.Path(__file__)
-            .parent.joinpath("..", "config", "config.json")
-            .resolve()
-            .exists()
-        ):
-            raise RuntimeError(
-                "sds_data_manager/config directory must contain config.json"
-            )
-
-        # S3 bucket where the configurations will be stored
-        config_bucket = s3.Bucket(
-            self,
-            f"ConfigBucket-{sds_id}",
-            bucket_name=f"sds-config-bucket-{sds_id}",
-            versioned=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-        )
-
-        # Upload all files in the config directory to the S3 config bucket.
-        # This directory should contain a config.json file that will
-        # be used for indexing files into the data bucket.
-        s3_deploy.BucketDeployment(
-            self,
-            f"DeployConfig-{sds_id}",
-            sources=[
-                s3_deploy.Source.asset(
-                    str(
-                        pathlib.Path(__file__).parent.joinpath("..", "config").resolve()
-                    )
-                )
-            ],
-            destination_bucket=config_bucket,
-        )
-
+        # Create policy statements
         s3_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:PutObject"],
-            resources=[f"{data_bucket.bucket_arn}/*"],
+            resources=[f"{s3_data_bucket.data_bucket.bucket_arn}/*"],
         )
         s3_read_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:GetObject"],
-            resources=[f"{data_bucket.bucket_arn}/*", f"{config_bucket.bucket_arn}/*"],
-        )
-        iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=["cognito-idp:*"],
-            resources=["*"],
-        )
-
-        s3_replication_configuration_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=["s3:GetReplicationConfiguration", "s3:ListBucket"],
-            resources=[f"{data_bucket.bucket_arn}"],
-        )
-
-        s3_replication_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=[
-                "s3:GetObjectVersionForReplication",
-                "s3:GetObjectVersionAcl",
-                "s3:GetObjectVersionTagging",
+            resources=[
+                f"{s3_data_bucket.data_bucket.bucket_arn}/*",
+                f"{s3_data_bucket.config_bucket.bucket_arn}/*",
             ],
-            resources=[f"{data_bucket.bucket_arn}/*"],
         )
-
-        # Create role for backup bucket in the backup account
-        backup_role = iam.Role(
-            self,
-            "BackupRole",
-            assumed_by=iam.ServicePrincipal("s3.amazonaws.com"),
-            description="Role for getting permissions to \
-                        replicate out of S3 bucket in this account.",
-        )
-
-        backup_role.add_to_policy(s3_replication_configuration_policy)
-        backup_role.add_to_policy(s3_replication_policy)
 
         dynamodb_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
@@ -164,6 +84,7 @@ class SdsDataManager(Stack):
             resources=["*"],
         )
 
+        # Create lambdas
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
             id="IndexerLambda",
@@ -183,7 +104,7 @@ class SdsDataManager(Stack):
                 "METADATA_INDEX": "metadata",
                 "DATA_TRACKER_INDEX": "data_tracker",
                 "DYNAMODB_TABLE": dynamodb_stack.table_name,
-                "S3_DATA_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_DATA_BUCKET": s3_data_bucket.data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
                 "SECRET_ID": opensearch.secret_name,
                 "REGION": opensearch.region,
@@ -192,7 +113,7 @@ class SdsDataManager(Stack):
 
         indexer_lambda.add_event_source(
             aws_lambda_event_sources.S3EventSource(
-                data_bucket, events=[s3.EventType.OBJECT_CREATED]
+                s3_data_bucket.data_bucket, events=[s3.EventType.OBJECT_CREATED]
             )
         )
         indexer_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
@@ -223,7 +144,7 @@ class SdsDataManager(Stack):
             timeout=cdk.Duration.minutes(15),
             memory_size=1000,
             environment={
-                "S3_BUCKET": data_bucket.s3_url_for_object(),
+                "S3_BUCKET": s3_data_bucket.data_bucket.s3_url_for_object(),
                 "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{sds_id}",
             },
         )
