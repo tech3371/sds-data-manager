@@ -433,15 +433,6 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                         "Effect": "Allow",
                         "Resource": {"Fn::Join": ["", ["arn:", {"Ref": "AWS::Partition"}, Match.string_like_regexp(":secretsmanager:.*:secret:.*")]]},
                     }
-                        "Action": [
-                            "secretsmanager:DescribeSecret",
-                            "secretsmanager:GetSecretValue",
-                        ],
-                        "Effect": "Allow",
-                        "Resource": Match.string_like_regexp(
-                            "arn:aws:secretsmanager:.*:.*:secret:.*"
-                        ),
-                    },
                 ],
             },
             "PolicyName": Match.string_like_regexp(
