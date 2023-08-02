@@ -428,11 +428,13 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                     {
                         "Action": [
                             "secretsmanager:DescribeSecret",
-                            "secretsmanager:GetSecretValue"
+                            "secretsmanager:GetSecretValue",
                         ],
                         "Effect": "Allow",
-                        "Resource": Match.string_like_regexp("arn:aws:secretsmanager:.*:.*:secret:.*"),
-                    }
+                        "Resource": Match.string_like_regexp(
+                            "arn:aws:secretsmanager:.*:.*:secret:.*"
+                        ),
+                    },
                 ],
             },
             "PolicyName": Match.string_like_regexp(
