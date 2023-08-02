@@ -125,6 +125,34 @@ class SdsDataManager(Stack):
             resources=["*"],
         )
 
+        s3_replication_configuration_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:GetReplicationConfiguration", "s3:ListBucket"],
+            resources=[f"{data_bucket.bucket_arn}"],
+        )
+
+        s3_replication_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "s3:GetObjectVersionForReplication",
+                "s3:GetObjectVersionAcl",
+                "s3:GetObjectVersionTagging",
+            ],
+            resources=[f"{data_bucket.bucket_arn}/*"],
+        )
+
+        # Create role for backup bucket in the backup account
+        backup_role = iam.Role(
+            self,
+            "BackupRole",
+            assumed_by=iam.ServicePrincipal("s3.amazonaws.com"),
+            description="Role for getting permissions to \
+                        replicate out of S3 bucket in this account.",
+        )
+
+        backup_role.add_to_policy(s3_replication_configuration_policy)
+        backup_role.add_to_policy(s3_replication_policy)
+
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
             id="IndexerLambda",
