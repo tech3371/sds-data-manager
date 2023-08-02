@@ -106,20 +106,33 @@ class ProcessingStepFunctionStack(Stack):
         step_function_role.add_to_policy(lambda_invoke_policy_statement)
 
         # This lambda task invokes processing lambda
+
+        # Note: sfn.TaskInput.from_json_path_at("$") is used to get the step
+        # function input and pass it as input to the processing lambda.
+        # Then result_path is used to pass down step function input to
+        # next step function task.
+        # result_selector is used to select the result from the processing
+        # lambda output.
         processing_task = tasks.LambdaInvoke(
             self,
             "Decom Lambda",
             lambda_function=imap_processing_lambda.fn,
-            payload=sfn.TaskInput.from_object({"instrument": "codice"}),
-            output_path="$.Payload",
+            payload=sfn.TaskInput.from_json_path_at("$"),
+            result_path="$.Payload",
+            result_selector={
+                "status": sfn.JsonPath.string_at("$.Payload.status"),
+            },
         )
         # This lambda task invokes data checker lambda
         checker_task = tasks.LambdaInvoke(
             self,
             "DataCheckerTask Lambda",
             lambda_function=data_checker_lambda.fn,
-            payload=sfn.TaskInput.from_object({"instrument": "codice"}),
-            output_path="$.Payload",
+            payload=sfn.TaskInput.from_json_path_at("$"),
+            result_path="$.Payload",
+            result_selector={
+                "status_code": sfn.JsonPath.string_at("$.Payload.status_code"),
+            },
         )
 
         # fail and success states
@@ -151,18 +164,18 @@ class ProcessingStepFunctionStack(Stack):
         # checks status and based on status invokes fail or succes state.
         process_status = sfn.Choice(self, "Processing status?")
         process_status.when(
-            sfn.Condition.string_equals("$.status", "SUCCEEDED"), success_state
-        ).when(sfn.Condition.string_equals("$.status", "FAILED"), not_supported)
+            sfn.Condition.string_equals("$.Payload.status", "SUCCEEDED"), success_state
+        ).when(sfn.Condition.string_equals("$.Payload.status", "FAILED"), not_supported)
 
         # Data checker lambda returns status code. This Choice path
         # checks status code and based on status code invokes fail or next state.
         # Otherwise it invokes invalid status state if status code is not 200 or 204
         data_checker = sfn.Choice(self, "Data Status Check?")
         data_checker.when(
-            sfn.Condition.number_equals("$.status_code", 200),
+            sfn.Condition.number_equals("$.Payload.status_code", 200),
             processing_task.next(process_status),
         ).when(
-            sfn.Condition.number_equals("$.status_code", 204), empty_state
+            sfn.Condition.number_equals("$.Payload.status_code", 204), empty_state
         ).otherwise(
             invalid_status_state
         )

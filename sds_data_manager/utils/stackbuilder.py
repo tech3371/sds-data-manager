@@ -69,6 +69,6 @@ def build_sds(
         scope,
         f"ProcessingStepFunctionStack-{sds_id}",
         sds_id,
-        dynamodb_table_name="imap-data-watcher-tc-dev",
+        dynamodb_table_name=dynamodb.table_name,
         env=env,
     )
