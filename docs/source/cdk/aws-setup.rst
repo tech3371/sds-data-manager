@@ -1,7 +1,8 @@
 AWS Setup
 =========
+
 Download/requirements
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 Ensure you have installed nodejs (newer than version 14), AWS CLI, and Docker
 
@@ -9,8 +10,11 @@ Ensure you have installed nodejs (newer than version 14), AWS CLI, and Docker
 - `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html>`_
 - `Docker <https://docs.docker.com/get-docker/>`_
 
+.. _aws-new-user:
+
 New User
 ~~~~~~~~~
+
 #. Log-in to `AWS console <https://aws.amazon.com/console/>`_
 #. Use *imap-sdc-development* for Account ID
 #. Enter user name and password
@@ -29,7 +33,7 @@ Existing User
 
     aws configure
 
-#. Enter the *Access Key ID* and *Secret Access Key* from the previous step
+#. Enter your *Access Key ID* and *Secret Access Key* (If you don't have them, see :ref:`aws-new-user`)
 #. For region, set it to the AWS region you'd like to set up your SDS. For IMAP, we're using "us-west-2"::
 
     [imap]
