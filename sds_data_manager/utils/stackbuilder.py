@@ -9,6 +9,7 @@ from sds_data_manager.stacks import (
     domain_stack,
     dynamodb_stack,
     opensearch_stack,
+    s3_data_buckets_stack,
     sds_data_manager_stack,
 )
 
@@ -42,8 +43,15 @@ def build_sds(
         env=env,
     )
 
+    s3 = s3_data_buckets_stack.S3DataBuckets(
+        scope,
+        construct_id=f"S3-Data-Bucket-{sds_id}",
+        sds_id=sds_id,
+        env=env,
+    )
+
     data_manager = sds_data_manager_stack.SdsDataManager(
-        scope, f"SdsDataManager-{sds_id}", sds_id, open_search, dynamodb, env=env
+        scope, f"SdsDataManager-{sds_id}", sds_id, open_search, dynamodb, s3, env=env
     )
 
     domain = domain_stack.Domain(
@@ -82,4 +90,13 @@ def build_backup(scope: App, env: Environment, sds_id: str, source_account: str)
     # This is the S3 bucket used by upload_api_lambda
     backup_bucket_stack.BackupBucket(
         scope, f"BackupBucket-{sds_id}", sds_id, env=env, source_account=source_account
+    )
+
+
+def build_s3_data_buckets(scope: App, env: Environment, sds_id: str):
+    s3_data_buckets_stack.S3DataBuckets(
+        scope,
+        construct_id=f"S3-Data-Bucket-{sds_id}",
+        sds_id=sds_id,
+        env=env,
     )
