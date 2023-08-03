@@ -140,9 +140,7 @@ class SdsDataManager(Stack):
         )
 
         step_function_execution_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=["states:StartExecution"],
-            resources=["*"]
+            effect=iam.Effect.ALLOW, actions=["states:StartExecution"], resources=["*"]
         )
 
         indexer_lambda = lambda_alpha_.PythonFunction(
