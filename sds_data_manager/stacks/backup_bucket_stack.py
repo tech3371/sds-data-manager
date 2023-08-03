@@ -58,7 +58,7 @@ class BackupBucket(Stack):
         # FOR NOW: Deploy other stack, update this name with the created role.
         role_arn = (
             "arn:aws:iam::449431850278:"
-            "role/SdsDataManager-mh-dev-BackupRoleF43CFD90-4NRYYE2Y3QCS"
+            "role/SdsDataManager-mh-dev-BackupRoleF43CFD90-11WK8QFUD7HTG"
         )
 
         # This is the S3 bucket used by upload_api_lambda
@@ -81,16 +81,16 @@ class BackupBucket(Stack):
         replicate_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:ReplicateObject", "s3:ReplicateDelete"],
-            principals=[iam.ArnPrincipal(role_arn)],
             resources=[f"{backup_bucket.bucket_arn}/*"],
         )
+        replicate_policy.add_arn_principal(role_arn)
 
         versioning_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:List*", "s3:GetBucketVersioning", "s3:PutBucketVersioning"],
-            principals=[iam.ArnPrincipal(role_arn)],
             resources=[f"{backup_bucket.bucket_arn}"],
         )
+        versioning_policy.add_arn_principal(role_arn)
 
         backup_bucket.add_to_resource_policy(replicate_policy)
         backup_bucket.add_to_resource_policy(versioning_policy)

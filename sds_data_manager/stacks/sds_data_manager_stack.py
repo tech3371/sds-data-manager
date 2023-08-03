@@ -149,13 +149,15 @@ class SdsDataManager(Stack):
         # Rather than depending on the deploy in another account through CDK,
         # we can assume the backup bucket already exists and go from here.
         # Take existing sds-id, remove "dev" or "prod", and add "backup"
-        backup_bucket_name = f"sds-data-\
-            {(sds_id.split('-')[0]+'-' if len(sds_id.split('-')) > 1 else '')}backup"
+        backup_bucket_name = (
+            f"sds-data-"
+            f"{(sds_id.split('-')[0]+'-' if len(sds_id.split('-')) > 1 else '')}backup"
+        )
 
         s3_backup_replication_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:ReplicateObject", "s3:ReplicateDelete", "s3:ReplicateTags"],
-            resources=[f"arn:aws:s3:::{backup_bucket_name}"],
+            resources=[f"arn:aws:s3:::{backup_bucket_name}/*"],
         )
         # Create role for backup bucket in the backup account
         backup_role = iam.Role(
@@ -166,7 +168,7 @@ class SdsDataManager(Stack):
                         replicate out of S3 bucket in this account.",
         )
 
-        backup_role.add_to_principal_policy(s3_replication_configuration_policy)
+        backup_role.add_to_policy(s3_replication_configuration_policy)
         backup_role.add_to_policy(s3_replication_policy)
         backup_role.add_to_policy(s3_backup_replication_policy)
 
