@@ -166,7 +166,7 @@ class SdsDataManager(Stack):
                         replicate out of S3 bucket in this account.",
         )
 
-        backup_role.add_to_policy(s3_replication_configuration_policy)
+        backup_role.add_to_principal_policy(s3_replication_configuration_policy)
         backup_role.add_to_policy(s3_replication_policy)
         backup_role.add_to_policy(s3_backup_replication_policy)
 

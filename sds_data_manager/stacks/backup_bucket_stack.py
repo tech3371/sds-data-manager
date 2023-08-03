@@ -13,8 +13,24 @@ from constructs import Construct
 
 
 class BackupBucket(Stack):
-    # This needs to be deployed prior to the sds-data-manager.
-    # If the bucket already exists, then they are not dependent
+    """
+    This stack creates the destination bucket for data backups. It can be run in
+    the same account as SdsDataManager, or in a separate account.
+    The source_account is a required parameter. This source account should be the
+    AWS account for the source bucket.
+
+    For replication to work, you also need to deploy SdsDataManager and create
+    the source bucket and replication role. Then, you need to manually update
+    the role_arn variable with the replication role created.
+
+    Finally, you need to set up the replication rule in the **source** account.
+    To do this, go to the source bucket and click the "Management" tab.
+    Under the "Replication Rules" section, create a replication rule. Specify
+    your bucket, select the IAM Role "BackupRole" created in SdsDataManager, and
+    save the rule. This rule can be set up after both source and destination stacks
+    are deployed.
+    """
+
     def __init__(
         self,
         scope: Construct,
@@ -24,7 +40,26 @@ class BackupBucket(Stack):
         source_account: str,
         **kwargs,
     ) -> None:
+        """
+        BackupBucketStack
+
+        Parameters
+        ----------
+        scope : Construct
+        construct_id : str
+        sds_id: str
+        env : Environment
+            Account and region
+        source_account : str
+            Account number for the source S3 bucket
+        """
         super().__init__(scope, construct_id, env=env, **kwargs)
+
+        # FOR NOW: Deploy other stack, update this name with the created role.
+        role_arn = (
+            "arn:aws:iam::449431850278:"
+            "role/SdsDataManager-mh-dev-BackupRoleF43CFD90-4NRYYE2Y3QCS"
+        )
 
         # This is the S3 bucket used by upload_api_lambda
         backup_bucket = s3.Bucket(
@@ -39,35 +74,23 @@ class BackupBucket(Stack):
 
         iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["s3:PutObject"],
-            resources=[f"{backup_bucket.bucket_arn}/*"],
-        )
-
-        iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=["s3:GetObject"],
-            resources=[f"{backup_bucket.bucket_arn}/*"],
-        )
-
-        iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
             actions=["cognito-idp:*"],
             resources=["*"],
         )
 
-        # FOR NOW: Deploy other stack, update this name with the created role.
-        role_arn = f"arn:aws:iam::{source_account}:role/BackupRole"
-        # Policy statement not getting attached - invalid role?
-        iam.PolicyStatement(
+        replicate_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:ReplicateObject", "s3:ReplicateDelete"],
             principals=[iam.ArnPrincipal(role_arn)],
             resources=[f"{backup_bucket.bucket_arn}/*"],
         )
 
-        iam.PolicyStatement(
+        versioning_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:List*", "s3:GetBucketVersioning", "s3:PutBucketVersioning"],
             principals=[iam.ArnPrincipal(role_arn)],
             resources=[f"{backup_bucket.bucket_arn}"],
         )
+
+        backup_bucket.add_to_resource_policy(replicate_policy)
+        backup_bucket.add_to_resource_policy(versioning_policy)
