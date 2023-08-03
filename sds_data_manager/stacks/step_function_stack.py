@@ -185,7 +185,7 @@ class ProcessingStepFunctionStack(Stack):
         definition = checker_task.next(data_checker)
 
         # Create the Step Functions state machine
-        sfn.StateMachine(
+        self.sfn = sfn.StateMachine(
             self,
             "MyStateMachine",
             state_machine_name=f"processing-state-machine-{sds_id}",
