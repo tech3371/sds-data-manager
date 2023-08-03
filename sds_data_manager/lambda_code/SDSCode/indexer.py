@@ -23,6 +23,8 @@ logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 s3 = boto3.client("s3")
+# Create a Step Functions client
+step_function_client = boto3.client("stepfunctions")
 
 
 def _load_allowed_filenames():
@@ -232,3 +234,12 @@ def lambda_handler(event, context):
     # send the paylaod to the opensearch instance
     client.send_payload(document_payload)
     client.close()
+
+    # Start Step function execution
+    state_machine_arn = os.environ.get("STATE_MACHINE_ARN")
+    input_data = {"instrument": metadata["instrument"]}
+    response = step_function_client.start_execution(
+        stateMachineArn=state_machine_arn,
+        input=json.dumps(input_data),  # Input data must be a JSON string
+    )
+    logger.info(f"Step function execution started: {response}")
