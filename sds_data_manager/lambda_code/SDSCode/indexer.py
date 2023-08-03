@@ -24,7 +24,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 s3 = boto3.client("s3")
 # Create a Step Functions client
-step_function_client = boto3.client("stepfunctions")
+step_function_client = boto3.client("stepfunctions", region_name=os.environ["CDK_DEFAULT_REGION"])
 
 
 def _load_allowed_filenames():
