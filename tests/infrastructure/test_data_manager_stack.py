@@ -426,16 +426,12 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                         ],
                     },
                     {
-                        "Action": [
-                            "dynamodb:PutItem",
-                        ],
+                        "Action": "dynamodb:PutItem",
                         "Effect": "Allow",
                         "Resource": "*"
                     },
                     {
-                        "Action": [
-                            "states:StartExecution",
-                        ],
+                        "Action": "states:StartExecution",
                         "Effect": "Allow",
                         "Resource": "*"
                     },
