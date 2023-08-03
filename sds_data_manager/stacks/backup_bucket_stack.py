@@ -13,6 +13,8 @@ from constructs import Construct
 
 
 class BackupBucket(Stack):
+    # This needs to be deployed prior to the sds-data-manager.
+    # If the bucket already exists, then they are not dependent
     def __init__(
         self,
         scope: Construct,
@@ -53,13 +55,19 @@ class BackupBucket(Stack):
             resources=["*"],
         )
 
+        # FOR NOW: Deploy other stack, update this name with the created role.
+        role_arn = f"arn:aws:iam::{source_account}:role/BackupRole"
+        # Policy statement not getting attached - invalid role?
         iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["s3:ReplicateObject", "s3:ReplicateDelete"],
-            principals=[
-                iam.ArnPrincipal(
-                    f"arn:aws:iam::{source_account}:role/service-role/BackupRole"
-                )
-            ],
+            principals=[iam.ArnPrincipal(role_arn)],
             resources=[f"{backup_bucket.bucket_arn}/*"],
+        )
+
+        iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["s3:List*", "s3:GetBucketVersioning", "s3:PutBucketVersioning"],
+            principals=[iam.ArnPrincipal(role_arn)],
+            resources=[f"{backup_bucket.bucket_arn}"],
         )

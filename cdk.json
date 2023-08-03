@@ -23,7 +23,7 @@
       "sds_id": "prod"
     },
     "backup":{
-      "sds_id": "dev"
+      "sds_id": "backup"
     },
     "sds-region": "us-west-2",
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
