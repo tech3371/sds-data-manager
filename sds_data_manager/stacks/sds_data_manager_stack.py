@@ -175,21 +175,6 @@ class SdsDataManager(Stack):
         backup_role.add_to_policy(s3_replication_policy)
         backup_role.add_to_policy(s3_backup_replication_policy)
 
-        s3.CfnBucket.ReplicationRuleProperty(
-            destination=s3.CfnBucket.ReplicationDestinationProperty(
-                bucket=f"{data_bucket.bucket_name}",
-                # the properties below are optional
-                # access_control_translation=\
-                # s3.CfnBucket.AccessControlTranslationProperty(
-                #           owner="owner"
-                # ),
-                account="account",
-                storage_class="storageClass",
-            ),
-            status="status",
-            id=f"data-bucket-backup-replication-rule-{sds_id}",
-        )
-
         dynamodb_write_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["dynamodb:PutItem"],
