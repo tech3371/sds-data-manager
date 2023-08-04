@@ -75,11 +75,8 @@ if params["sds_id"] == "backup":
     if not s3_source_account:
         raise KeyError(
             "No source account is set for the backup deploy."
-            "Please define the CDK_SOURCE_ACCOUNT environment variable."
+            "Please define the CDK_S3_BACKUPS_SOURCE_ACCOUNT environment variable."
         )
-
-    print("!!!!!!!!BACKUP!!!!!!!!!")
-    print(s3_source_account)
     stacks = build_backup(app, env=env, sds_id=sds_id, source_account=s3_source_account)
 
 else:

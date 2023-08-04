@@ -265,7 +265,7 @@ def test_custom_s3_bucket_notifications_resource_properties(template):
 
 
 def test_iam_roles_resource_count(template):
-    template.resource_count_is("AWS::IAM::Role", 7)
+    template.resource_count_is("AWS::IAM::Role", 8)
 
 
 def test_expected_properties_for_iam_roles(template):
@@ -293,7 +293,7 @@ def test_expected_properties_for_iam_roles(template):
 
 
 def test_iam_policy_resource_count(template):
-    template.resource_count_is("AWS::IAM::Policy", 6)
+    template.resource_count_is("AWS::IAM::Policy", 7)
 
 
 def test_uploadapilambda_iam_policy_resource_properties(template):
