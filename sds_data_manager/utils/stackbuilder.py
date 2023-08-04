@@ -11,6 +11,7 @@ from sds_data_manager.stacks import (
     opensearch_stack,
     s3_data_buckets_stack,
     sds_data_manager_stack,
+    step_function_stack,
 )
 
 
@@ -43,15 +44,22 @@ def build_sds(
         env=env,
     )
 
-    s3 = s3_data_buckets_stack.S3DataBuckets(
+    processing_step_function = step_function_stack.ProcessingStepFunctionStack(
         scope,
-        construct_id=f"S3-Data-Bucket-{sds_id}",
-        sds_id=sds_id,
+        f"ProcessingStepFunctionStack-{sds_id}",
+        sds_id,
+        dynamodb_table_name=dynamodb.table_name,
         env=env,
     )
 
     data_manager = sds_data_manager_stack.SdsDataManager(
-        scope, f"SdsDataManager-{sds_id}", sds_id, open_search, dynamodb, s3, env=env
+        scope,
+        f"SdsDataManager-{sds_id}",
+        sds_id,
+        open_search,
+        dynamodb,
+        processing_step_function_arn=processing_step_function.sfn.state_machine_arn,
+        env=env,
     )
 
     domain = domain_stack.Domain(
