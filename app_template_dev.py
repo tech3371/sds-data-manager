@@ -72,12 +72,15 @@ print(f"Using the profile [{current_profile}] in region [{region}].")
 print(f"The stack identifier being used is: {sds_id}")
 
 if params["sds_id"] == "backup":
-    if not s3_source_account:
-        raise KeyError(
+    try:
+        stacks = build_backup(
+            app, env=env, sds_id=sds_id, source_account=s3_source_account
+        )
+    except NameError:
+        print(
             "No source account is set for the backup deploy."
             "Please define the CDK_S3_BACKUPS_SOURCE_ACCOUNT environment variable."
         )
-    stacks = build_backup(app, env=env, sds_id=sds_id, source_account=s3_source_account)
 
 else:
     stacks = build_sds(
