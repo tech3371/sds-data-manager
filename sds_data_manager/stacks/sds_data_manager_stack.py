@@ -189,7 +189,7 @@ class SdsDataManager(Stack):
 
         s3_backup_bucket_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["s3:List"],
+            actions=["s3:List*"],
             resources=[f"arn:aws:s3:::{backup_bucket_name}"],
         )
 
