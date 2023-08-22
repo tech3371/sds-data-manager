@@ -1,0 +1,147 @@
+import pytest
+from aws_cdk.assertions import Match, Template
+
+from sds_data_manager.stacks.backup_bucket_stack import BackupBucket
+
+
+@pytest.fixture(scope="module")
+def template(app, sds_id, env):
+    backup = BackupBucket(
+        app,
+        construct_id=f"BackupBucket-{sds_id}",
+        sds_id=sds_id,
+        env=env,
+        source_account="0",
+    )
+
+    template = Template.from_stack(backup)
+
+    return template
+
+
+def test_s3_bucket_resource_count(template):
+    template.resource_count_is("AWS::S3::Bucket", 1)
+
+
+def test_s3_config_bucket_resource_properties(template, sds_id):
+    template.has_resource(
+        "AWS::S3::Bucket",
+        {
+            "DeletionPolicy": "Delete",
+            "UpdateReplacePolicy": "Delete",
+        },
+    )
+
+    template.has_resource_properties(
+        "AWS::S3::Bucket",
+        {
+            "BucketName": f"sds-data-{sds_id}",
+            "VersioningConfiguration": {"Status": "Enabled"},
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": True,
+                "BlockPublicPolicy": True,
+                "IgnorePublicAcls": True,
+                "RestrictPublicBuckets": True,
+            },
+        },
+    )
+
+
+def test_s3_bucket_policy_resource_count(template):
+    template.resource_count_is("AWS::S3::BucketPolicy", 1)
+
+
+def test_s3_data_bucket_policy_resource_properties(template):
+    template.has_resource_properties(
+        "AWS::S3::BucketPolicy",
+        props={
+            "Bucket": {"Ref": Match.string_like_regexp("BackupDataBucket*")},
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Action": ["s3:GetBucket*", "s3:List*", "s3:DeleteObject*"],
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": {
+                                "Fn::GetAtt": [
+                                    Match.string_like_regexp(
+                                        "CustomS3AutoDeleteObjectsCustomResourceProviderRole*"
+                                    ),
+                                    "Arn",
+                                ]
+                            }
+                        },
+                        "Resource": [
+                            {
+                                "Fn::GetAtt": [
+                                    Match.string_like_regexp("BackupDataBucket*"),
+                                    "Arn",
+                                ]
+                            },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Fn::GetAtt": [
+                                                Match.string_like_regexp(
+                                                    "BackupDataBucket*"
+                                                ),
+                                                "Arn",
+                                            ]
+                                        },
+                                        "/*",
+                                    ],
+                                ]
+                            },
+                        ],
+                    },
+                    {
+                        "Action": [
+                            "s3:ReplicateObject",
+                            "s3:ReplicateDelete",
+                            "s3:GetObject",
+                        ],
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": Match.string_like_regexp(".*SdsDataManager.*")
+                        },
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Fn::GetAtt": [
+                                            Match.string_like_regexp(
+                                                "BackupDataBucket*"
+                                            ),
+                                            "Arn",
+                                        ]
+                                    },
+                                    "/*",
+                                ],
+                            ]
+                        },
+                    },
+                    {
+                        "Action": [
+                            "s3:List*",
+                            "s3:GetBucketVersioning",
+                            "s3:PutBucketVersioning",
+                        ],
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": Match.string_like_regexp(".*SdsDataManager.*")
+                        },
+                        "Resource": {
+                            "Fn::GetAtt": [
+                                Match.string_like_regexp("BackupDataBucket*"),
+                                "Arn",
+                            ]
+                        },
+                    },
+                ],
+            },
+        },
+    )
