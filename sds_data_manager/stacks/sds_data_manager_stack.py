@@ -200,6 +200,7 @@ class SdsDataManager(Stack):
             assumed_by=iam.ServicePrincipal("s3.amazonaws.com"),
             description="Role for getting permissions to \
                         replicate out of S3 bucket in this account.",
+            role_name=f"BackupRole-{sds_id}",
         )
 
         backup_role.add_to_policy(s3_replication_configuration_policy)
