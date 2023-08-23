@@ -1042,3 +1042,43 @@ def test_custom_deploy_config_lambda_layer(template):
             "Description": "/opt/awscli/aws",
         },
     )
+
+
+def test_backup_role_iam_policy_resource_properties(template):
+    template.has_resource_properties(
+        "AWS::IAM::Policy",
+        {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "s3:PutBucketNotification",
+                        "Resource": "*",
+                    }
+                ],
+            },
+            "PolicyName": Match.string_like_regexp("BucketNotificationsHandler*"),
+        },
+    )
+
+
+def test_custom_backup_role_properties(template, sds_id):
+    template.has_resource(
+        "AWS::IAM::Role",
+        {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {"Service": "s3.amazonaws.com"},
+                        }
+                    ],
+                    "Version": "2012-10-17",
+                },
+                "RoleName": Match.string_like_regexp("BackupRole.*"),
+            }
+        },
+    )

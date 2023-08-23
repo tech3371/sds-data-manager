@@ -64,7 +64,7 @@ class BackupBucket(Stack):
         # This is the S3 bucket used by upload_api_lambda
         backup_bucket = s3.Bucket(
             self,
-            f"DataBucket-{sds_id}",
+            f"BackupDataBucket-{sds_id}",
             bucket_name=f"sds-data-{sds_id}",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
