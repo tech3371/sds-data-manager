@@ -12,6 +12,8 @@ from sds_data_manager.stacks import (
     domain_stack,
     dynamodb_stack,
     ecr_stack,
+    efs_lambda_stack,
+    efs_stack,
     networking_stack,
     opensearch_stack,
     processing_stack,
@@ -92,7 +94,7 @@ def build_sds(scope: App, env: Environment, account_config: dict):
         env=env,
         vpc=networking.vpc,
         rds_security_group=networking.rds_security_group,
-        engine_version=rds.PostgresEngineVersion.VER_14_2,
+        engine_version=rds.PostgresEngineVersion.VER_15_3,
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
@@ -109,10 +111,22 @@ def build_sds(scope: App, env: Environment, account_config: dict):
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
             scope,
-            f"{instrument}Processing",
+            f"{instrument}EcrRepo",
             env=env,
             instrument_name=f"{instrument}",
         )
+        # lambda_code_directory is used to set lambda's code
+        # asset base path. Then it requires to have folder
+        # called "instruments" in lambda_code_directory and
+        # python code with f"l1a_{instrument}.py" and f"l1b_{instrument}.py"
+        # This is how it was used on lambda definition:
+        # lambda_alpha_.PythonFunction(
+        #     ...
+        #     entry=str(code_path),
+        #     index=f"instruments/{instrument_target.lower()}.py",
+        #     handler="lambda_handler",
+        #     ...
+        # )
 
         processing_stack.ProcessingStep(
             scope,
@@ -148,6 +162,14 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             db_secret_name=rds_stack.secret_name,
         )
         # etc
+
+    # create EFS
+    efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
+
+    # create lambda that mounts EFS and writes data to EFS
+    efs_lambda_stack.EFSWriteLambda(
+        scope, "EFSWriteLambda", networking.vpc, data_manager.data_bucket, env=env
+    )
 
 
 def build_backup(scope: App, env: Environment, source_account: str):

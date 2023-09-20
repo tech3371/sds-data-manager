@@ -6,6 +6,7 @@ utilizing Fargate as the compute environment. The resources include:
 - ECR repository for container images.
 - Batch job queue and job definition.
 """
+from aws_cdk import Fn
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
@@ -31,6 +32,8 @@ class FargateBatchResources(Construct):
         batch_max_vcpus=10,
         job_vcpus=0.25,
         job_memory=512,
+        efs_mount=False,
+        efs_mount_config=None,
     ):
         """Constructor
 
@@ -134,7 +137,10 @@ class FargateBatchResources(Construct):
             "BatchJobRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess")
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3FullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonElasticFileSystemFullAccess"
+                ),
             ],
         )
         data_bucket.grant_read_write(self.batch_job_role)
@@ -148,6 +154,16 @@ class FargateBatchResources(Construct):
         # processing_step_name tag. I think this will require
         # setting up a lambda. Maybe there's another way?
         self.job_definition_name = f"fargate-batch-job-definition{processing_step_name}"
+
+        # Get EFS mount information
+        efs_mount_config = scope.node.get_context("efs_mount_config")
+
+        # Get account_name to use as ECR's tag.
+        # account_name would be 'dev' or 'prod' or user specified.
+        # This value is defined by command line input and can
+        # be accessed from the cdk.json file.
+        account_name = scope.node.get_context("account_name")
+
         self.job_definition = batch.CfnJobDefinition(
             self,
             "FargateBatchJobDefinition",
@@ -155,7 +171,33 @@ class FargateBatchResources(Construct):
             type="CONTAINER",
             platform_capabilities=["FARGATE"],
             container_properties={
-                "image": f"{repo.repository_uri}:{processing_step_name}",
+                "image": f"{repo.repository_uri}:{account_name}",
+                "mountPoints": [
+                    {
+                        "sourceVolume": efs_mount_config["volume_name"],
+                        "containerPath": efs_mount_config["mount_path"],
+                        "readOnly": False,
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": efs_mount_config["volume_name"],
+                        "efsVolumeConfiguration": {
+                            "fileSystemId": Fn.import_value(
+                                efs_mount_config["efs_fs_id"]
+                            ),
+                            "rootDirectory": "/",
+                            "transitEncryption": "ENABLED",
+                            "transitEncryptionPort": 2049,
+                            "authorizationConfig": {
+                                "accessPointId": Fn.import_value(
+                                    efs_mount_config["efs_access_point_id"]
+                                ),
+                                "iam": "ENABLED",
+                            },
+                        },
+                    }
+                ],
                 "resourceRequirements": [
                     {"value": str(job_memory), "type": "MEMORY"},
                     {"value": str(job_vcpus), "type": "VCPU"},
