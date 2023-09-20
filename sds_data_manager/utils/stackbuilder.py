@@ -18,6 +18,8 @@ from sds_data_manager.stacks import (
     processing_stack,
     sds_data_manager_stack,
     step_function_stack,
+    vpc_stack,
+    efs_stack,
 )
 
 
@@ -200,3 +202,24 @@ def build_backup(scope: App, env: Environment, source_account: str):
         source_account=source_account,
         env=env,
     )
+
+
+def build_efs(scope: App, env: Environment, sds_id: str):
+    """Builds EFS
+
+    Parameters
+    ----------
+    scope : App
+    env : Environment
+        Account and region
+    sds_id : str
+        Name suffix for stack
+    """
+    # create vpc
+    vpc = vpc_stack.VPCStack(scope, f"VpcStack-{sds_id}", sds_id)
+
+    # create EFS
+    efs_stack.EFSStack(scope, f"EFSStack-{sds_id}", sds_id, vpc.vpc)
+
+    # create EFS write lambda
+    efs_lambda_stack.EFSWriteLambda(scope, f"EFSWriteLambda-{sds_id}", sds_id, vpc.vpc)
