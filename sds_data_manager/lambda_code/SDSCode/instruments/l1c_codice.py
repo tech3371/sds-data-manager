@@ -1,5 +1,6 @@
 """Lambda runtime code that triggers off of arrival of data into S3 bucket.
 """
+import json
 import logging
 import os
 from datetime import datetime
@@ -24,6 +25,23 @@ def lambda_handler(event: dict, context):
     # Get the environment variables
     bucket = os.environ["S3_BUCKET"]
     prefix = os.environ["S3_KEY_PATH"]
+    secret_name = os.environ['SECRET_NAME']
+
+    # TODO: Use this information to access the database
+    # Retrieves secrets and set as environment variables
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name="us-west-2")
+    secret_value_response = client.get_secret_value(
+        SecretId=secret_name
+    )
+
+    secret_object = json.loads(secret_value_response['SecretString'])
+    secret_object["host"]
+    secret_object["username"]
+    secret_object["dbname"]
+    secret_object["password"]
 
     # Retrieves objects in the S3 bucket under the given prefix
     try:

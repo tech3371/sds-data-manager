@@ -1,12 +1,14 @@
 """Module with helper functions for creating standard sets of stacks"""
-# Standard
 from pathlib import Path
 
 from aws_cdk import App, Environment
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_rds as rds
 
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
+    database_stack,
     domain_stack,
     dynamodb_stack,
     ecr_stack,
@@ -19,7 +21,13 @@ from sds_data_manager.stacks import (
 
 
 def build_sds(
-    scope: App, env: Environment, sds_id: str, use_custom_domain: bool = False
+        scope: App,
+        env: Environment,
+        sds_id: str,
+        rds_size: str = 'SMALL',
+        rds_class: str = 'BURSTABLE3',
+        rds_storage: int = 200,
+        use_custom_domain: bool = False
 ):
     """Builds the entire SDS
 
@@ -30,6 +38,12 @@ def build_sds(
         Account and region
     sds_id : str
         Name suffix for stack
+    rds_size : str, Optional
+        Size of RDS
+    rds_class : str, Optional
+        Type of RDS
+    rds_storage : int, Optional
+        Max allowable storage in GiB
     use_custom_domain : bool, Optional
         Build API Gateway using custom domain
     """
@@ -90,6 +104,19 @@ def build_sds(
         scope, f"Networking-{sds_id}", sds_id, env=env
     )
 
+    rds_stack = database_stack.SdpDatabase(scope, "RDS",
+                                     description="IMAP SDP database.",
+                                     env=env,
+                                     vpc=networking.vpc,
+                                     rds_security_group=networking.rds_security_group,
+                                     engine_version=rds.PostgresEngineVersion.VER_14_2,
+                                     instance_size=ec2.InstanceSize[rds_size],
+                                     instance_class=ec2.InstanceClass[rds_class],
+                                     max_allocated_storage=rds_storage,
+                                     username="postgres",
+                                     secret_name="sdp-database-creds",
+                                     database_name="imapdb")
+
     instrument_list = ["Codice"]  # etc
 
     lambda_code_directory = Path(__file__).parent / ".." / "lambda_code" / "SDSCode"
@@ -115,6 +142,10 @@ def build_sds(
             instrument_target=f"l1b_{instrument}",
             instrument_sources=f"l1a_{instrument}",
             repo=ecr.container_repo,
+            batch_security_group=networking.batch_security_group,
+            rds_security_group=networking.rds_security_group,
+            subnets=rds_stack.rds_subnet_selection,
+            db_secret_name=rds_stack.secret_name,
         )
 
         processing_stack.ProcessingStep(
@@ -129,6 +160,10 @@ def build_sds(
             instrument_target=f"l1c_{instrument}",
             instrument_sources=f"l1b_{instrument}",
             repo=ecr.container_repo,
+            batch_security_group=networking.batch_security_group,
+            rds_security_group=networking.rds_security_group,
+            subnets=rds_stack.rds_subnet_selection,
+            db_secret_name=rds_stack.secret_name,
         )
         # etc
 
