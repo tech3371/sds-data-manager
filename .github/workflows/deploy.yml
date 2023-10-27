@@ -37,12 +37,10 @@ jobs:
 
       - name: Synth
         run: |
-          # Activate the poetry virtualenv where we installed our package
-          poetry shell
-          cdk synth --context account_name=dev
+          # poetry run to get the environment we installed everything into
+          poetry run cdk synth --context account_name=dev
 
       - name: Deploy
         run: |
-          # Activate the poetry virtualenv where we installed our package
-          poetry shell
-          cdk deploy --all --context account_name=dev --require-approval never
+          # poetry run to get the environment we installed everything into
+          poetry run cdk deploy --all --context account_name=dev --require-approval never
