@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 # Define the paths
@@ -19,16 +20,16 @@ def spice_handler():
     """
 
     # Check if the old symlink exists
-    if Path.is_symlink(attitude_symlink_path):
+    if Path(attitude_symlink_path).is_symlink():
         # Path.resolve() returns the absolute path of the symlink
-        with open(Path.resolve(attitude_symlink_path)) as f:
+        with open(Path(attitude_symlink_path).resolve()) as f:
             content = f.read()
-            print("Attitude kernel:\n", content)
+            logging.info("Attitude kernel:\n%s", content)
 
-    if Path.is_symlink(ephemeris_symlink_path):
-        with open(Path.resolve(ephemeris_symlink_path)) as f:
+    if Path(ephemeris_symlink_path).is_symlink():
+        with open(Path(ephemeris_symlink_path).resolve()) as f:
             content = f.read()
-            print("Ephemeris kernel:\n", content)
+            logging.info("Ephemeris kernel:\n%s", content)
 
     return {"statusCode": 200, "body": "Found symlink"}
 

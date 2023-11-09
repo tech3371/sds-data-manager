@@ -11,4 +11,4 @@ RUN python -m pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "efs_check.py" ]
+CMD ["python", "read_from_efs.py" ]

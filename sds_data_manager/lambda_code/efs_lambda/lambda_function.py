@@ -1,5 +1,5 @@
+import logging
 import os
-import shutil
 from pathlib import Path
 
 import boto3
@@ -23,13 +23,13 @@ def create_symlink(source_path: str, destination_path: str) -> None:
     """
 
     # Check if the symlink exists
-    if Path.is_symlink(destination_path):
+    if Path(destination_path).is_symlink():
         # Remove the old symlink
-        Path.unlink(destination_path, missing_ok=True)
+        Path(destination_path).unlink(missing_ok=True)
 
     # Create a new symlink pointing to the new file
-    source_path = Path(source_path)
-    source_path.symlink_to(destination_path)
+    dest_symlink = Path(destination_path)
+    dest_symlink.symlink_to(source_path)
 
 
 def write_data_to_efs(s3_key: str, s3_bucket: str):
@@ -42,33 +42,28 @@ def write_data_to_efs(s3_key: str, s3_bucket: str):
     s3_bucket : str
     """
     filename = os.path.basename(s3_key)
-    # Set the download path in the /tmp directory
-    download_path = "/tmp/" + os.path.basename(s3_key)
+
     # Create an S3 client
     s3_client = boto3.client("s3")
 
+    # Download the file to the mount directory. Eg. /mnt/efs
+    destination_path = f"{mount_path}/" + os.path.basename(s3_key)
+
     try:
         # Download the file from S3
-        s3_client.download_file(s3_bucket, s3_key, download_path)
-        print(f"File downloaded: {download_path}")
+        s3_client.download_file(s3_bucket, s3_key, destination_path)
+        logging.debug(f"File downloaded: {destination_path}")
     except Exception as e:
-        print(f"Error downloading file: {e!s}")
+        logging.info(f"Error downloading file: {e!s}")
 
-    # Move the file to the mount directory. Eg. /mnt/efs
-    destination_path = f"{mount_path}/" + os.path.basename(s3_key)
-    try:
-        shutil.move(download_path, destination_path)
-        print(f"File moved to: {destination_path}")
-    except Exception as e:
-        print(f"Error moving file: {e!s}")
+    logging.debug("After downloading file: %s", os.listdir(mount_path))
 
-    print("After : ", os.listdir(mount_path))
-
+    source_path = os.path.join(mount_path, filename)
     # Attitude naming convention is this:
     # imap_yyyy_doy_yyyy_doy_##.ah.bc and
     # imap_yyyy_doy_yyyy_doy_##.ah.a
     if filename.endswith(".ah.a") or filename.endswith(".ah.bc"):
-        create_symlink(filename, attitude_symlink_path)
+        create_symlink(source_path, attitude_symlink_path)
 
     # Ephemeris naming convention is this:
     # Eg. imap_nom_yyyymmdd_yyyymmdd_v##.bsp
@@ -78,11 +73,7 @@ def write_data_to_efs(s3_key: str, s3_bucket: str):
     #   imap_burn_yyyymmdd_yyyymmdd_v##.bsp
     #   imap_pred_yyyymmdd_yyyymmdd_v##.bsp
     elif filename.startswith("imap_nom") and filename.endswith(".bsp"):
-        create_symlink(filename, ephemeris_symlink_path)
-
-    print("Done with symlink creation")
-
-    print("After : ", os.listdir(mount_path))
+        create_symlink(source_path, ephemeris_symlink_path)
 
 
 def lambda_handler(event, context):
@@ -135,7 +126,7 @@ def lambda_handler(event, context):
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
-    print(event)
+    logging.debug(event)
 
     write_data_to_efs(s3_key, s3_bucket)
 
