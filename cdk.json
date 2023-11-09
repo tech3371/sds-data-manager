@@ -31,13 +31,6 @@
       "domain_name": "imap-mission.com",
       "region": "us-west-2"
     },
-    "efs_mount_config": {
-      "volume_name": "EFS",
-      "efs_path": "/data",
-      "mount_path": "/mnt/spice",
-      "efs_access_point_id": "efs-access-pt-id",
-      "efs_fs_id": "efs-filesystem-id"
-    },
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,

@@ -9,6 +9,9 @@ from aws_cdk import (
     aws_ec2 as ec2,
 )
 from aws_cdk import (
+    aws_efs as efs,
+)
+from aws_cdk import (
     aws_events as events,
 )
 from aws_cdk import (
@@ -31,6 +34,7 @@ class EFSWriteLambda(Stack):
         construct_id: str,
         vpc: ec2.Vpc,
         data_bucket: s3.Bucket,
+        efs: efs.FileSystem,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -63,7 +67,7 @@ class EFSWriteLambda(Stack):
         )
 
         # Create a security group that allows network access to mount the EFS
-        self.efs_list_runs_lambda_sg = ec2.SecurityGroup(
+        self.efs_spice_ingest_sg = ec2.SecurityGroup(
             self,
             "LambdaEFSSecurityGroup",
             vpc=vpc,
@@ -75,13 +79,13 @@ class EFSWriteLambda(Stack):
         # NOTE: Workaround to overcome EFS circular dependency when mounting
         # a filesystem
         # https://github.com/aws/aws-cdk/issues/18759
-        efs_mount_config = scope.node.get_context("efs_mount_config")
-        efs_access_point_id = Fn.import_value(efs_mount_config["efs_access_point_id"])
+        spice_access_point_id = Fn.import_value(efs.spice_access_point_id_name)
 
         # This access point is used by other resources to read from EFS
+        lambda_mount_path = "/mnt/spice"
         lambda_efs_access = aws_lambda.FileSystem(
-            arn=f"arn:aws:elasticfilesystem:{self.region}:{self.account}:access-point/{efs_access_point_id}",
-            local_mount_path=efs_mount_config["mount_path"],
+            arn=f"arn:aws:elasticfilesystem:{self.region}:{self.account}:access-point/{spice_access_point_id}",
+            local_mount_path=lambda_mount_path,
         )
 
         lambda_code = aws_lambda.Code.from_asset(
@@ -97,7 +101,7 @@ class EFSWriteLambda(Stack):
             )
         ]
 
-        self.efs_list_runs_lambda = aws_lambda.Function(
+        self.efs_spice_ingest_lambda = aws_lambda.Function(
             self,
             "EFSWriteLambda",
             function_name="efs-write-lambda",
@@ -112,11 +116,11 @@ class EFSWriteLambda(Stack):
             filesystem=lambda_efs_access,
             timeout=Duration.minutes(1),
             # Allow access to the EFS over NFS port
-            security_groups=[self.efs_list_runs_lambda_sg],
+            security_groups=[self.efs_spice_ingest_sg],
             layers=layers,
             architecture=aws_lambda.Architecture.ARM_64,
             environment={
-                "EFS_MOUNT_PATH": efs_mount_config["mount_path"],
+                "EFS_MOUNT_PATH": lambda_mount_path,
             },
         )
 
@@ -134,7 +138,7 @@ class EFSWriteLambda(Stack):
                     "bucket": {"name": [data_bucket.bucket_name]},
                     "object": {
                         "key": [
-                            {"prefix": "imap"},
+                            {"prefix": "imap/spice/imap"},
                             {"suffix": "ah.a"},
                             {"suffix": ".bsp"},
                         ]
@@ -144,4 +148,4 @@ class EFSWriteLambda(Stack):
         )
 
         # Add the Lambda function as the target for the rule
-        event_rule.add_target(targets.LambdaFunction(self.efs_list_runs_lambda))
+        event_rule.add_target(targets.LambdaFunction(self.efs_spice_ingest_lambda))

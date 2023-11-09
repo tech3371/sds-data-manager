@@ -40,6 +40,14 @@ class EFSStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        # Initialize EFS related information that other resources
+        # will need to access EFS or mount EFS.
+        self.volume_name = "EFS"
+        self.efs_path = "/data"
+        self.efs_spice_path = "/data/spice"
+        self.spice_access_point_id_name = "spice-access-point-id"
+        self.efs_fs_id_name = "efs-filesystem-id"
+
         # Define EFS security group, ports are added in EC2 stack
         self.efs_security_group = ec2.SecurityGroup(
             self,
@@ -55,15 +63,14 @@ class EFSStack(Stack):
             ec2.Port.tcp(2049),
             "Allow services to mount the EFS",
         )
-        efs_mount_config = scope.node.get_context("efs_mount_config")
 
         self.efs = efs.FileSystem(
             self,
             "EFS",
             vpc=vpc,
-            file_system_name=efs_mount_config["volume_name"],
+            file_system_name=self.volume_name,
             # This will automatically downscale infrequently accessed
-            # data to a cheaper storage tier after 7 days of inactivity.
+            # data to a cheaper storage tier after 14 days of inactivity.
             # TODO: Investigate what lifecycle policy we need or if
             # we should remove if it effects read latency.
             lifecycle_policy=efs.LifecyclePolicy.AFTER_14_DAYS,
@@ -80,10 +87,10 @@ class EFSStack(Stack):
         )
 
         # Make an access point for others to be able to access the drive
-        self.access_point = self.efs.add_access_point(
-            "AccessPoint",
+        self.spice_access_point = self.efs.add_access_point(
+            "SpiceAccessPoint",
             create_acl=efs.Acl(owner_gid="1000", owner_uid="1000", permissions="750"),
-            path=f"{efs_mount_config['efs_path']}/spice",
+            path=self.efs_spice_path,
             posix_user=efs.PosixUser(gid="1000", uid="1000"),
         )
 
@@ -93,13 +100,13 @@ class EFSStack(Stack):
         CfnOutput(
             self,
             "efs-access-pt-id",
-            export_name=efs_mount_config["efs_access_point_id"],
-            value=self.access_point.access_point_id,
+            export_name=self.spice_access_point_id_name,
+            value=self.spice_access_point.access_point_id,
         )
 
         CfnOutput(
             self,
             "efs-fs-id",
-            export_name=efs_mount_config["efs_fs_id"],
+            export_name=self.efs_fs_id_name,
             value=self.efs.file_system_id,
         )

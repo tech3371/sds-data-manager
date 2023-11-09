@@ -10,6 +10,7 @@ from aws_cdk import Fn
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
+from aws_cdk import aws_efs as efs
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
@@ -29,11 +30,10 @@ class FargateBatchResources(Construct):
         repo: ecr.Repository,
         batch_security_group: ec2.SecurityGroup,
         db_secret_name: str,
+        efs: efs.FileSystem,
         batch_max_vcpus=10,
         job_vcpus=0.25,
         job_memory=512,
-        efs_mount=False,
-        efs_mount_config=None,
     ):
         """Constructor
 
@@ -62,6 +62,8 @@ class FargateBatchResources(Construct):
             Dependent on Docker image contents.
         job_memory : int: Optional
             Memory required per Batch job in MB. Dependent on Docker image contents.
+        efs: efs.Filesystem
+            EFS object
         """
         super().__init__(scope, construct_id)
 
@@ -155,9 +157,6 @@ class FargateBatchResources(Construct):
         # setting up a lambda. Maybe there's another way?
         self.job_definition_name = f"fargate-batch-job-definition{processing_step_name}"
 
-        # Get EFS mount information
-        efs_mount_config = scope.node.get_context("efs_mount_config")
-
         # Get account_name to use as ECR's tag.
         # account_name would be 'dev' or 'prod' or user specified.
         # This value is defined by command line input and can
@@ -174,24 +173,22 @@ class FargateBatchResources(Construct):
                 "image": f"{repo.repository_uri}:{account_name}",
                 "mountPoints": [
                     {
-                        "sourceVolume": efs_mount_config["volume_name"],
-                        "containerPath": efs_mount_config["mount_path"],
+                        "sourceVolume": efs.volume_name,
+                        "containerPath": "/mnt/spice",
                         "readOnly": False,
                     }
                 ],
                 "volumes": [
                     {
-                        "name": efs_mount_config["volume_name"],
+                        "name": efs.volume_name,
                         "efsVolumeConfiguration": {
-                            "fileSystemId": Fn.import_value(
-                                efs_mount_config["efs_fs_id"]
-                            ),
+                            "fileSystemId": Fn.import_value(efs.efs_fs_id_name),
                             "rootDirectory": "/",
                             "transitEncryption": "ENABLED",
                             "transitEncryptionPort": 2049,
                             "authorizationConfig": {
                                 "accessPointId": Fn.import_value(
-                                    efs_mount_config["efs_access_point_id"]
+                                    efs.spice_access_point_id_name
                                 ),
                                 "iam": "ENABLED",
                             },

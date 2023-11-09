@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 
 import boto3
 
@@ -22,12 +23,13 @@ def create_symlink(source_path: str, destination_path: str) -> None:
     """
 
     # Check if the symlink exists
-    if os.path.islink(destination_path):
+    if Path.is_symlink(destination_path):
         # Remove the old symlink
-        os.unlink(destination_path)
+        Path.unlink(destination_path, missing_ok=True)
 
     # Create a new symlink pointing to the new file
-    os.symlink(source_path, destination_path)
+    source_path = Path(source_path)
+    source_path.symlink_to(destination_path)
 
 
 def write_data_to_efs(s3_key: str, s3_bucket: str):

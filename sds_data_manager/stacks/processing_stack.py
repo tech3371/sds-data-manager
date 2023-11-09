@@ -7,6 +7,7 @@ from pathlib import Path
 from aws_cdk import Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
+from aws_cdk import aws_efs as efs
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as event_targets
 from aws_cdk import aws_s3 as s3
@@ -35,6 +36,7 @@ class ProcessingStep(Stack):
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         db_secret_name: str,
+        efs: efs.FileSystem,
         **kwargs,
     ) -> None:
         """Constructor
@@ -79,6 +81,7 @@ class ProcessingStep(Stack):
             repo=repo,
             batch_security_group=batch_security_group,
             db_secret_name=db_secret_name,
+            efs=efs,
         )
 
         self.instrument_lambda = InstrumentLambda(

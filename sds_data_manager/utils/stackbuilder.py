@@ -103,6 +103,9 @@ def build_sds(scope: App, env: Environment, account_config: dict):
         database_name="imapdb",
     )
 
+    # create EFS
+    efs = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
+
     instrument_list = ["Codice"]  # etc
 
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "SDSCode"
@@ -111,7 +114,7 @@ def build_sds(scope: App, env: Environment, account_config: dict):
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
             scope,
-            f"{instrument}EcrRepo",
+            f"{instrument}Processing",
             env=env,
             instrument_name=f"{instrument}",
         )
@@ -143,6 +146,7 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
             db_secret_name=rds_stack.secret_name,
+            efs=efs,
         )
 
         processing_stack.ProcessingStep(
@@ -160,15 +164,18 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             rds_security_group=networking.rds_security_group,
             subnets=rds_stack.rds_subnet_selection,
             db_secret_name=rds_stack.secret_name,
+            efs=efs,
         )
         # etc
 
-    # create EFS
-    efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
-
     # create lambda that mounts EFS and writes data to EFS
     efs_lambda_stack.EFSWriteLambda(
-        scope, "EFSWriteLambda", networking.vpc, data_manager.data_bucket, env=env
+        scope=scope,
+        construct_id="EFSWriteLambda",
+        vpc=networking.vpc,
+        data_bucket=data_manager.data_bucket,
+        efs=efs,
+        env=env,
     )
 
 
