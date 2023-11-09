@@ -54,9 +54,6 @@ class EFSWriteLambda(Stack):
                     "service-role/AWSLambdaVPCAccessExecutionRole"
                 ),
                 aws_iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "AmazonElasticFileSystemClientReadWriteAccess"
-                ),
-                aws_iam.ManagedPolicy.from_aws_managed_policy_name(
                     "AmazonS3FullAccess"
                 ),
                 aws_iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -92,15 +89,6 @@ class EFSWriteLambda(Stack):
             "sds_data_manager/lambda_code/efs_lambda"
         )
 
-        boto3_layer_arn = (
-            f"arn:aws:lambda:{self.region}:770693421928:layer:Klayers-p311-boto3:2"
-        )
-        layers = [
-            aws_lambda.LayerVersion.from_layer_version_arn(
-                self, id="boto3dependencylayer", layer_version_arn=boto3_layer_arn
-            )
-        ]
-
         self.efs_spice_ingest_lambda = aws_lambda.Function(
             self,
             "EFSWriteLambda",
@@ -117,7 +105,6 @@ class EFSWriteLambda(Stack):
             timeout=Duration.minutes(1),
             # Allow access to the EFS over NFS port
             security_groups=[self.efs_spice_ingest_sg],
-            layers=layers,
             architecture=aws_lambda.Architecture.ARM_64,
             environment={
                 "EFS_MOUNT_PATH": lambda_mount_path,
