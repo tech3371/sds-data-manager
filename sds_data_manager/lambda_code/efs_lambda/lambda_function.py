@@ -5,10 +5,10 @@ from pathlib import Path
 import boto3
 
 # Define the paths
-mount_path = os.environ.get("EFS_MOUNT_PATH")
+mount_path = Path(os.environ.get("EFS_MOUNT_PATH"))
 
-attitude_symlink_path = Path(f"{mount_path}/latest_attitude_kernel.ah.a")
-ephemeris_symlink_path = Path(f"{mount_path}/latest_ephemeris_kernel.bsp")
+attitude_symlink_path = mount_path / "latest_attitude_kernel.ah.a"
+ephemeris_symlink_path = mount_path / "latest_ephemeris_kernel.bsp"
 
 
 def create_symlink(source_path: Path, destination_path: Path) -> None:
@@ -44,7 +44,7 @@ def write_data_to_efs(s3_key: str, s3_bucket: str):
     s3_client = boto3.client("s3")
 
     # Download the file to the mount directory. Eg. /mnt/efs
-    download_path = Path(f"{mount_path}/{filename}")
+    download_path = mount_path / filename
 
     try:
         # Download the file from S3
