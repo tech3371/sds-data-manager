@@ -12,7 +12,6 @@ from sds_data_manager.stacks import (
     domain_stack,
     dynamodb_stack,
     ecr_stack,
-    efs_lambda_stack,
     efs_stack,
     networking_stack,
     opensearch_stack,
@@ -65,12 +64,13 @@ def build_sds(scope: App, env: Environment, account_config: dict):
 
     domain = None
     domain_name = account_config.get("domain_name", None)
+    account_name = account_config["account_name"]
     if domain_name is not None:
         domain = domain_stack.DomainStack(
             scope,
             "DomainStack",
             domain_name=domain_name,
-            account_name=account_config["account_name"],
+            account_name=account_name,
             env=env,
         )
 
@@ -147,6 +147,7 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             subnets=rds_stack.rds_subnet_selection,
             db_secret_name=rds_stack.secret_name,
             efs=efs,
+            account_name=account_name,
         )
 
         processing_stack.ProcessingStep(
@@ -165,11 +166,12 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             subnets=rds_stack.rds_subnet_selection,
             db_secret_name=rds_stack.secret_name,
             efs=efs,
+            account_name=account_name,
         )
         # etc
 
     # create lambda that mounts EFS and writes data to EFS
-    efs_lambda_stack.EFSWriteLambda(
+    efs_stack.EFSWriteLambda(
         scope=scope,
         construct_id="EFSWriteLambda",
         vpc=networking.vpc,

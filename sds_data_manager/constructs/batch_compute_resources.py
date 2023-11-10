@@ -31,6 +31,7 @@ class FargateBatchResources(Construct):
         batch_security_group: ec2.SecurityGroup,
         db_secret_name: str,
         efs: efs.FileSystem,
+        account_name: str,
         batch_max_vcpus=10,
         job_vcpus=0.25,
         job_memory=512,
@@ -63,7 +64,12 @@ class FargateBatchResources(Construct):
         job_memory : int: Optional
             Memory required per Batch job in MB. Dependent on Docker image contents.
         efs: efs.Filesystem
-            EFS object
+            EFS stack object
+        account_name: str
+            account name such as 'dev' or 'prod' or user specified.
+            account_name is used as ECR's tag.
+            This value can be overwritten by command line input and can
+            be accessed from the cdk.json file.
         """
         super().__init__(scope, construct_id)
 
@@ -156,12 +162,6 @@ class FargateBatchResources(Construct):
         # processing_step_name tag. I think this will require
         # setting up a lambda. Maybe there's another way?
         self.job_definition_name = f"fargate-batch-job-definition{processing_step_name}"
-
-        # Get account_name to use as ECR's tag.
-        # account_name would be 'dev' or 'prod' or user specified.
-        # This value is defined by command line input and can
-        # be accessed from the cdk.json file.
-        account_name = scope.node.get_context("account_name")
 
         self.job_definition = batch.CfnJobDefinition(
             self,

@@ -37,6 +37,7 @@ class ProcessingStep(Stack):
         subnets: ec2.SubnetSelection,
         db_secret_name: str,
         efs: efs.FileSystem,
+        account_name: str,
         **kwargs,
     ) -> None:
         """Constructor
@@ -69,6 +70,10 @@ class ProcessingStep(Stack):
             RDS subnet selection.
         db_secret_name : str
             RDS secret name for secret manager access
+        efs: efs.FileSystem
+            EFS stack object
+        account_name: str
+            account name such as 'dev' or 'prod'
         """
         super().__init__(scope, construct_id, **kwargs)
 
@@ -82,6 +87,7 @@ class ProcessingStep(Stack):
             batch_security_group=batch_security_group,
             db_secret_name=db_secret_name,
             efs=efs,
+            account_name=account_name,
         )
 
         self.instrument_lambda = InstrumentLambda(
