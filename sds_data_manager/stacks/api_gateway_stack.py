@@ -41,7 +41,7 @@ class ApiGateway(Stack):
         routes = lambda_functions.keys()
 
         # Create a single API Gateway
-        api = apigw.RestApi(
+        self.api = apigw.RestApi(
             self,
             "RestApi",
             rest_api_name="RestApi",
@@ -64,7 +64,7 @@ class ApiGateway(Stack):
                 self,
                 "RestAPI-BasePathMapping",
                 domain_name=custom_domain,
-                rest_api=api,
+                rest_api=self.api,
             )
 
             # Add record to Route53
@@ -86,7 +86,7 @@ class ApiGateway(Stack):
             http_method = lambda_info["httpMethod"]
 
             # Define the API Gateway Resources
-            resource = api.root.add_resource(route)
+            resource = self.api.root.add_resource(route)
 
             # Create a new method that is linked to the Lambda function
             resource.add_method(http_method, apigw.LambdaIntegration(lambda_fn))

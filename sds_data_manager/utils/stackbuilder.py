@@ -13,6 +13,7 @@ from sds_data_manager.stacks import (
     dynamodb_stack,
     ecr_stack,
     efs_stack,
+    monitoring_stack,
     networking_stack,
     opensearch_stack,
     processing_stack,
@@ -74,7 +75,7 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             env=env,
         )
 
-    api_gateway_stack.ApiGateway(
+    api = api_gateway_stack.ApiGateway(
         scope,
         "ApiGateway",
         data_manager.lambda_functions,
@@ -169,6 +170,13 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             account_name=account_name,
         )
         # etc
+
+    monitoring_stack.MonitoringStack(
+        scope=scope,
+        construct_id="MonitoringStack",
+        api=api.api,
+        env=env,
+    )
 
     # create lambda that mounts EFS and writes data to EFS
     efs_stack.EFSWriteLambda(
