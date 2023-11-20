@@ -34,6 +34,12 @@ def build_sds(scope: App, env: Environment, account_config: dict):
     account_config : dict
         Account configuration (domain_name and other account specific configurations)
     """
+    monitoring = monitoring_stack.MonitoringStack(
+        scope=scope,
+        construct_id="MonitoringStack",
+        env=env,
+    )
+
     open_search = opensearch_stack.OpenSearch(scope, "OpenSearch", env=env)
 
     dynamodb = dynamodb_stack.DynamoDB(
@@ -82,6 +88,7 @@ def build_sds(scope: App, env: Environment, account_config: dict):
         domain_stack=domain,
         env=env,
     )
+    api.subscribe_to_sns(monitoring.sns_topic_notifications)
 
     networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
 
@@ -170,13 +177,6 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             account_name=account_name,
         )
         # etc
-
-    monitoring_stack.MonitoringStack(
-        scope=scope,
-        construct_id="MonitoringStack",
-        api=api.api,
-        env=env,
-    )
 
     # create lambda that mounts EFS and writes data to EFS
     efs_stack.EFSWriteLambda(
