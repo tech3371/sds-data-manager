@@ -21,7 +21,7 @@ def template(app):
         construct_id="ApigwTest",
         lambda_functions={"test-route": {"function": test_func, "httpMethod": "GET"}},
     )
-    apigw.subscribe_to_sns(sns_topic=test_sns_topic)
+    apigw.deliver_to_sns(sns_topic=test_sns_topic)
     template = Template.from_stack(apigw)
     return template
 

@@ -88,7 +88,7 @@ def build_sds(scope: App, env: Environment, account_config: dict):
         domain_stack=domain,
         env=env,
     )
-    api.subscribe_to_sns(monitoring.sns_topic_notifications)
+    api.deliver_to_sns(monitoring.sns_topic_notifications)
 
     networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
 

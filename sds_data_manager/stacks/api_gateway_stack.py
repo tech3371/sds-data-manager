@@ -1,7 +1,15 @@
+"""API Gateway Stack
+
+Sets up api gateway, creates routes, and creates methods that
+are linked to the lambda function.
+
+An example of the format of the url:
+https://api.prod.imap-mission.com/query
+"""
 from aws_cdk import Duration, Stack, aws_sns
 from aws_cdk import aws_apigateway as apigw
-from aws_cdk import aws_cloudwatch as cw
-from aws_cdk import aws_cloudwatch_actions as cw_actions
+from aws_cdk import aws_cloudwatch as cloudwatch
+from aws_cdk import aws_cloudwatch_actions as cloudwatch_actions
 from aws_cdk import aws_route53 as route53
 from aws_cdk import aws_route53_targets as targets
 from constructs import Construct
@@ -10,13 +18,6 @@ from sds_data_manager.stacks.domain_stack import DomainStack
 
 
 class ApiGateway(Stack):
-    """Sets up api gateway, creates routes, and creates methods that
-    are linked to the lambda function.
-
-    An example of the format of the url:
-    https://api.tlcs-dev.imap-mission.com/query
-    """
-
     def __init__(
         self,
         scope: Construct,
@@ -25,7 +26,8 @@ class ApiGateway(Stack):
         domain_stack: DomainStack = None,
         **kwargs,
     ) -> None:
-        """
+        """API Gateway Stack
+
         Parameters
         ----------
         scope : Construct
@@ -93,11 +95,21 @@ class ApiGateway(Stack):
             # Create a new method that is linked to the Lambda function
             resource.add_method(http_method, apigw.LambdaIntegration(lambda_fn))
 
-    def subscribe_to_sns(self, sns_topic: aws_sns.Topic):
+    def deliver_to_sns(self, sns_topic: aws_sns.Topic):
+        """Deliver API Gateway alerts to an SNS topic.
+
+        Creates cloudwatch metrics to monitor resources and sends
+        alerts to the SNS topic if any of the metrics are breached.
+
+        Parameters
+        ----------
+        sns_topic : aws_sns.Topic
+            SNS Topic to send any API alerts to.
+        """
         # Define the metric the alarm is based on
         # List of Metric options for API Gateway:
         # https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-metrics-and-dimensions.html
-        metric = cw.Metric(
+        metric = cloudwatch.Metric(
             namespace="AWS/ApiGateway",
             metric_name="Latency",
             dimensions_map={"ApiName": self.api.rest_api_name},
@@ -106,7 +118,7 @@ class ApiGateway(Stack):
         )
 
         # Define the alarm
-        cw_alarm = cw.Alarm(
+        cloudwatch_alarm = cloudwatch.Alarm(
             self,
             "apigw-cw-alarm",
             alarm_name="apigw-cw-alarm",
@@ -120,8 +132,8 @@ class ApiGateway(Stack):
             datapoints_to_alarm=1,
             # If the maximum latency is greater than 10 seconds, send a notification
             threshold=10 * 1000,
-            comparison_operator=cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            treat_missing_data=cw.TreatMissingData.NOT_BREACHING,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
-        # Send notification to Slack
-        cw_alarm.add_alarm_action(cw_actions.SnsAction(sns_topic))
+        # Send notification to the SNS Topic
+        cloudwatch_alarm.add_alarm_action(cloudwatch_actions.SnsAction(sns_topic))
