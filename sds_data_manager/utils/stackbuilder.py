@@ -1,6 +1,7 @@
 """Module with helper functions for creating standard sets of stacks"""
 from pathlib import Path
 
+import aws_cdk as cdk
 from aws_cdk import App, Environment
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_rds as rds
@@ -33,28 +34,12 @@ def build_sds(scope: App, env: Environment, account_config: dict):
     account_config : dict
         Account configuration (domain_name and other account specific configurations)
     """
+
+    networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
+
     monitoring = monitoring_stack.MonitoringStack(
         scope=scope,
         construct_id="MonitoringStack",
-        env=env,
-    )
-
-    open_search = opensearch_stack.OpenSearch(scope, "OpenSearch", env=env)
-
-    dynamodb = dynamodb_stack.DynamoDB(
-        scope,
-        construct_id="DynamoDB",
-        table_name="data-watcher",
-        partition_key="instrument",
-        sort_key="filename",
-        env=env,
-    )
-
-    data_manager = sds_data_manager_stack.SdsDataManager(
-        scope,
-        "SdsDataManager",
-        open_search,
-        dynamodb,
         env=env,
     )
 
@@ -73,13 +58,30 @@ def build_sds(scope: App, env: Environment, account_config: dict):
     api = api_gateway_stack.ApiGateway(
         scope,
         "ApiGateway",
-        data_manager.lambda_functions,
         domain_stack=domain,
         env=env,
     )
     api.deliver_to_sns(monitoring.sns_topic_notifications)
 
-    networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
+    open_search = opensearch_stack.OpenSearch(scope, "OpenSearch", env=env)
+
+    dynamodb = dynamodb_stack.DynamoDB(
+        scope,
+        construct_id="DynamoDB",
+        table_name="data-watcher",
+        partition_key="instrument",
+        sort_key="filename",
+        env=env,
+    )
+
+    data_manager = sds_data_manager_stack.SdsDataManager(
+        scope,
+        "SdsDataManager",
+        open_search,
+        dynamodb,
+        api,
+        env=env,
+    )
 
     rds_size: str = "SMALL"
     rds_class: str = "BURSTABLE3"
@@ -104,9 +106,29 @@ def build_sds(scope: App, env: Environment, account_config: dict):
     efs = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
     instrument_list = ["Codice"]  # etc
-
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "SDSCode"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
+
+    spin_table_code = lambda_code_directory / "spin_table_api.py"
+    # Create Lambda for universal spin table API
+    spin_spin_api_handler = api_gateway_stack.APILambda(
+        scope=scope,
+        construct_id="SpinTableAPILambda",
+        lambda_name="universal-spin-table-api-handler",
+        code_path=spin_table_code,
+        lambda_handler="lambda_handler",
+        timeout=cdk.Duration.minutes(1),
+        rds_security_group=networking.rds_security_group,
+        db_secret_name=rds_stack.secret_name,
+        vpc=networking.vpc,
+        env=env,
+    )
+
+    api.add_route(
+        route="spin_table",
+        http_method="GET",
+        lambda_function=spin_spin_api_handler.lambda_function,
+    )
 
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
