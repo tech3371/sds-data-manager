@@ -15,6 +15,9 @@ def _load_allowed_filenames():
     """
     Load the config.json file as a python dictionary.
 
+    Current filename convention:
+    imap_<instrument>_<datalevel>_<descriptor>_<startdate>_<enddate>_<version>.cdf
+
     :return: dictionary object of file types and their attributes.
     """
     # get the config file from the S3 bucket
@@ -53,6 +56,35 @@ def _check_for_matching_filetype(pattern, filename):
     return file_dictionary
 
 
+def create_path_to_upload(metadata: dict) -> str:
+    """Create path to upload file. This path is
+    folder path in S3 bucket.
+
+    Parameters
+    ----------
+    metadata : dict
+        metadata derived from filename.
+
+    Returns
+    -------
+    str
+        Folder path
+    """
+    # path to upload file follows this format:
+    # mission/instrument/data_level/descriptor/year/month/filename
+    # NOTE: year and month is from startdate and startdate format is YYYYMMDD.
+    mission = metadata["mission"]
+    instrument = metadata["instrument"]
+    data_level = metadata["level"]
+    descriptor = metadata["descriptor"]
+    year = metadata["startdate"][:4]
+    month = metadata["enddate"][4:6]
+    path_to_upload_file = (
+        f"{mission}/{instrument}/{data_level}/{descriptor}/{year}/{month}/"
+    )
+    return path_to_upload_file
+
+
 def _generate_signed_upload_url(filename, tags=None):
     """
     Create a presigned url for a file in the SDS storage bucket.
@@ -64,9 +96,9 @@ def _generate_signed_upload_url(filename, tags=None):
     """
     filetypes = _load_allowed_filenames()
     for filetype in filetypes:
-        path_to_upload_file = filetype["path"]
         metadata = _check_for_matching_filetype(filetype["pattern"], filename)
         if metadata is not None:
+            path_to_upload_file = create_path_to_upload(metadata)
             break
 
     if metadata is None:
