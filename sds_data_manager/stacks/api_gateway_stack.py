@@ -138,7 +138,7 @@ class ApiGateway(Stack):
         http_method : str
             HTTP method. Eg. GET, POST, etc.
         lambda_function : lambda_.Function
-            Lambda function. Lambda Function Stack
+            Lambda function to trigger when this route is hit.
         """
         # Define the API Gateway Resources
         resource = self.api.root.add_resource(route)
