@@ -32,7 +32,6 @@ def template(app, opensearch_stack, env):
         "sds-data-manager-test",
         opensearch_stack,
         dynamodb_stack=dynamodb,
-        processing_step_function_arn="arn:aws:states:us-west-1:1234567890:stateMachine:processing-state-machine",
         env=env,
     )
     template = Template.from_stack(stack)
