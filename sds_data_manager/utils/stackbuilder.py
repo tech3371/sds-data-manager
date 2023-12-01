@@ -13,6 +13,7 @@ from sds_data_manager.stacks import (
     dynamodb_stack,
     ecr_stack,
     efs_stack,
+    monitoring_stack,
     networking_stack,
     opensearch_stack,
     processing_stack,
@@ -32,6 +33,12 @@ def build_sds(scope: App, env: Environment, account_config: dict):
     account_config : dict
         Account configuration (domain_name and other account specific configurations)
     """
+    monitoring = monitoring_stack.MonitoringStack(
+        scope=scope,
+        construct_id="MonitoringStack",
+        env=env,
+    )
+
     open_search = opensearch_stack.OpenSearch(scope, "OpenSearch", env=env)
 
     dynamodb = dynamodb_stack.DynamoDB(
@@ -63,13 +70,14 @@ def build_sds(scope: App, env: Environment, account_config: dict):
             env=env,
         )
 
-    api_gateway_stack.ApiGateway(
+    api = api_gateway_stack.ApiGateway(
         scope,
         "ApiGateway",
         data_manager.lambda_functions,
         domain_stack=domain,
         env=env,
     )
+    api.deliver_to_sns(monitoring.sns_topic_notifications)
 
     networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
 
