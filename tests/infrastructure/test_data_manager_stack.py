@@ -4,6 +4,8 @@ import pytest
 # Installed
 from aws_cdk.assertions import Match, Template
 
+from sds_data_manager.stacks.api_gateway_stack import ApiGateway
+
 # Local
 from sds_data_manager.stacks.dynamodb_stack import DynamoDB
 from sds_data_manager.stacks.opensearch_stack import OpenSearch
@@ -18,6 +20,10 @@ def opensearch_stack(app, env):
 
 @pytest.fixture(scope="module")
 def template(app, opensearch_stack, env):
+    apigw = ApiGateway(
+        app,
+        construct_id="ApigwTest",
+    )
     # create dynamoDB stack
     dynamodb = DynamoDB(
         app,
@@ -32,6 +38,7 @@ def template(app, opensearch_stack, env):
         "sds-data-manager-test",
         opensearch_stack,
         dynamodb_stack=dynamodb,
+        api=apigw,
         env=env,
     )
     template = Template.from_stack(stack)
