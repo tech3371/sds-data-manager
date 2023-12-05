@@ -1,3 +1,5 @@
+"""Functions to store file pattern, validate and construct upload path
+"""
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -78,6 +80,18 @@ class FilenameParser:
         self.message = None
 
     def check_date_input(self, input_date: str) -> bool:
+        """Check input date string is in valid format and is correct date
+
+        Parameters
+        ----------
+        input_date : str
+            Date in YYYYMMDD format.
+
+        Returns
+        -------
+        bool
+            Whether date input is valid or not
+        """
         # Check if the pattern matches 8 digits (YYYYMMDD)
         if not re.match(r"^\d{8}$", input_date):
             return False
@@ -90,6 +104,13 @@ class FilenameParser:
             return False
 
     def validate_filename(self) -> bool:
+        """Validate filename patterns.
+
+        Returns
+        -------
+        bool
+            Whether filename format is valid or not
+        """
         pattern = FilenamePatternConfig()
 
         # Dictionary to map fields to their valid values and error messages
@@ -150,6 +171,13 @@ class FilenameParser:
         return path_to_upload_file
 
     def upload_filepath(self):
+        """Return upload path or error message.
+
+        Returns
+        -------
+        dict
+            Upload path or error message
+        """
         if not self.validate_filename():
             default_message = (
                 f"Invalid filename. Filename convention is {self.filename_convention}"
