@@ -60,11 +60,12 @@ class FilenameParser:
         filename : str
             Filename
         """
+        self.filename = filename
         self.filename_convention = (
             "<mission>_<instrument>_<datalevel>_<descriptor>_"
             "<startdate>_<enddate>_<version>.<extension>"
         )
-        self.split_filename = filename.replace("_", ".").split(".")
+        self.split_filename = filename.split("_")
         (
             self.mission,
             self.instrument,
@@ -72,9 +73,9 @@ class FilenameParser:
             self.descriptor,
             self.startdate,
             self.enddate,
-            self.version,
-            self.extension,
+            self.last_value,
         ) = self.split_filename
+        (self.version, self.extension) = self.last_value.split(".")
         # This message is returned to user through API to indicate why filename was not
         # correct.
         self.message = None
@@ -92,9 +93,6 @@ class FilenameParser:
         bool
             Whether date input is valid or not
         """
-        # Check if the pattern matches 8 digits (YYYYMMDD)
-        if not re.match(r"^\d{8}$", input_date):
-            return False
 
         # Validate if it's a real date
         try:
@@ -103,26 +101,42 @@ class FilenameParser:
         except ValueError:
             return False
 
-    def validate_filename(self) -> bool:
+    def validate_filename(self, file_pattern_config=FilenamePatternConfig()) -> bool:
         """Validate filename patterns.
+
+        Parameters
+        ----------
+        file_pattern_config : FilenamePatternConfig
+            Filename pattern configuration. Default is FilenamePatternConfig().
+            This is used to validate filename. If you want to validate filename
+            for your own purpose, you can pass your own configuration.
+            See FilenamePatternConfig class for more details.
 
         Returns
         -------
         bool
             Whether filename format is valid or not
         """
-        pattern = FilenamePatternConfig()
 
         # Dictionary to map fields to their valid values and error messages
         validation_checks = {
-            "mission": (self.mission == pattern.mission, "Invalid mission."),
+            "mission": (
+                self.mission == file_pattern_config.mission,
+                "Invalid mission.",
+            ),
             "instrument": (
-                self.instrument in pattern.instruments,
-                f"Invalid instrument. Please choose from {pattern.instruments}",
+                self.instrument in file_pattern_config.instruments,
+                (
+                    "Invalid instrument. Please choose from "
+                    f"{file_pattern_config.instruments}"
+                ),
             ),
             "data_level": (
-                self.data_level in pattern.data_level,
-                f"Invalid data level. Please choose from {pattern.data_level}",
+                self.data_level in file_pattern_config.data_level,
+                (
+                    "Invalid data level. Please choose from "
+                    f"{file_pattern_config.data_level}"
+                ),
             ),
             "descriptor": (self.descriptor is not None, "Descriptor is required."),
             "startdate": (
@@ -134,12 +148,19 @@ class FilenameParser:
                 "Invalid end date format. Please use YYYYMMDD format.",
             ),
             "version": (
-                bool(re.match(pattern.version, self.version)),
+                bool(re.match(file_pattern_config.version, self.version)),
                 "Invalid version format. Please use vxx-xx format.",
             ),
             "extension": (
-                self.extension in pattern.extensions,
-                f"Invalid extension. Please choose from {pattern.extensions}",
+                self.extension in file_pattern_config.extensions
+                and (
+                    (self.data_level == "l0" and self.extension == "pkts")
+                    or (self.data_level != "l0" and self.extension == "cdf")
+                ),
+                (
+                    "Invalid extension. Extension should be pkts for data level l0 "
+                    "and cdf for data level higher than l0"
+                ),
             ),
         }
 
@@ -155,7 +176,7 @@ class FilenameParser:
         """Create upload path to S3 bucket.
 
         path to upload file follows this format:
-        mission/instrument/data_level/year/month/
+        mission/instrument/data_level/year/month/filename
         NOTE: year and month is from startdate and startdate format is YYYYMMDD.
 
         Returns
@@ -165,7 +186,7 @@ class FilenameParser:
         """
         path_to_upload_file = (
             f"{self.mission}/{self.instrument}/{self.data_level}/"
-            f"{self.startdate[:4]}/{self.startdate[4:6]}"
+            f"{self.startdate[:4]}/{self.startdate[4:6]}/{self.filename}"
         )
 
         return path_to_upload_file

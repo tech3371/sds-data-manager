@@ -65,7 +65,7 @@ def lambda_handler(event, context):
     if upload_path["statusCode"] != 200:
         return upload_path
 
-    s3_key_path = f"{upload_path['body']}/{filename}"
+    s3_key_path = upload_path["body"]
     url = _generate_signed_upload_url(s3_key_path, tags=event["queryStringParameters"])
 
     if url is None:
@@ -78,9 +78,3 @@ def lambda_handler(event, context):
         }
 
     return {"statusCode": 200, "body": json.dumps(url)}
-
-
-if __name__ == "__main__":
-    filename = "imap_glows_l0_1_20230724_20230724_v02-11.nc"
-    filename_parsed = FilenameParser(filename)
-    print(filename_parsed.upload_filepath())
