@@ -96,6 +96,10 @@ class FilenameParser:
 
         # Validate if it's a real date
         try:
+            # This checks if date is in YYYYMMDD format.
+            # Sometimes, date is correct but not in the format we want
+            if not re.match(r"^\d{8}$", input_date):
+                raise ValueError("Invalid date format.")
             datetime.strptime(input_date, "%Y%m%d")
             return True
         except ValueError:
@@ -117,6 +121,21 @@ class FilenameParser:
         bool
             Whether filename format is valid or not
         """
+        # First check if any of parameter is missing
+        if any(
+            attr is None or attr == ""
+            for attr in [
+                self.mission,
+                self.instrument,
+                self.data_level,
+                self.descriptor,
+                self.startdate,
+                self.enddate,
+                self.version,
+                self.extension,
+            ]
+        ):
+            return False
 
         # Dictionary to map fields to their valid values and error messages
         validation_checks = {
@@ -138,7 +157,6 @@ class FilenameParser:
                     f"{file_pattern_config.data_level}"
                 ),
             ),
-            "descriptor": (self.descriptor is not None, "Descriptor is required."),
             "startdate": (
                 self.check_date_input(self.startdate),
                 "Invalid start date format. Please use YYYYMMDD format.",
@@ -169,7 +187,7 @@ class FilenameParser:
             if not is_valid:
                 self.message = error_message
                 return False
-
+        print("done")
         return True
 
     def create_path_to_upload(self) -> str:
