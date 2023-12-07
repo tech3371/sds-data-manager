@@ -4,6 +4,7 @@ from sds_data_manager.lambda_code.SDSCode.path_helper import FilenameParser
 
 
 def test_date_checker():
+    """Tests date inputs"""
     filename = "imap_glows_l0_raw_20231010_20231011_v01-01.pkts"
     file_parser = FilenameParser(filename)
     assert file_parser.check_date_input("20200101")
@@ -14,6 +15,7 @@ def test_date_checker():
 
 
 def test_filename_validator():
+    """Validate filenames"""
     filename = "imap_glows_l0_raw_20231010_20231011_v01-01.pkts"
     assert FilenameParser(filename).validate_filename() is True
 
@@ -52,6 +54,7 @@ def test_filename_validator():
 
 
 def test_upload_filepath():
+    """Test response from upload path function"""
     filename = "imap_glows_l0_raw_20231010_20231011_v01-01.pkts"
     file_parser = FilenameParser(filename)
     expected_path = f"imap/glows/l0/2023/10/{filename}"
