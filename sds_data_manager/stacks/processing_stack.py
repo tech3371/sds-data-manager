@@ -7,7 +7,6 @@ from pathlib import Path
 from aws_cdk import Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
-from aws_cdk import aws_efs as efs
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as event_targets
 from aws_cdk import aws_s3 as s3
@@ -16,6 +15,8 @@ from constructs import Construct
 from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
 from sds_data_manager.constructs.instrument_lambdas import InstrumentLambda
 from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
+from sds_data_manager.stacks.database_stack import SdpDatabase
+from sds_data_manager.stacks.efs_stack import EFSStack
 
 
 class ProcessingStep(Stack):
@@ -29,14 +30,12 @@ class ProcessingStep(Stack):
         processing_step_name: str,
         lambda_code_directory: str or Path,
         data_bucket: s3.Bucket,
-        instrument_target: str,
-        instrument_sources: str,
+        instrument: str,
+        instrument_downstream: dict,
         repo: ecr.Repository,
-        batch_security_group: ec2.SecurityGroup,
         rds_security_group: ec2.SecurityGroup,
-        subnets: ec2.SubnetSelection,
-        db_secret_name: str,
-        efs: efs.FileSystem,
+        rds_stack: SdpDatabase,
+        efs_instance: EFSStack,
         account_name: str,
         **kwargs,
     ) -> None:
@@ -56,21 +55,20 @@ class ProcessingStep(Stack):
             Lambda directory
         data_bucket : s3.Bucket
             S3 bucket
-        instrument_target : str
-            Target data product
-        instrument_sources : str
-            Data product sources
+        instrument : str
+            Instrument
+        instrument_downstream : dict
+            Downstream dependents of given instrument
+            Example:
+            {'l0': [{'instrument': '<instrument>', 'level': '<level>'}],
+            'l1a': [{'instrument': '<instrument>', 'level': '<level>'}, {...}]}
         repo : ecr.Repository
             Container repo
-        batch_security_group: ec2.SecurityGroup
-            Batch security group
         rds_security_group : ec2.SecurityGroup
             RDS security group
-        subnets : ec2.SubnetSelection
-            RDS subnet selection.
-        db_secret_name : str
-            RDS secret name for secret manager access
-        efs: efs.FileSystem
+        rds_stack : SdpDatabase
+            RDS stack
+        efs_instance: efs.FileSystem
             EFS stack object
         account_name: str
             account name such as 'dev' or 'prod'
@@ -84,49 +82,56 @@ class ProcessingStep(Stack):
             processing_step_name=processing_step_name,
             data_bucket=data_bucket,
             repo=repo,
-            batch_security_group=batch_security_group,
-            db_secret_name=db_secret_name,
-            efs=efs,
+            db_secret_name=rds_stack.secret_name,
+            efs_instance=efs_instance,
             account_name=account_name,
-        )
-
-        self.instrument_lambda = InstrumentLambda(
-            self,
-            "InstrumentLambda",
-            processing_step_name=processing_step_name,
-            data_bucket=data_bucket,
-            code_path=str(lambda_code_directory),
-            instrument_target=instrument_target,
-            instrument_sources=instrument_sources,
-            db_secret_name=db_secret_name,
-            rds_security_group=rds_security_group,
-            subnets=subnets,
-            vpc=vpc,
         )
 
         self.step_function = SdcStepFunction(
             self,
             f"SdcStepFunction-{processing_step_name}",
             processing_step_name=processing_step_name,
-            processing_system=self.instrument_lambda,
             batch_resources=self.batch_resources,
-            instrument_target=instrument_target,
             data_bucket=data_bucket,
-            db_secret_name=db_secret_name,
+            db_secret_name=rds_stack.secret_name,
         )
 
-        # TODO: This will be a construct and also we will add to its capabilities.
+        self.instrument_lambda = InstrumentLambda(
+            self,
+            "InstrumentLambda",
+            data_bucket=data_bucket,
+            code_path=str(lambda_code_directory),
+            instrument=instrument,
+            instrument_downstream=instrument_downstream,
+            step_function_stack=self.step_function,
+            rds_stack=rds_stack,
+            rds_security_group=rds_security_group,
+            subnets=rds_stack.rds_subnet_selection,
+            vpc=vpc,
+        )
+
+        # Kicks off Step Function as a result of object ingested into directories in
+        # s3 bucket (instrument_sources).
+        # TODO: Right now these directories are created manually in the s3 bucket.
+        #  Add code so that they are not.
         rule = events.Rule(
             self,
-            "rule",
+            f"Rule-{processing_step_name}",
             event_pattern=events.EventPattern(
                 source=["aws.s3"],
                 detail_type=["Object Created"],
                 detail={
                     "bucket": {"name": [data_bucket.bucket_name]},
-                    "object": {"key": [{"prefix": f"{instrument_sources}"}]},
+                    "object": {
+                        "key": [
+                            {"prefix": f"{instrument}/{source}"}
+                            for source in instrument_downstream
+                        ]
+                    },
                 },
             ),
         )
 
-        rule.add_target(event_targets.SfnStateMachine(self.step_function.state_machine))
+        rule.add_target(
+            event_targets.LambdaFunction(self.instrument_lambda.instrument_lambda)
+        )

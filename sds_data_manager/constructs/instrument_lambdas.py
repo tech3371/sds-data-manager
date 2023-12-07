@@ -5,10 +5,13 @@ from pathlib import Path
 from aws_cdk import Duration
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
+from aws_cdk import aws_lambda_python_alpha as lambda_alpha
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
+
+from sds_data_manager.constructs.sdc_step_function import SdcStepFunction
+from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
 class InstrumentLambda(Construct):
@@ -18,14 +21,14 @@ class InstrumentLambda(Construct):
         self,
         scope: Construct,
         construct_id: str,
-        processing_step_name: str,
         data_bucket: s3.Bucket,
         code_path: str or Path,
-        instrument_target: str,
-        instrument_sources: str,
+        instrument: str,
+        instrument_downstream: dict,
+        step_function_stack: SdcStepFunction,
+        rds_stack: SdpDatabase,
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
-        db_secret_name: str,
         vpc: ec2.Vpc,
     ):
         """
@@ -37,22 +40,22 @@ class InstrumentLambda(Construct):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        processing_step_name : str
-            Processing step name
         data_bucket: s3.Bucket
             S3 bucket
         code_path : str or Path
             Path to the Lambda code directory
-        instrument_target : str
-            Target data product (i.e. expected product)
-        instrument_sources : str
-            Data product sources (i.e. dependencies)
+        instrument : str
+            Instrument
+        instrument_downstream : dict
+            Instrument downstream dependents of given instruments
+        step_function_stack: SdcStepFunction
+            Step function stack
         rds_security_group : ec2.SecurityGroup
             RDS security group
+        rds_stack: SdpDatabase
+            Database stack
         subnets : ec2.SubnetSelection
             RDS subnet selection.
-        db_secret_name : str
-            RDS secret name for secret manager access
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
         """
@@ -62,26 +65,24 @@ class InstrumentLambda(Construct):
         # Define Lambda Environment Variables
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
-            "S3_BUCKET": f"{data_bucket.bucket_name}",
-            "S3_KEY_PATH": instrument_sources,
-            "INSTRUMENT_TARGET": instrument_target,
-            "PROCESSING_NAME": processing_step_name,
-            "OUTPUT_PATH": f"s3://{data_bucket.bucket_name}/{instrument_target}",
-            "SECRET_NAME": db_secret_name,
+            "INSTRUMENT": instrument,
+            "INSTRUMENT_DOWNSTREAM": f"{instrument_downstream}",
+            "STATE_MACHINE_ARN": step_function_stack.state_machine.state_machine_arn,
+            "SECRET_ARN": rds_stack.rds_creds.secret_arn,
         }
 
-        # TODO: Add Lambda layers for more libraries (or Dockerize)
-        self.instrument_lambda = lambda_alpha_.PythonFunction(
+        self.instrument_lambda = lambda_alpha.PythonFunction(
             self,
-            id=f"InstrumentLambda-{processing_step_name}",
-            function_name=f"{processing_step_name}",
+            "InstrumentLambda",
+            function_name="InstrumentLambda",
             entry=str(code_path),
-            index=f"instruments/{instrument_target.lower()}.py",
+            index="batch_starter.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            timeout=Duration.seconds(10),
-            memory_size=512,
             environment=lambda_environment,
+            retry_attempts=0,
+            memory_size=512,
+            timeout=Duration.minutes(1),
             vpc=vpc,
             vpc_subnets=subnets,
             security_groups=[rds_security_group],
@@ -89,8 +90,9 @@ class InstrumentLambda(Construct):
         )
 
         data_bucket.grant_read_write(self.instrument_lambda)
+        self.instrument_lambda.add_to_role_policy(step_function_stack.execution_policy)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", db_secret_name
+            self, "rds_secret", rds_stack.secret_name
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)

@@ -21,6 +21,9 @@ from sds_data_manager.stacks import (
     processing_stack,
     sds_data_manager_stack,
 )
+from sds_data_manager.utils.get_downstream_dependencies import (
+    get_downstream_dependencies,
+)
 
 
 def build_sds(
@@ -96,9 +99,9 @@ def build_sds(
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
         max_allocated_storage=rds_storage,
-        username="imap",
-        secret_name="sdp-database-creds-rds",
-        database_name="imapdb",
+        username="imap_user",
+        secret_name="sdp-database-cred",
+        database_name="imap",
     )
 
     data_manager = sds_data_manager_stack.SdsDataManager(
@@ -115,10 +118,11 @@ def build_sds(
     )
 
     # create EFS
-    efs = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
+    efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
-    instrument_list = ["Codice"]  # etc
-    lambda_code_directory = Path(__file__).parent.parent / "lambda_code" / "SDSCode"
+    instrument_list = ["CodiceHi"]  # etc
+
+    lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
     spin_table_code = lambda_code_directory / "spin_table_api.py"
@@ -145,7 +149,7 @@ def build_sds(
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
             scope,
-            f"{instrument}Processing",
+            f"{instrument}Ecr",
             env=env,
             instrument_name=f"{instrument}",
         )
@@ -164,39 +168,18 @@ def build_sds(
 
         processing_stack.ProcessingStep(
             scope,
-            f"L1b{instrument}Processing",
+            f"{instrument}Processing",
             env=env,
             vpc=networking.vpc,
-            processing_step_name=f"l1b-{instrument}",
+            processing_step_name=instrument,
             lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_manager.data_bucket,
-            instrument_target=f"l1b_{instrument}",
-            instrument_sources=f"l1a_{instrument}",
+            instrument=instrument,
+            instrument_downstream=get_downstream_dependencies(instrument),
             repo=ecr.container_repo,
-            batch_security_group=networking.batch_security_group,
             rds_security_group=networking.rds_security_group,
-            subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.secret_name,
-            efs=efs,
-            account_name=account_name,
-        )
-
-        processing_stack.ProcessingStep(
-            scope,
-            f"L1c{instrument}Processing",
-            env=env,
-            vpc=networking.vpc,
-            processing_step_name=f"l1c-{instrument}",
-            lambda_code_directory=lambda_code_directory_str,
-            data_bucket=data_manager.data_bucket,
-            instrument_target=f"l1c_{instrument}",
-            instrument_sources=f"l1b_{instrument}",
-            repo=ecr.container_repo,
-            batch_security_group=networking.batch_security_group,
-            rds_security_group=networking.rds_security_group,
-            subnets=rds_stack.rds_subnet_selection,
-            db_secret_name=rds_stack.secret_name,
-            efs=efs,
+            rds_stack=rds_stack,
+            efs_instance=efs_instance,
             account_name=account_name,
         )
 
@@ -216,7 +199,7 @@ def build_sds(
         construct_id="EFSWriteLambda",
         vpc=networking.vpc,
         data_bucket=data_manager.data_bucket,
-        efs=efs,
+        efs_instance=efs_instance,
         env=env,
     )
 
