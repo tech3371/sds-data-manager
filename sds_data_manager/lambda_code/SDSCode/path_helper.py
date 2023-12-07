@@ -105,7 +105,7 @@ class FilenameParser:
         except ValueError:
             return False
 
-    def validate_filename(self, file_pattern_config=FilenamePatternConfig()) -> bool:
+    def validate_filename(self, file_pattern_config=None) -> bool:
         """Validate filename patterns.
 
         Parameters
@@ -121,6 +121,9 @@ class FilenameParser:
         bool
             Whether filename format is valid or not
         """
+        if file_pattern_config is None:
+            file_pattern_config = FilenamePatternConfig()
+
         # First check if any of parameter is missing
         if any(
             attr is None or attr == ""
@@ -187,7 +190,6 @@ class FilenameParser:
             if not is_valid:
                 self.message = error_message
                 return False
-        print("done")
         return True
 
     def create_path_to_upload(self) -> str:

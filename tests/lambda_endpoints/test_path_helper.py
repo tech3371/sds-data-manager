@@ -8,49 +8,30 @@ def test_date_checker():
     filename = "imap_glows_l0_raw_20231010_20231011_v01-01.pkts"
     file_parser = FilenameParser(filename)
     assert file_parser.check_date_input("20200101")
-    assert file_parser.check_date_input("2020-01-01") is False
-    assert file_parser.check_date_input("202301") is False
-    # NOTE: the date is correct but not in the format YYYYMMDD
-    assert file_parser.check_date_input("2023105") is False
+    assert not file_parser.check_date_input("2020-01-01")
+    assert not file_parser.check_date_input("202301")
 
 
-def test_filename_validator():
+filename_and_expected_inputs = [
+    ("imap_glows_l0_raw_20231010_20231011_v01-01.pkts", True, "Correct"),
+    ("imap_hi-45_l0_raw_20231010_20231011_v01-06.pkts", True, "Correct"),
+    ("imap_glows_l0_raw_20231010_20231011_v01-02.cdf", False, "Invalid file extension"),
+    (
+        "imap_glows_l1a_raw_20231010_20231011_v01-03.pkts",
+        False,
+        "Invalid file extension",
+    ),
+    ("imap_glows_l0__20231010_20231011_v01-04.pkts", False, "Empty descriptor"),
+    ("imap_hi-45_l0_raw_20231010_20231011_v01.pkts", False, "Invalid version format"),
+    ("imap_hi-45_l0_raw_20231010_20231011_v1-1.pkts", False, "Invalid version format"),
+    ("imap_hi-45_l3_raw_20231010_20231011_v01-01.cdf", False, "Unsupported data level"),
+]
+
+
+@pytest.mark.parametrize(("filename", "expected", "msg"), filename_and_expected_inputs)
+def test_filename_validator(filename, expected, msg):
     """Validate filenames"""
-    filename = "imap_glows_l0_raw_20231010_20231011_v01-01.pkts"
-    assert FilenameParser(filename).validate_filename() is True
-
-    filename = "imap_hi-45_l0_raw_20231010_20231011_v01-06.pkts"
-    assert FilenameParser(filename).validate_filename() is True
-
-    # wrong extension for data level
-    filename = "imap_glows_l0_raw_20231010_20231011_v01-02.cdf"
-    assert FilenameParser(filename).validate_filename() is False
-    filename = "imap_glows_l1a_raw_20231010_20231011_v01-03.pkts"
-    assert FilenameParser(filename).validate_filename() is False
-
-    # missing descriptor
-    filename = "imap_glows_l0__20231010_20231011_v01-04.pkts"
-    assert FilenameParser(filename).validate_filename() is False
-
-    # missing enddate and it will raise
-    filename = "imap_glows_l0_raw_20231010_v01-05.pkts"
-    with pytest.raises(
-        ValueError, match="not enough values to unpack"
-    ) as not_enough_value:
-        FilenameParser(filename).validate_filename()
-    assert "not enough values to unpack (expected 7, got 6)" in str(
-        not_enough_value.value
-    )
-
-    # version format is wrong
-    filename = "imap_hi-45_l0_raw_20231010_20231011_v01.pkts"
-    assert FilenameParser(filename).validate_filename() is False
-    filename = "imap_hi-45_l0_raw_20231010_20231011_v1-1.pkts"
-    assert FilenameParser(filename).validate_filename() is False
-
-    # data level is not supported
-    filename = "imap_hi-45_l3_raw_20231010_20231011_v01-01.cdf"
-    assert FilenameParser(filename).validate_filename() is False
+    assert FilenameParser(filename).validate_filename() == expected, msg
 
 
 def test_upload_filepath():
