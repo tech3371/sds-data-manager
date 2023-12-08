@@ -3,6 +3,7 @@ import logging
 import os
 
 import boto3
+from SDSCode.path_helper import FilenameParser
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -11,74 +12,21 @@ logger.setLevel(logging.INFO)
 s3 = boto3.client("s3")
 
 
-def _load_allowed_filenames():
-    """
-    Load the config.json file as a python dictionary.
-
-    :return: dictionary object of file types and their attributes.
-    """
-    # get the config file from the S3 bucket
-    config_object = s3.get_object(
-        Bucket=os.environ["S3_CONFIG_BUCKET_NAME"], Key="config.json"
-    )
-    file_content = config_object["Body"].read()
-    return json.loads(file_content)
-
-
-def _check_for_matching_filetype(pattern, filename):
-    """
-    Read a pattern from config.json and compare it to the desired filename.
-
-    :param pattern: A file naming pattern from the config.json
-    :param filename: String name of the desired file name.
-
-    :return: The file_dictionary, or None if there is no match.
-    """
-    split_filename = filename.replace("_", ".").split(".")
-
-    if len(split_filename) != len(pattern):
-        return None
-
-    i = 0
-    file_dictionary = {}
-    for field in pattern:
-        if pattern[field] == "*":
-            file_dictionary[field] = split_filename[i]
-        elif pattern[field] == split_filename[i]:
-            file_dictionary[field] = split_filename[i]
-        else:
-            return None
-        i += 1
-
-    return file_dictionary
-
-
-def _generate_signed_upload_url(filename, tags=None):
+def _generate_signed_upload_url(key_path, tags=None):
     """
     Create a presigned url for a file in the SDS storage bucket.
 
-    :param filename: Required.  A string representing the name of the object to upload.
+    :param key_path: Required.  A string representing the name of the object to upload.
     :param tags: Optional.  A dictionary that will be stored in the S3 object metadata.
 
     :return: A URL string if the file was found, otherwise None.
     """
-    filetypes = _load_allowed_filenames()
-    for filetype in filetypes:
-        path_to_upload_file = filetype["path"]
-        metadata = _check_for_matching_filetype(filetype["pattern"], filename)
-        if metadata is not None:
-            break
-
-    if metadata is None:
-        logger.info("Found no matching file types to index this file against.")
-        return None
-
     bucket_name = os.environ["S3_BUCKET"]
     url = boto3.client("s3").generate_presigned_url(
         ClientMethod="put_object",
         Params={
             "Bucket": bucket_name[5:],
-            "Key": path_to_upload_file + filename,
+            "Key": key_path,
             "Metadata": tags or dict(),
         },
         ExpiresIn=3600,
@@ -112,7 +60,13 @@ def lambda_handler(event, context):
         }
 
     filename = event["queryStringParameters"]["filename"]
-    url = _generate_signed_upload_url(filename, tags=event["queryStringParameters"])
+    filename_parsed = FilenameParser(filename)
+    upload_path = filename_parsed.upload_filepath()
+    if upload_path["statusCode"] != 200:
+        return upload_path
+
+    s3_key_path = upload_path["body"]
+    url = _generate_signed_upload_url(s3_key_path, tags=event["queryStringParameters"])
 
     if url is None:
         return {
