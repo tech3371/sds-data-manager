@@ -98,7 +98,7 @@ class FilenameParser:
         try:
             # This checks if date is in YYYYMMDD format.
             # Sometimes, date is correct but not in the format we want
-            if not re.match(r"^\d{8}$", input_date):
+            if len(input_date) != 8:
                 raise ValueError("Invalid date format.")
             datetime.strptime(input_date, "%Y%m%d")
             return True
