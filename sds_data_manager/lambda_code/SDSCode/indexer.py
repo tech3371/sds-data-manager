@@ -7,7 +7,6 @@ import sys
 # Installed
 import boto3
 from opensearchpy import RequestsHttpConnection
-from SDSCode.path_helper import FilenameParser
 
 # Local
 from .opensearch_utils.action import Action
@@ -16,6 +15,7 @@ from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
 from .opensearch_utils.snapshot import run_backup
+from .path_helper import FilenameParser
 
 # Logger setup
 logger = logging.getLogger()
