@@ -24,9 +24,6 @@ from aws_cdk import (
     aws_s3 as s3,
 )
 from aws_cdk import (
-    aws_s3_deployment as s3_deploy,
-)
-from aws_cdk import (
     aws_secretsmanager as secrets,
 )
 from constructs import Construct
@@ -34,7 +31,6 @@ from constructs import Construct
 from .api_gateway_stack import ApiGateway
 
 # Local
-from .dynamodb_stack import DynamoDB
 from .opensearch_stack import OpenSearch
 
 
@@ -46,7 +42,6 @@ class SdsDataManager(Stack):
         scope: Construct,
         construct_id: str,
         opensearch: OpenSearch,
-        dynamodb_stack: DynamoDB,
         api: ApiGateway,
         env: cdk.Environment,
         db_secret_name: str,
@@ -65,9 +60,6 @@ class SdsDataManager(Stack):
             A unique string identifier for this construct.
         opensearch: OpenSearch
             This class depends on opensearch, which is built with opensearch_stack.py
-        dynamodb_stack: DynamoDb
-            This class depends on dynamodb_stack, which is built with
-            opensearch_stack.py
         api: ApiGateway
             This class has created API resources. This function uses it to add
             route that points to targe Lambda.
@@ -87,45 +79,6 @@ class SdsDataManager(Stack):
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-        )
-
-        # Confirm that a config.json file exists in the expected
-        # location before S3 upload
-        if (
-            not pathlib.Path(__file__)
-            .parent.joinpath("..", "config", "config.json")
-            .resolve()
-            .exists()
-        ):
-            raise RuntimeError(
-                "sds_data_manager/config directory must contain config.json"
-            )
-
-        # S3 bucket where the configurations will be stored
-        config_bucket = s3.Bucket(
-            self,
-            "ConfigBucket",
-            bucket_name=f"sds-config-bucket-{account}",
-            versioned=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-        )
-
-        # Upload all files in the config directory to the S3 config bucket.
-        # This directory should contain a config.json file that will
-        # be used for indexing files into the data bucket.
-        s3_deploy.BucketDeployment(
-            self,
-            "DeployConfig",
-            sources=[
-                s3_deploy.Source.asset(
-                    str(
-                        pathlib.Path(__file__).parent.joinpath("..", "config").resolve()
-                    )
-                )
-            ],
-            destination_bucket=config_bucket,
         )
 
         ########### OpenSearch Snapshot Storage
@@ -152,7 +105,6 @@ class SdsDataManager(Stack):
             actions=["s3:GetObject"],
             resources=[
                 f"{self.data_bucket.bucket_arn}/*",
-                f"{config_bucket.bucket_arn}/*",
                 f"{snapshot_bucket.bucket_arn}/*",
             ],
         )
@@ -269,9 +221,7 @@ class SdsDataManager(Stack):
                 "OS_PORT": "443",
                 "METADATA_INDEX": "metadata",
                 "DATA_TRACKER_INDEX": "data_tracker",
-                "DYNAMODB_TABLE": dynamodb_stack.table_name,
                 "S3_DATA_BUCKET": self.data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{account}",
                 "S3_SNAPSHOT_BUCKET_NAME": f"sds-opensearch-snapshot-{account}",
                 "SNAPSHOT_ROLE_ARN": snapshot_role.role_arn,
                 "SNAPSHOT_REPO_NAME": "snapshot-repo",
@@ -289,7 +239,7 @@ class SdsDataManager(Stack):
 
         # Adding Opensearch permissions
         indexer_lambda.add_to_role_policy(opensearch.opensearch_all_http_permissions)
-        # Adding s3 read permissions to get config.json
+        # Adding s3 read permissions
         indexer_lambda.add_to_role_policy(s3_read_policy)
         # Adding dynamodb write permissions
         indexer_lambda.add_to_role_policy(dynamodb_write_policy)
@@ -342,7 +292,6 @@ class SdsDataManager(Stack):
             memory_size=1000,
             environment={
                 "S3_BUCKET": self.data_bucket.s3_url_for_object(),
-                "S3_CONFIG_BUCKET_NAME": f"sds-config-bucket-{account}",
             },
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)

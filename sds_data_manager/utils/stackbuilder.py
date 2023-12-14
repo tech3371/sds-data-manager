@@ -12,7 +12,6 @@ from sds_data_manager.stacks import (
     create_schema_stack,
     database_stack,
     domain_stack,
-    dynamodb_stack,
     ecr_stack,
     efs_stack,
     monitoring_stack,
@@ -74,15 +73,6 @@ def build_sds(
 
     open_search = opensearch_stack.OpenSearch(scope, "OpenSearch", env=env)
 
-    dynamodb = dynamodb_stack.DynamoDB(
-        scope,
-        construct_id="DynamoDB",
-        table_name="data-watcher",
-        partition_key="instrument",
-        sort_key="filename",
-        env=env,
-    )
-
     # Get RDS properties from account_config
     rds_size = account_config.get("rds_size", "SMALL")
     rds_class = account_config.get("rds_class", "BURSTABLE3")
@@ -108,7 +98,6 @@ def build_sds(
         scope,
         "SdsDataManager",
         open_search,
-        dynamodb,
         api,
         env=env,
         db_secret_name=rds_stack.secret_name,
