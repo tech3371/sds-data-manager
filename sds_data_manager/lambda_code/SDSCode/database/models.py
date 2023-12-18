@@ -24,10 +24,6 @@ class UniversalSpinTable(Base):
     spin_duration = Column(Integer, nullable=False)
     thruster_firing_event = Column(Boolean, nullable=False)
     repointing = Column(Boolean, nullable=False)
+    # TODO: create table for repointing and then make
+    # a foreign key to universal_spin_table
     repointing_number = Column(Integer, nullable=False)
-
-    def __str__(self):
-        """Returns a string representation of this object."""
-        return "%s %s %d" % (self.directory_path, self.file_name, self.file_size)
-
-    __repr__ = __str__
