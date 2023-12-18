@@ -169,12 +169,6 @@ class SdsDataManager(Stack):
         backup_role.add_to_policy(s3_backup_bucket_policy)
         backup_role.add_to_policy(s3_write_policy)
 
-        dynamodb_write_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW,
-            actions=["dynamodb:PutItem"],
-            resources=["*"],
-        )
-
         snapshot_role_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=[
@@ -194,10 +188,6 @@ class SdsDataManager(Stack):
             self, "SnapshotRole", assumed_by=iam.ServicePrincipal("es.amazonaws.com")
         )
         snapshot_role.add_to_policy(snapshot_role_policy)
-
-        step_function_execution_policy = iam.PolicyStatement(
-            effect=iam.Effect.ALLOW, actions=["states:StartExecution"], resources=["*"]
-        )
 
         indexer_lambda = lambda_alpha_.PythonFunction(
             self,
@@ -239,12 +229,6 @@ class SdsDataManager(Stack):
 
         # Adding Opensearch permissions
         indexer_lambda.add_to_role_policy(opensearch.opensearch_all_http_permissions)
-        # Adding s3 read permissions
-        indexer_lambda.add_to_role_policy(s3_read_policy)
-        # Adding dynamodb write permissions
-        indexer_lambda.add_to_role_policy(dynamodb_write_policy)
-        # Adding step function execution policy
-        indexer_lambda.add_to_role_policy(step_function_execution_policy)
 
         # Add permissions for Lambda to access OpenSearch
         indexer_lambda.add_to_role_policy(

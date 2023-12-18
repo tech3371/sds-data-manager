@@ -418,50 +418,6 @@ def test_indexer_lambda_iam_policy_resource_properties(template):
                         },
                     },
                     {
-                        "Action": "s3:GetObject",
-                        "Effect": "Allow",
-                        "Resource": [
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "DataBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                            {
-                                "Fn::Join": [
-                                    "",
-                                    [
-                                        {
-                                            "Fn::GetAtt": [
-                                                Match.string_like_regexp(
-                                                    "SnapshotBucket.*"
-                                                ),
-                                                "Arn",
-                                            ]
-                                        },
-                                        "/*",
-                                    ],
-                                ]
-                            },
-                        ],
-                    },
-                    {"Action": "dynamodb:PutItem", "Effect": "Allow", "Resource": "*"},
-                    {
-                        "Action": "states:StartExecution",
-                        "Effect": "Allow",
-                        "Resource": "*",
-                    },
-                    {
                         "Action": "es:*",
                         "Effect": "Allow",
                         "Resource": {
