@@ -17,14 +17,14 @@ class UniversalSpinTable(Base):
 
     __tablename__ = "universal_spin_table"
     id = Column(Integer, primary_key=True)
-    spin_number = Column(Integer, primary_key=True)
-    spin_start_sc_time = Column(Integer)
-    spin_start_utc_time = Column(DateTime(timezone=True))
-    star_tracker_flag = Column(Boolean)
-    spin_duration = Column(Integer)
-    thruster_firing_event = Column(Boolean)
-    repointing = Column(Boolean)
-    repointing_number = Column(Integer)
+    spin_number = Column(Integer, nullable=False)
+    spin_start_sc_time = Column(Integer, nullable=False)
+    spin_start_utc_time = Column(DateTime(timezone=True), nullable=False)
+    star_tracker_flag = Column(Boolean, nullable=False)
+    spin_duration = Column(Integer, nullable=False)
+    thruster_firing_event = Column(Boolean, nullable=False)
+    repointing = Column(Boolean, nullable=False)
+    repointing_number = Column(Integer, nullable=False)
 
     def __str__(self):
         """Returns a string representation of this object."""
