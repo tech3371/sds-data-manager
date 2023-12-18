@@ -1,7 +1,12 @@
 Deploy CDK to Personal AWS Account
 ==================================
 
-1. Get a personal AWS account set up by submitting a `Service Desk ticket <https://servicedesk.lasp.colorado.edu/servicedesk/customer/portals>`_.
+1. Get a personal AWS account set up by submitting a `Service Desk ticket <https://servicedesk.lasp.colorado.edu/servicedesk/customer/portals>`_:
+   a. Use the request type "Create AWS Account" under the "Cloud" section.
+   b. For "Project/Program Name", use ``IMAP``
+   c. For "Speedtype", use the speedtype for the "IMAP SOC SDC SW and Sys Devl" project
+   d. For "Root Group Email Address to Associate with Account", use your LASP email address
+   e. For "Lead Technical Contact Name", use `Greg Lucas`
 2. Once the account is set up, `login in to AWS <https://signin.aws.amazon.com/signin?redirect_uri=https%3A%2F%2Fconsole.aws.amazon.com%2Fconsole%2Fhome%3FhashArgs%3D%2523%26isauthcode%3Dtrue%26state%3DhashArgsFromTB_us-east-2_bdb6cea710bddb8a&client_id=arn%3Aaws%3Asignin%3A%3A%3Aconsole%2Fcanvas&forceMobileApp=0&code_challenge=DSG8NACFeAjbOsDQjFFz6TvuW-ohRykiAIXkuEQriOI&code_challenge_method=SHA-256>`_ and create a user in IAM.
    a. You'll likely want to give your user the ``AdministratorAccess`` policy.
 3. Next, go to ``Security Credentials`` for your new user and create an access key. This will be needed in step 6, so save the access key/secret access key.
