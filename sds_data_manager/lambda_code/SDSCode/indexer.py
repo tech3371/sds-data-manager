@@ -8,8 +8,6 @@ import sys
 import boto3
 from opensearchpy import RequestsHttpConnection
 
-from .dynamodb_utils.processing_status import ProcessingStatus
-
 # Local
 from .opensearch_utils.action import Action
 from .opensearch_utils.client import Client
@@ -17,6 +15,7 @@ from .opensearch_utils.document import Document
 from .opensearch_utils.index import Index
 from .opensearch_utils.payload import Payload
 from .opensearch_utils.snapshot import run_backup
+from .path_helper import FilenameParser
 
 # Logger setup
 logger = logging.getLogger()
@@ -24,57 +23,6 @@ logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 s3 = boto3.client("s3")
-
-
-def _load_allowed_filenames():
-    """Load the allowed filenames configuration from an S3 bucket.
-
-    Returns
-    -------
-    dict
-        The content of 'config.json', parsed into a Python dictionary.
-    """
-
-    # get the config file from the S3 bucket
-    config_object = s3.get_object(
-        Bucket=os.environ["S3_CONFIG_BUCKET_NAME"], Key="config.json"
-    )
-    file_content = config_object["Body"].read()
-    return json.loads(file_content)
-
-
-def _check_for_matching_filetype(pattern: dict, filename: str):
-    """
-    Checks whether a given filename matches a specific pattern.
-
-    Parameters
-    ----------
-    pattern : dict
-        The pattern to match the filename against.
-    filename : str
-        The filename to check.
-
-    Returns
-    -------
-    dict or None
-    """
-    split_filename = filename.replace("_", ".").split(".")
-
-    if len(split_filename) != len(pattern):
-        return None
-
-    i = 0
-    file_dictionary = {}
-    for field in pattern:
-        if pattern[field] == "*":
-            file_dictionary[field] = split_filename[i]
-        elif pattern[field] == split_filename[i]:
-            file_dictionary[field] = split_filename[i]
-        else:
-            return None
-        i += 1
-
-    return file_dictionary
 
 
 def _create_open_search_client():
@@ -108,48 +56,6 @@ def _create_open_search_client():
     )
 
 
-def initialize_data_processing_status(metadata: dict, filename):
-    """Generate data that will be sent to database.
-
-    Parameters
-    ----------
-    metadata : dict
-        metadata from filename. metadata comes from this
-        _check_for_matching_filetype function call.
-        Dictionary returned from that function call
-        can be used to get data level or instrument name
-        via metadata['instrument'] and metadata['level'].
-    filename : str
-        filename of injested data.
-
-    Returns
-    -------
-    dict
-        data for database
-    """
-
-    return {
-        "instrument": metadata["instrument"],
-        "filename": filename,
-        "data_level": metadata["level"],
-        "version": metadata["version"],
-        "status": ProcessingStatus.PENDING.name,
-    }
-
-
-def write_data_to_dynamodb(item: dict):
-    """Write data to DynamoDB.
-
-    Parameters
-    ----------
-    item : dict
-        data for database
-    """
-    dynamodb = boto3.resource("dynamodb")
-    table = dynamodb.Table(os.environ["DYNAMODB_TABLE"])
-    table.put_item(Item=item)
-
-
 def lambda_handler(event, context):
     """Handler function for creating metadata, adding it to the payload,
     and sending it to the opensearch instance.
@@ -171,11 +77,6 @@ def lambda_handler(event, context):
 
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
-
-    # Retrieve a list of allowed file types
-    logger.info("Loading allowed filenames from configuration file in S3.")
-    filetypes = _load_allowed_filenames()
-    logger.info("Allowed file types: " + str(filetypes))
 
     # Grab environment variables
     host = os.environ["OS_DOMAIN"]
@@ -200,15 +101,13 @@ def lambda_handler(event, context):
         filename = record["s3"]["object"]["key"]
 
         logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
+        # TODO: change below logics to use new FilenameParser
+        # when we create schema and write file metadata to DB
+        filename_parsed = FilenameParser(filename)
+        filename_parsed.upload_filepath()
+        metadata = None
 
-        # Look for matching file types in the configuration
-        for filetype in filetypes:
-            metadata = _check_for_matching_filetype(
-                filetype["pattern"], os.path.basename(filename)
-            )
-            if metadata is not None:
-                break
-
+        # TODO: remove this check since upload api validates filename?
         # Found nothing. This should probably send out an error notification
         # to the team, because how did it make its way onto the SDS?
         if metadata is None:
@@ -223,18 +122,10 @@ def lambda_handler(event, context):
         opensearch_doc = Document(metadata_index, s3_path, Action.CREATE, metadata)
         document_payload.add_documents(opensearch_doc)
 
-        # TODO: Decide if we want to keep both or keep one after SIT-2
-        # Right now, we can write processing status of injested data to both databases.
-        # In the future, we can decide which one to write to.
-        # Initialize processing status for injested data to pending. This will be
-        # updated when the data is processed.
-        item = initialize_data_processing_status(metadata=metadata, filename=filename)
-
-        # Write processing status data to DynamoDB.
-        write_data_to_dynamodb(item)
-
         # Write processing status data to opensearch as well.
-        data_tracker_doc = Document(data_tracker_index, filename, Action.CREATE, item)
+        data_tracker_doc = Document(
+            data_tracker_index, filename, Action.CREATE, metadata
+        )
         document_payload.add_documents(data_tracker_doc)
 
     # send the paylaod to the opensearch instance
