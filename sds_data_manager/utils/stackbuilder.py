@@ -7,7 +7,7 @@ from aws_cdk import aws_rds as rds
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
-    batch_job_stack,
+    batch_compute_resources,
     create_schema_stack,
     data_bucket_stack,
     database_stack,
@@ -143,11 +143,12 @@ def build_sds(
         # AttributeError: 'CfnJobDefinition' object has no attribute
         # 'attr_job_definition_arn'
         # Replaced it with batch job stack
-        batch_job_stack.BatchJobStack(
-            scope=scope,
+
+        batch_compute_resources.FargateBatchResources(
+            scope,
             construct_id=f"{instrument}BatchJob",
             vpc=networking.vpc,
-            batch_job_name=instrument,
+            processing_step_name=instrument,
             data_bucket=data_bucket.data_bucket,
             repo=ecr.container_repo,
             db_secret_name=db_secret_name,
