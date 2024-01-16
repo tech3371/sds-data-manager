@@ -10,7 +10,7 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
-from sds_data_manager.constructs.batch_compute_resources import FargateBatchResources
+from sds_data_manager.stacks.batch_compute_resources import FargateBatchResources
 from sds_data_manager.stacks.database_stack import SdpDatabase
 
 

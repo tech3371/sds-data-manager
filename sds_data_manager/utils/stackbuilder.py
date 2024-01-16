@@ -1,5 +1,4 @@
 """Module with helper functions for creating standard sets of stacks"""
-from pathlib import Path
 
 from aws_cdk import App, Environment
 from aws_cdk import aws_ec2 as ec2
@@ -8,6 +7,7 @@ from aws_cdk import aws_rds as rds
 from sds_data_manager.stacks import (
     api_gateway_stack,
     backup_bucket_stack,
+    batch_compute_resources,
     create_schema_stack,
     data_bucket_stack,
     database_stack,
@@ -17,11 +17,7 @@ from sds_data_manager.stacks import (
     indexer_lambda_stack,
     monitoring_stack,
     networking_stack,
-    processing_stack,
     sds_api_manager_stack,
-)
-from sds_data_manager.utils.get_downstream_dependencies import (
-    get_downstream_dependencies,
 )
 
 
@@ -122,9 +118,6 @@ def build_sds(
 
     instrument_list = ["CodiceHi"]  # etc
 
-    lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
-    lambda_code_directory_str = str(lambda_code_directory.resolve())
-
     for instrument in instrument_list:
         ecr = ecr_stack.EcrStack(
             scope,
@@ -145,21 +138,17 @@ def build_sds(
         #     ...
         # )
 
-        processing_stack.ProcessingStep(
+        batch_compute_resources.FargateBatchResources(
             scope,
-            f"{instrument}Processing",
-            env=env,
+            construct_id=f"{instrument}BatchJob",
             vpc=networking.vpc,
             processing_step_name=instrument,
-            lambda_code_directory=lambda_code_directory_str,
             data_bucket=data_bucket.data_bucket,
-            instrument=instrument,
-            instrument_downstream=get_downstream_dependencies(instrument),
             repo=ecr.container_repo,
-            rds_security_group=networking.rds_security_group,
-            rds_stack=rds_stack,
+            db_secret_name=db_secret_name,
             efs_instance=efs_instance,
             account_name=account_name,
+            env=env,
         )
 
     create_schema_stack.CreateSchema(
