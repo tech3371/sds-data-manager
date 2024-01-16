@@ -138,12 +138,6 @@ def build_sds(
         #     ...
         # )
 
-        # NOTE: processing_stack.ProcessingStep was giving this
-        # error:
-        # AttributeError: 'CfnJobDefinition' object has no attribute
-        # 'attr_job_definition_arn'
-        # Replaced it with batch job stack
-
         batch_compute_resources.FargateBatchResources(
             scope,
             construct_id=f"{instrument}BatchJob",

@@ -6,7 +6,6 @@ utilizing Fargate as the compute environment. The resources include:
 - ECR repository for container images.
 - Batch job queue and job definition.
 """
-import aws_cdk as cdk
 from aws_cdk import Fn, Stack
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
@@ -33,7 +32,6 @@ class FargateBatchResources(Stack):
         db_secret_name: str,
         efs_instance: EFSStack,
         account_name: str,
-        env: cdk.Environment,
         batch_max_vcpus=10,
         job_vcpus=0.25,
         job_memory=512,
@@ -72,7 +70,7 @@ class FargateBatchResources(Stack):
             This value can be overwritten by command line input and can
             be accessed from the cdk.json file.
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
 
         self.role = iam.Role(
             self,
