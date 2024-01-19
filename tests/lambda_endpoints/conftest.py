@@ -27,16 +27,6 @@ def s3_client(_aws_credentials):
         yield boto3.client("s3", region_name="us-east-1")
 
 
-@pytest.fixture()
-def test_db_uri(mocker):
-    """Patch get_db_uri from indexer lambda for test"""
-    mock_get_db_uri = mocker.patch(
-        "sds_data_manager.lambda_code.SDSCode.indexer.get_db_uri"
-    )
-    mock_get_db_uri.return_value = "sqlite:///:memory:"
-    return mock_get_db_uri
-
-
 @pytest.fixture(scope="session")
 def test_engine():
     """Create an in-memory SQLite database engine"""
