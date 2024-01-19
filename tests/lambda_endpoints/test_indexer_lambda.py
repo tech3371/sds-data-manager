@@ -3,7 +3,7 @@ from sqlalchemy import MetaData
 from sds_data_manager.lambda_code.SDSCode import indexer
 
 
-def test_batch_job_event(test_engine, test_db_uri):
+def test_batch_job_event(test_engine, test_db_uri, db_session):
     # NOTE: batch event has more information than this but
     # only kept information critical for testing
     # and changed account number to fake number
@@ -14,5 +14,7 @@ def test_batch_job_event(test_engine, test_db_uri):
         print("table in test file ", table_name)
 
     print(test_db_uri())
-    returned_value = indexer.lambda_handler(event, {})
+    returned_value = indexer.lambda_handler(
+        event=event, context={}, db_session=db_session
+    )
     assert returned_value is None

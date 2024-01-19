@@ -4,6 +4,7 @@ import boto3
 import pytest
 from moto import mock_s3
 from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from sds_data_manager.lambda_code.SDSCode.database.models import Base
 
@@ -41,3 +42,31 @@ def test_engine():
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     return engine
+
+
+@pytest.fixture()
+def db_session(test_engine):
+    """Creates a new database session for a test."""
+    connection = test_engine.connect()
+    transaction = connection.begin()
+    session = scoped_session(sessionmaker(bind=connection))
+
+    yield session
+
+    session.remove()
+    transaction.rollback()
+    connection.close()
+
+
+# @pytest.fixture(scope="function")
+# def test_engine(mocker):
+#     mock_engine = mocker.patch(
+#         "sds_data_manager.lambda_code.SDSCode.database.database.get_engine"
+#     )
+
+#     mock_engine.return_value = create_engine("sqlite:///:memory:")
+#     yield mock_engine
+
+# @pytest.fixture(scope="function", autouse=True)
+# def create_tables(test_engine):
+#     Base.metadata.create_all(test_engine)
