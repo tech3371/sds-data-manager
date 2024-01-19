@@ -21,8 +21,7 @@ s3 = boto3.client("s3")
 
 
 def lambda_handler(event, context):
-    """Handler function for creating metadata, adding it to the
-    database.
+    """Handler function for creating metadata, adding it to the database.
 
     This function is an event handler for multiple event sources.
     List of event sources are aws.s3, aws.batch and imap.lambda.

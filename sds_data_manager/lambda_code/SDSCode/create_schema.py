@@ -5,9 +5,8 @@ import logging
 import sys
 
 import requests
+from SDSCode.database import database as db
 from SDSCode.database.models import Base
-
-from .database import database as db
 
 # Logger setup
 logger = logging.getLogger()
