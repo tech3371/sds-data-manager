@@ -7,7 +7,7 @@ import sys
 import requests
 from SDSCode.database.models import Base
 
-from .database.database import get_engine
+from .database import database as db
 
 # Logger setup
 logger = logging.getLogger()
@@ -53,7 +53,7 @@ def lambda_handler(event, context):
     logger.info(event)
     try:
         # Create tables
-        engine = get_engine()
+        engine = db.get_engine()
         Base.metadata.create_all(engine)
         send_response(event, context, "SUCCESS")
     except Exception as e:
