@@ -55,6 +55,10 @@ pytest = "==6.2.5"
 moto = "^4.1.3"
 boto3 = "^1.26.78"
 pytest-postgresql = "==5.0.0"
+alchemy-mock = "==0.4.3"
+pytest-mock = "^3.12.0"
+SQLAlchemy = "<=2.0.23"
+
 
 [tool.poetry.group.lambda-dev]
 # Not installed by default, can be installed using `poetry install --with lambda-dev`. If you only want this group, you can use `poetry install --only lambda-dev
