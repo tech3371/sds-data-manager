@@ -6,8 +6,8 @@ import boto3
 import pytest
 from moto import mock_s3
 from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
 
-from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import Base
 
 
@@ -28,17 +28,20 @@ def s3_client(_aws_credentials):
         yield boto3.client("s3", region_name="us-east-1")
 
 
-# NOTE: This test_engine scope is function.
-# With this scope, all the changes to the database
-# is only visible in each test function. It gets
-# cleaned up after each function.
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def test_engine():
     """Create an in-memory SQLite database engine"""
-    with patch.object(db, "get_engine") as mock_engine:
+    with patch("database.database.get_engine") as mock_engine:
         engine = create_engine("sqlite:///:memory:")
         mock_engine.return_value = engine
         Base.metadata.create_all(engine)
-        # When we use yield, it waits until session is complete
-        # and waits for to be called whereas return exits fast.
-        yield engine
+        return engine
+
+
+@pytest.fixture()
+def db_session(test_engine):
+    """Creates a new database session for a test."""
+    connection = test_engine.connect()
+    session = scoped_session(sessionmaker(bind=connection))
+
+    return session

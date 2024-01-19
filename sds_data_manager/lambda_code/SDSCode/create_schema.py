@@ -6,9 +6,8 @@ import sys
 
 import requests
 from SDSCode.database.models import Base
-from sqlalchemy import create_engine
 
-from .database.database import get_db_uri
+from .database.database import get_engine
 
 # Logger setup
 logger = logging.getLogger()
@@ -54,7 +53,7 @@ def lambda_handler(event, context):
     logger.info(event)
     try:
         # Create tables
-        engine = create_engine(get_db_uri(), echo=True)
+        engine = get_engine()
         Base.metadata.create_all(engine)
         send_response(event, context, "SUCCESS")
     except Exception as e:

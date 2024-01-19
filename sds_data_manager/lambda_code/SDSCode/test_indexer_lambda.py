@@ -1,10 +1,9 @@
 """Test indexer lambda"""
 
+from . import indexer
 
-from sds_data_manager.lambda_code.SDSCode import indexer
 
-
-def test_batch_job_event(test_engine):
+def test_batch_job_event(db_session):
     # TODO: replace event with other event source
     # dict. We don't use "Records" anymore. But
     # leaving for now to test database capabilities.

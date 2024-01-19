@@ -5,11 +5,11 @@ import os
 import sys
 
 import boto3
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
+from .database import database as db
 from .database import models
-from .database.database import get_db_uri
 from .path_helper import FilenameParser
 
 # Logger setup
@@ -19,8 +19,32 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 s3 = boto3.client("s3")
 
+# def get_db_uri():
+#     """Create DB URI from secret manager.
 
-def lambda_handler(event, context, db_session=None):
+#     Returns
+#     --------
+#         str : DB URI
+#     """
+#     secret_name = os.environ["SECRET_NAME"]
+#     session = boto3.session.Session()
+#     client = session.client(service_name="secretsmanager")
+#     secret_string = client.get_secret_value(SecretId=secret_name)["SecretString"]
+#     db_config = json.loads(secret_string)
+#     return f'postgresql://{db_config["username"]}:{db_config["password"]}@{db_config["host"]}:{db_config["port"]}/{db_config["dbname"]}'
+
+
+# def get_engine():
+#     """Create engine from DB URI.
+
+#     Returns
+#     --------
+#         sqlalchemy.engine.Engine : Engine
+#     """
+#     return create_engine(get_db_uri(), echo=True)
+
+
+def lambda_handler(event, context):
     """Handler function for creating metadata, adding it to the
     database.
 
@@ -48,14 +72,6 @@ def lambda_handler(event, context, db_session=None):
 
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
-    if db_session is None:
-        engine = create_engine(get_db_uri(), echo=True)
-    else:
-        # Create a session object from the scoped_session factory
-        session = db_session()
-
-        # Now, get the engine from the session's bind attribute
-        engine = session.bind
 
     # We're only expecting one record, but for some reason the Records are a list object
     for record in event["Records"]:
@@ -108,6 +124,8 @@ def lambda_handler(event, context, db_session=None):
         data = model_lookup[filename_parsed.instrument](**metadata_params)
 
         # Add data to the corresponding instrument database
+        # print('module ', get_engine.__module__)
+        engine = db.get_engine()
         with Session(engine) as session:
             session.add(data)
             session.commit()
