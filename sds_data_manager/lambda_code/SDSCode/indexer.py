@@ -44,13 +44,15 @@ def lambda_handler(event, context):
     engine = db.get_engine()
 
     # We're only expecting one record, but for some reason the Records are a list object
+    # TODO: events no longer have a Records key with list. This is already planned for
+    # removal in an upcoming PR.
     for record in event["Records"]:
         # Retrieve the Object name
         logger.info(f"Record Received: {record}")
         filename = record["s3"]["object"]["key"]
 
         logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
-        filename_parsed = FilenameParser(filename)
+        filename_parsed = FilenameParser(os.path.basename(filename))
         filepath = filename_parsed.upload_filepath()
 
         # confirm that the file is valid
@@ -69,38 +71,18 @@ def lambda_handler(event, context):
                 filename_parsed.startdate, "%Y%m%d"
             ),
             "end_date": datetime.datetime.strptime(filename_parsed.enddate, "%Y%m%d"),
-            "ingestion_date": datetime.datetime.now(datetime.timezone.utc),
             "version": filename_parsed.version,
             "extension": filename_parsed.extension,
         }
 
-        # The model lookup is used to match the instrument data
-        # to the correct postgres table based on the instrument name.
-        model_lookup = {
-            "lo": models.LoTable,
-            "hi": models.HiTable,
-            "ultra": models.UltraTable,
-            "hit": models.HITTable,
-            "idex": models.IDEXTable,
-            "swapi": models.SWAPITable,
-            "swe": models.SWETable,
-            "codice": models.CoDICETable,
-            "mag": models.MAGTable,
-            "glows": models.GLOWSTable,
-        }
-
-        # FileParser already confirmed that the file has a valid
-        # instrument name.
-        data = model_lookup[filename_parsed.instrument](**metadata_params)
-
-        # Add data to the corresponding instrument database
+        # Add data to the file catalog
         with Session(engine) as session:
-            session.add(data)
+            session.add(models.FileCatalog(**metadata_params))
             session.commit()
 
             # TODO: These are sanity check. will remove
             # from upcoming PR
-            result = session.query(model_lookup[filename_parsed.instrument]).all()
+            result = session.query(models.FileCatalog).all()
             for row in result:
                 print(row.instrument)
                 print(row.file_path)
