@@ -37,12 +37,6 @@ def lambda_handler(event, context):
         This object provides methods and properties that provide
         information about the invocation, function,
         and runtime environment.
-    db_session : sqlalchemy.orm.scoping.scoped_session, optional
-        When you use an in-memory SQLite database (sqlite:///:memory:)
-        during test, the database exists only for the lifetime of the
-        connection. Each new call to create_engine("sqlite:///:memory:")
-        creates a brand new, isolated database. This session resolves
-        that issue for testing locally.
     """
     logger.info("Received event: " + json.dumps(event, indent=2))
 
