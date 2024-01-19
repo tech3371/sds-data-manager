@@ -1,19 +1,29 @@
-from sqlalchemy import MetaData
+"""Test indexer lambda"""
 
 from sds_data_manager.lambda_code.SDSCode import indexer
 
 
-def test_batch_job_event(test_engine, test_db_uri, db_session):
-    # NOTE: batch event has more information than this but
-    # only kept information critical for testing
-    # and changed account number to fake number
-    event = {}
-    metadata = MetaData()
-    metadata.reflect(bind=test_engine)
-    for table_name in metadata.tables:
-        print("table in test file ", table_name)
-
-    print(test_db_uri())
+def test_batch_job_event(test_db_uri, db_session):
+    # TODO: replace event with other event source
+    # dict. We don't use "Records" anymore. But
+    # leaving for now to test database capabilities.
+    # Will remove in upcoming PR.
+    event = {
+        "Records": [
+            {
+                "detail-type": "Object Created",
+                "source": "aws.s3",
+                "s3": {
+                    "version": "0",
+                    "bucket": {"name": "sds-data-449431850278"},
+                    "object": {
+                        "key": "imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts",
+                        "reason": "PutObject",
+                    },
+                },
+            }
+        ]
+    }
     returned_value = indexer.lambda_handler(
         event=event, context={}, db_session=db_session
     )

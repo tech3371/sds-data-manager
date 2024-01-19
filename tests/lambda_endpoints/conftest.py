@@ -1,3 +1,4 @@
+"""Setup testing environment to test lambda handler code"""
 import os
 
 import boto3
@@ -28,17 +29,17 @@ def s3_client(_aws_credentials):
 
 @pytest.fixture()
 def test_db_uri(mocker):
+    """Patch get_db_uri from indexer lambda for test"""
     mock_get_db_uri = mocker.patch(
         "sds_data_manager.lambda_code.SDSCode.indexer.get_db_uri"
     )
     mock_get_db_uri.return_value = "sqlite:///:memory:"
-    print("testing uri - ", mock_get_db_uri())
     return mock_get_db_uri
 
 
 @pytest.fixture(scope="session")
 def test_engine():
-    # Create an in-memory SQLite database engine
+    """Create an in-memory SQLite database engine"""
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     return engine
@@ -48,25 +49,6 @@ def test_engine():
 def db_session(test_engine):
     """Creates a new database session for a test."""
     connection = test_engine.connect()
-    transaction = connection.begin()
     session = scoped_session(sessionmaker(bind=connection))
 
-    yield session
-
-    session.remove()
-    transaction.rollback()
-    connection.close()
-
-
-# @pytest.fixture(scope="function")
-# def test_engine(mocker):
-#     mock_engine = mocker.patch(
-#         "sds_data_manager.lambda_code.SDSCode.database.database.get_engine"
-#     )
-
-#     mock_engine.return_value = create_engine("sqlite:///:memory:")
-#     yield mock_engine
-
-# @pytest.fixture(scope="function", autouse=True)
-# def create_tables(test_engine):
-#     Base.metadata.create_all(test_engine)
+    return session

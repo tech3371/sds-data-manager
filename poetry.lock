@@ -26,22 +26,6 @@ files = [
 ]
 
 [[package]]
-name = "alchemy-mock"
-version = "0.4.3"
-description = "SQLAlchemy mock helpers."
-optional = false
-python-versions = "*"
-files = [
-    {file = "alchemy-mock-0.4.3.tar.gz", hash = "sha256:7914c3f56aa7dd793d31a5ea3816972ff57de6e3c82651febfaab135e8f39d7a"},
-    {file = "alchemy_mock-0.4.3-py2.py3-none-any.whl", hash = "sha256:e076b11cdef76638f4de70d50f0d8cb851d69c41346d984371f757c8fb4a0efa"},
-]
-
-[package.dependencies]
-setuptools = "*"
-six = "*"
-sqlalchemy = "*"
-
-[[package]]
 name = "atomicwrites"
 version = "1.4.1"
 description = "Atomic file writes."
@@ -2118,4 +2102,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "3ecd3f02b6cd93acfc0b04745c03f32c6a00e509f7d2df2528a3659ea392ec15"
+content-hash = "cb647c0d96de3ff9f0dd8220b144d61bae57cd1e0b1d4812291f2b69a34f807e"
