@@ -129,24 +129,29 @@ class IndexerLambda(Stack):
         # ingestion time to null.
         # PutEvent Example:
         #     {
-        #     "DetailType": "Job Started",
-        #     "Source": "aws.lambda",
+        #     "DetailType": "Batch Job Started",
+        #     "Source": "imap.lambda",
         #     "Detail": {
-        #     "file_to_create": "str",
-        #     "status": "InProgress",
-        #     "depedency": {    "codice": "s3-filepath", "mag": "s3-filepath"}
+        #       "file_to_create": "str",
+        #       "status": "InProgress",
+        #       "dependency": json.dumps({
+        #           "codice": "s3-filepath",
+        #           "mag": "s3-filepath"}
+        #       )
         #     }}
+        # NOTE: Exists matching only works on leaf nodes. It does not work on
+        # intermediate nodes.
         batch_starter_event_rule = events.Rule(
             self,
             "batchStarterEvent",
             rule_name="batch-starter-event",
             event_pattern=events.EventPattern(
                 source=["imap.lambda"],
-                detail_type=["Batch Job Started"],
+                detail_type=["Job Started"],
                 detail={
                     "file_to_create": [{"exists": True}],
-                    "status": ["InProgress"],
-                    "depedency": [{"exists": True}],
+                    "status": ["INPROGRESS"],
+                    "dependency": [{"exists": True}],
                 },
             ),
         )

@@ -1,5 +1,7 @@
 """Main file to store schema definition"""
 
+from enum import Enum
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -10,12 +12,12 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy import (
-    Enum as SqlEnum,
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import DeclarativeBase
 
 # Instrument name Enums for the file catalog table
-instruments = SqlEnum(
+instruments = SQLEnum(
     "codice",
     "glows",
     "hi-45",
@@ -32,7 +34,7 @@ instruments = SqlEnum(
 )
 
 # data level enums for the file catalog table
-data_levels = SqlEnum(
+data_levels = SQLEnum(
     "l0",
     "l1",
     "l1a",
@@ -52,13 +54,22 @@ data_levels = SqlEnum(
 )
 
 # status enums for the status tracking table
-statuses = SqlEnum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
+statuses = SQLEnum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
 
 # "upstream" dependency means an instrument's processing depends on the existence
 # of another instrument's data
 # "downstream" dependency means that the instrument's data is used in another
 # instrument's processing
-dependency_directions = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
+dependency_directions = SQLEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
+
+
+class Status(Enum):
+    INPROGRESS = "INPROGRESS"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+
+statuses = SQLEnum(Status)
 
 
 class Base(DeclarativeBase):
@@ -90,7 +101,7 @@ class StatusTracking(Base):
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_to_create_path = Column(String, nullable=False)
     status = Column(statuses, nullable=False)
-    job_definition = Column(String, nullable=False)
+    job_definition = Column(String, nullable=True)
     ingestion_date = Column(DateTime, nullable=True)
 
 
@@ -109,8 +120,9 @@ class FileCatalog(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String, nullable=False)
     extension = Column(String, nullable=False)
-    status_tracking_id = Column(Integer, ForeignKey("status_tracking.id"))
-
+    status_tracking_id = Column(
+        Integer, ForeignKey("status_tracking.id"), nullable=False
+    )
 
 class PreProcessingDependency(Base):
     """Preprocessing dependency table"""
