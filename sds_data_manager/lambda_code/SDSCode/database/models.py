@@ -51,6 +51,8 @@ data_levels = Enum(
 # status enums for the status tracking table
 statuses = Enum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
 
+dependency_directions = Enum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
+
 
 class Base(DeclarativeBase):
     pass
@@ -101,3 +103,17 @@ class FileCatalog(Base):
     version = Column(String, nullable=False)
     extension = Column(String, nullable=False)
     status_tracking_id = Column(Integer, ForeignKey("status_tracking.id"))
+
+
+class PreProcessingDependency(Base):
+    """Preprocessing dependency table"""
+
+    __tablename__ = "preprocessing_dependency"
+
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
+    primary_instrument = Column(instruments, nullable=False)
+    primary_data_level = Column(data_levels, nullable=False)
+    dependent_instrument = Column(instruments, nullable=False)
+    dependent_data_level = Column(data_levels, nullable=False)
+    relationship = Column(String, nullable=False)
+    direction = Column(dependency_directions, nullable=False)

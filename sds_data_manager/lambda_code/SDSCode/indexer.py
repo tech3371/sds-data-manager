@@ -20,6 +20,41 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 s3 = boto3.client("s3")
 
 
+def send_event_to_eventbridge(instrument, data_level, filename):
+    # Create an EventBridge client
+    events = boto3.client("events")
+
+    # Define your event
+    event_json = {
+        "Source": "imap.lambda",  # Replace with your event source
+        "DetailType": "Downstream Dependency",  # Replace with your detail type
+        "Detail": None,
+    }
+    # Send EventBridge event for downstream dependency
+    with Session(db.get_engine()) as session:
+        results = (
+            session.query(models.PreProcessingDependency)
+            .filter(models.PreProcessingDependency.primary_instrument == "swe")
+            .filter(models.PreProcessingDependency.primary_data_level == "l1b")
+            .all()
+        )
+        for result in results:
+            indexer_event_details = {
+                "origin_instrument": result.primary_instrument,
+                "origin_data_level": result.primary_data_level,
+                "filename": filename,
+                "instrument_to_process": result.dependent_instrument,
+                "data_level_to_process": result.dependent_data_level,
+            }
+
+            event_json["Detail"] = json.dumps(indexer_event_details)
+
+            # Put the event
+            response = events.put_events(Entries=[event_json])
+            print(response)
+            logger.info(response)
+
+
 def lambda_handler(event, context):
     """Handler function for creating metadata, adding it to the database.
 
