@@ -23,7 +23,7 @@ s3 = boto3.client("s3")
 def get_dependency(instrument, data_level, descriptor, direction, relationship):
     """Make query to dependency table to get dependency.
 
-    TODO: Move it table to batch starter after February demo or keep it here
+    TODO: Move this function to batch starter after February demo or keep it here
     based on discussion during that time. This is just to setup and test
     cababilities to make queries to pre-processing dependency table.
 
