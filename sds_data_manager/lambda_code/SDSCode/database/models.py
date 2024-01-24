@@ -32,6 +32,7 @@ instruments = Enum(
 # data level enums for the file catalog table
 data_levels = Enum(
     "l0",
+    "l1",
     "l1a",
     "l1b",
     "l1c",
@@ -110,10 +111,13 @@ class PreProcessingDependency(Base):
 
     __tablename__ = "preprocessing_dependency"
 
+    # TODO: improve this table after February demo
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     primary_instrument = Column(instruments, nullable=False)
     primary_data_level = Column(data_levels, nullable=False)
+    primary_descriptor = Column(String, nullable=False)
     dependent_instrument = Column(instruments, nullable=False)
     dependent_data_level = Column(data_levels, nullable=False)
+    dependent_descriptor = Column(String, nullable=False)
     relationship = Column(String, nullable=False)
     direction = Column(dependency_directions, nullable=False)

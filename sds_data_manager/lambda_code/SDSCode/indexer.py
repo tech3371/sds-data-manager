@@ -20,39 +20,46 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 s3 = boto3.client("s3")
 
 
-def send_event_to_eventbridge(instrument, data_level, filename):
-    # Create an EventBridge client
-    events = boto3.client("events")
+def get_dependency(instrument, data_level, descriptor, direction, relationship):
+    """Make query to dependency table to get dependency.
 
-    # Define your event
-    event_json = {
-        "Source": "imap.lambda",  # Replace with your event source
-        "DetailType": "Downstream Dependency",  # Replace with your detail type
-        "Detail": None,
-    }
+    TODO: Move it table to batch starter after February demo or keep it here
+    based on discussion during that time. This is just to setup and test
+    cababilities to make queries to pre-processing dependency table.
+
+    Parameters
+    ----------
+    instrument : str
+        Primary instrument that we are looking for its dependency.
+    data_level : str
+        Primary data level.
+    descriptor : str
+        Primary data descriptor.
+    direction: str
+        Whether it's UPSTREAM or DOWNSTREAM dependency.
+    relationship: str
+        Whether it's HARD or SOFT dependency.
+        HARD means it's required and SOFT means it's nice to have.
+    Returns
+    -------
+    dependency : list
+        List of dictionary containing the dependency information.
+    """
+    dependency = []
     # Send EventBridge event for downstream dependency
     with Session(db.get_engine()) as session:
         results = (
             session.query(models.PreProcessingDependency)
-            .filter(models.PreProcessingDependency.primary_instrument == "swe")
-            .filter(models.PreProcessingDependency.primary_data_level == "l1b")
+            .filter(models.PreProcessingDependency.primary_instrument == instrument)
+            .filter(models.PreProcessingDependency.primary_data_level == data_level)
+            .filter(models.PreProcessingDependency.primary_descriptor == descriptor)
+            .filter(models.PreProcessingDependency.direction == direction)
+            .filter(models.PreProcessingDependency.relationship == relationship)
             .all()
         )
         for result in results:
-            indexer_event_details = {
-                "origin_instrument": result.primary_instrument,
-                "origin_data_level": result.primary_data_level,
-                "filename": filename,
-                "instrument_to_process": result.dependent_instrument,
-                "data_level_to_process": result.dependent_data_level,
-            }
-
-            event_json["Detail"] = json.dumps(indexer_event_details)
-
-            # Put the event
-            response = events.put_events(Entries=[event_json])
-            print(response)
-            logger.info(response)
+            dependency.append(result)
+    return dependency
 
 
 def lambda_handler(event, context):
