@@ -8,15 +8,19 @@ from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import database as db
-from sds_data_manager.lambda_code.SDSCode.database.models import PreProcessingDependency
+from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.indexer import get_dependency
+from sds_data_manager.lambda_code.SDSCode.path_helper import (
+    InvalidScienceFileError,
+    ScienceFilepathManager,
+)
 
 
 @pytest.fixture()
 def populate_db(test_engine):
     """Populate database with test data"""
     test_data = [
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swapi",
             primary_data_level="l2",
             primary_descriptor="sci-1m",
@@ -26,7 +30,7 @@ def populate_db(test_engine):
             relationship="HARD",
             direction="UPSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l2",
             primary_descriptor="sci",
@@ -36,7 +40,7 @@ def populate_db(test_engine):
             relationship="HARD",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -46,7 +50,7 @@ def populate_db(test_engine):
             relationship="HARD",
             direction="UPSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -56,7 +60,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -66,7 +70,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -76,7 +80,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="codice",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -86,7 +90,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="codice",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -96,7 +100,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="codice",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -106,7 +110,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="hit",
             primary_data_level="l2",
             primary_descriptor="sci",
@@ -122,12 +126,6 @@ def populate_db(test_engine):
         session.add_all(test_data)
         session.commit()
         yield session
-from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.database.models import Status
-from sds_data_manager.lambda_code.SDSCode.path_helper import (
-    InvalidScienceFileError,
-    ScienceFilepathManager,
-)
 
 
 def test_batch_job_event(test_engine):
@@ -159,7 +157,6 @@ def test_batch_job_event(test_engine):
     assert returned_value["statusCode"] == 200
 
 
-
 def test_pre_processing_dependency(test_engine, populate_db):
     """Test pre-processing dependency"""
     swe_dependency = get_dependency(
@@ -185,7 +182,6 @@ def test_pre_processing_dependency(test_engine, populate_db):
     assert swapi_dependency[0].dependent_instrument == "swapi"
     assert swapi_dependency[0].dependent_data_level == "l1"
     assert swapi_dependency[0].dependent_descriptor == "hk"
-
 
 
 def test_custom_lambda_event(test_engine):
@@ -216,7 +212,7 @@ def test_custom_lambda_event(test_engine):
             result[0].file_to_create_path
             == "imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
         )
-        assert result[0].status == Status.INPROGRESS
+        assert result[0].status == models.Status.INPROGRESS
 
 
 def test_s3_event(test_engine):

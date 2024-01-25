@@ -124,6 +124,7 @@ class FileCatalog(Base):
         Integer, ForeignKey("status_tracking.id"), nullable=False
     )
 
+
 class PreProcessingDependency(Base):
     """Preprocessing dependency table"""
 

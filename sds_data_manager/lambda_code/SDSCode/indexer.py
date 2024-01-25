@@ -5,7 +5,6 @@ import os
 import sys
 
 import boto3
-from sqlalchemy import inspect, select
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
