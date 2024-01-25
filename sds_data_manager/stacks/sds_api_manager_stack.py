@@ -104,8 +104,12 @@ class SdsApiManager(Stack):
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
+            allow_public_subnet=True,
+            vpc=vpc,
+            security_groups=[rds_security_group],
             environment={
                 "REGION": region,
+                "SECRET_NAME": db_secret_name,
             },
         )
 
@@ -156,6 +160,7 @@ class SdsApiManager(Stack):
             self, "rds_secret", db_secret_name
         )
         rds_secret.grant_read(grantee=universal_spin_table_handler)
+        rds_secret.grant_read(grantee=query_api_lambda)
 
         api.add_route(
             route="spin_table",
