@@ -114,8 +114,8 @@ class StatusTracking(Base):
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_to_create_path = Column(String, nullable=False)
     status = Column(STATUSES, nullable=False)
-    job_definition = Column(String, nullable=False)
-    ingestion_date = Column(DateTime, nullable=True)
+    job_definition = Column(String)
+    ingestion_date = Column(DateTime)
 
 
 class FileCatalog(Base):
