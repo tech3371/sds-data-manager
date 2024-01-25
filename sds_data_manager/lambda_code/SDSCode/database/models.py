@@ -94,8 +94,13 @@ class StatusTracking(Base):
     """Status tracking table"""
 
     __tablename__ = "status_tracking"
-    __table_args__ = UniqueConstraint(
-        "id", "file_to_create_path", "status", name="status_tracking_uc"
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "file_to_create_path",
+            "status",
+            name="status_tracking_uc",
+        ),
     )
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
@@ -109,14 +114,16 @@ class FileCatalog(Base):
     """File catalog table"""
 
     __tablename__ = "file_catalog"
-    __table_args__ = UniqueConstraint(
-        "id",
-        "file_path",
-        "instrument",
-        "data_level",
-        "start_date",
-        "end_date",
-        name="file_catalog_uc",
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "file_path",
+            "instrument",
+            "data_level",
+            "start_date",
+            "end_date",
+            name="file_catalog_uc",
+        ),
     )
 
     # TODO: determine cap for strings
@@ -136,17 +143,19 @@ class PreProcessingDependency(Base):
     """Preprocessing dependency table"""
 
     __tablename__ = "preprocessing_dependency"
-    __table_args__ = UniqueConstraint(
-        "id",
-        "primary_instrument",
-        "primary_data_level",
-        "primary_descriptor",
-        "dependent_instrument",
-        "dependent_data_level",
-        "dependent_descriptor",
-        "relationship",
-        "direction",
-        name="preprocessing_dependency_uc",
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "primary_instrument",
+            "primary_data_level",
+            "primary_descriptor",
+            "dependent_instrument",
+            "dependent_data_level",
+            "dependent_descriptor",
+            "relationship",
+            "direction",
+            name="preprocessing_dependency_uc",
+        ),
     )
 
     # TODO: improve this table after February demo
@@ -165,14 +174,16 @@ class Version(Base):
     """Version table"""
 
     __tablename__ = "version"
-    __table_args__ = UniqueConstraint(
-        "id",
-        "instrument",
-        "data_level",
-        "software_version",
-        "data_version",
-        "updated_date",
-        name="version_uc",
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "instrument",
+            "data_level",
+            "software_version",
+            "data_version",
+            "updated_date",
+            name="version_uc",
+        ),
     )
 
     # TODO: improve this table after February demo
