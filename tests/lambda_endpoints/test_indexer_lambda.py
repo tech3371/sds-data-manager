@@ -1,7 +1,125 @@
 """Test indexer lambda"""
 
 
+import pytest
+from sqlalchemy.orm import Session
+
 from sds_data_manager.lambda_code.SDSCode import indexer
+from sds_data_manager.lambda_code.SDSCode.database import database as db
+from sds_data_manager.lambda_code.SDSCode.database.models import PreProcessingDependency
+from sds_data_manager.lambda_code.SDSCode.indexer import get_dependency
+
+
+@pytest.fixture()
+def populate_db(test_engine):
+    """Populate database with test data"""
+    test_data = [
+        PreProcessingDependency(
+            primary_instrument="swapi",
+            primary_data_level="l2",
+            primary_descriptor="sci-1m",
+            dependent_instrument="swapi",
+            dependent_data_level="l1",
+            dependent_descriptor="hk",
+            relationship="HARD",
+            direction="UPSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="swe",
+            primary_data_level="l2",
+            primary_descriptor="sci",
+            dependent_instrument="glows",
+            dependent_data_level="l3",
+            dependent_descriptor="sci",
+            relationship="HARD",
+            direction="DOWNSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="swe",
+            primary_data_level="l1b",
+            primary_descriptor="sci",
+            dependent_instrument="mag",
+            dependent_data_level="l2",
+            dependent_descriptor="sci",
+            relationship="HARD",
+            direction="UPSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="swe",
+            primary_data_level="l1b",
+            primary_descriptor="sci",
+            dependent_instrument="hi-45",
+            dependent_data_level="l1c",
+            dependent_descriptor="sci",
+            relationship="SOFT",
+            direction="DOWNSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="swe",
+            primary_data_level="l1b",
+            primary_descriptor="sci",
+            dependent_instrument="lo",
+            dependent_data_level="l1c",
+            dependent_descriptor="sci",
+            relationship="SOFT",
+            direction="DOWNSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="swe",
+            primary_data_level="l1b",
+            primary_descriptor="sci",
+            dependent_instrument="ultra-45",
+            dependent_data_level="l1c",
+            dependent_descriptor="sci",
+            relationship="SOFT",
+            direction="DOWNSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="codice",
+            primary_data_level="l1b",
+            primary_descriptor="sci",
+            dependent_instrument="hi-45",
+            dependent_data_level="l1c",
+            dependent_descriptor="sci",
+            relationship="SOFT",
+            direction="DOWNSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="codice",
+            primary_data_level="l1b",
+            primary_descriptor="sci",
+            dependent_instrument="lo",
+            dependent_data_level="l1c",
+            dependent_descriptor="sci",
+            relationship="SOFT",
+            direction="DOWNSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="codice",
+            primary_data_level="l1b",
+            primary_descriptor="sci",
+            dependent_instrument="ultra-45",
+            dependent_data_level="l1c",
+            dependent_descriptor="sci",
+            relationship="SOFT",
+            direction="DOWNSTREAM",
+        ),
+        PreProcessingDependency(
+            primary_instrument="hit",
+            primary_data_level="l2",
+            primary_descriptor="sci",
+            dependent_instrument="glows",
+            dependent_data_level="l3",
+            dependent_descriptor="sci",
+            relationship="HARD",
+            direction="DOWNSTREAM",
+        ),
+    ]
+
+    with Session(db.get_engine()) as session:
+        session.add_all(test_data)
+        session.commit()
+        yield session
 
 
 def test_batch_job_event(test_engine):
@@ -27,3 +145,30 @@ def test_batch_job_event(test_engine):
     }
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value is None
+
+
+def test_pre_processing_dependency(test_engine, populate_db):
+    """Test pre-processing dependency"""
+    swe_dependency = get_dependency(
+        instrument="swe",
+        data_level="l1b",
+        descriptor="sci",
+        direction="DOWNSTREAM",
+        relationship="SOFT",
+    )
+
+    expected_instruments = ["hi-45", "lo", "ultra-45"]
+    for row in swe_dependency:
+        assert row.dependent_instrument in expected_instruments
+
+    swapi_dependency = get_dependency(
+        instrument="swapi",
+        data_level="l2",
+        descriptor="sci-1m",
+        direction="UPSTREAM",
+        relationship="HARD",
+    )
+    assert len(swapi_dependency) == 1
+    assert swapi_dependency[0].dependent_instrument == "swapi"
+    assert swapi_dependency[0].dependent_data_level == "l1"
+    assert swapi_dependency[0].dependent_descriptor == "hk"

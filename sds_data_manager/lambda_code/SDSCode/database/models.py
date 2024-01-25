@@ -4,16 +4,18 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum,
     ForeignKey,
     Identity,
     Integer,
     String,
 )
+from sqlalchemy import (
+    Enum as SqlEnum,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 # Instrument name Enums for the file catalog table
-instruments = Enum(
+instruments = SqlEnum(
     "codice",
     "glows",
     "hi-45",
@@ -30,8 +32,9 @@ instruments = Enum(
 )
 
 # data level enums for the file catalog table
-data_levels = Enum(
+data_levels = SqlEnum(
     "l0",
+    "l1",
     "l1a",
     "l1b",
     "l1c",
@@ -49,7 +52,13 @@ data_levels = Enum(
 )
 
 # status enums for the status tracking table
-statuses = Enum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
+statuses = SqlEnum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
+
+# "upstream" dependency means an instrument's processing depends on the existence
+# of another instrument's data
+# "downstream" dependency means that the instrument's data is used in another
+# instrument's processing
+dependency_directions = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
 
 
 class Base(DeclarativeBase):
@@ -101,3 +110,20 @@ class FileCatalog(Base):
     version = Column(String, nullable=False)
     extension = Column(String, nullable=False)
     status_tracking_id = Column(Integer, ForeignKey("status_tracking.id"))
+
+
+class PreProcessingDependency(Base):
+    """Preprocessing dependency table"""
+
+    __tablename__ = "preprocessing_dependency"
+
+    # TODO: improve this table after February demo
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
+    primary_instrument = Column(instruments, nullable=False)
+    primary_data_level = Column(data_levels, nullable=False)
+    primary_descriptor = Column(String, nullable=False)
+    dependent_instrument = Column(instruments, nullable=False)
+    dependent_data_level = Column(data_levels, nullable=False)
+    dependent_descriptor = Column(String, nullable=False)
+    relationship = Column(String, nullable=False)
+    direction = Column(dependency_directions, nullable=False)
