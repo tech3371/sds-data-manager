@@ -16,6 +16,7 @@ from sds_data_manager.stacks import (
     domain_stack,
     ecr_stack,
     efs_stack,
+    ialirt_processing_stack,
     indexer_lambda_stack,
     instrument_lambdas,
     monitoring_stack,
@@ -190,6 +191,25 @@ def build_sds(
     )
 
     # TODO: create batch_starter_lambda
+
+    # I-ALiRT IOIS ECR
+    ialirt_ecr = ecr_stack.EcrStack(
+        scope,
+        "IalirtEcr",
+        env=env,
+        instrument_name="IalirtEcr",
+    )
+
+    # TODO: look into creating a separate stackbuilder
+    #  for I-ALiRT
+    # I-ALiRT Processing (currently only IOIS)
+    ialirt_processing_stack.IalirtProcessing(
+        scope,
+        "IalirtProcessing",
+        env=env,
+        vpc=networking.vpc,
+        repo=ialirt_ecr.container_repo,
+    )
 
 
 def build_backup(scope: App, env: Environment, source_account: str):
