@@ -1,8 +1,17 @@
 """Common functions to write to database"""
+import logging
+import sys
+
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
+
+# Logger setup
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
 def update_status_table(status_params):
@@ -13,11 +22,14 @@ def update_status_table(status_params):
     status_params : dict
         Data information
     """
-    # Add data to the file catalog and status tables
-    with Session(db.get_engine()) as session:
-        # Add data to the status tracking table
-        session.add(models.StatusTracking(**status_params))
-        session.commit()
+    try:
+        # Add data to the file catalog and status tables
+        with Session(db.get_engine()) as session:
+            # Add data to the status tracking table
+            session.add(models.StatusTracking(**status_params))
+            session.commit()
+    except IntegrityError as e:
+        logger.info(str(e))
 
 
 def update_file_catalog_table(metadata_params):
@@ -28,8 +40,11 @@ def update_file_catalog_table(metadata_params):
     metadata_params : dict
         Data information
     """
-    # Add data to the file catalog
-    with Session(db.get_engine()) as session:
-        # Add data to the file catalog table
-        session.add(models.FileCatalog(**metadata_params))
-        session.commit()
+    try:
+        # Add data to the file catalog
+        with Session(db.get_engine()) as session:
+            # Add data to the file catalog table
+            session.add(models.FileCatalog(**metadata_params))
+            session.commit()
+    except IntegrityError as e:
+        logger.info(str(e))

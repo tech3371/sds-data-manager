@@ -17,7 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy import (
-    Enum as SQLEnum,
+    Enum as SqlEnum,
 )
 from sqlalchemy.orm import DeclarativeBase
 
@@ -67,13 +67,14 @@ EXTENSIONS = SqlEnum("pkts", "cdf")
 # instrument's processing
 DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
 
+
 class Status(Enum):
     INPROGRESS = "INPROGRESS"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
 
 
-STATUSES = SQLEnum(Status)
+STATUSES = SqlEnum(Status)
 
 
 class Base(DeclarativeBase):
@@ -146,6 +147,7 @@ class FileCatalog(Base):
     status_tracking_id = Column(
         Integer, ForeignKey("status_tracking.id"), nullable=False
     )
+
 
 class PreProcessingDependency(Base):
     """Preprocessing dependency table"""
