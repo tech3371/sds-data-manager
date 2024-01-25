@@ -4,16 +4,18 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum,
     ForeignKey,
     Identity,
     Integer,
     String,
 )
+from sqlalchemy import (
+    Enum as SqlEnum,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 # Instrument name Enums for the file catalog table
-instruments = Enum(
+instruments = SqlEnum(
     "codice",
     "glows",
     "hi-45",
@@ -30,7 +32,7 @@ instruments = Enum(
 )
 
 # data level enums for the file catalog table
-data_levels = Enum(
+data_levels = SqlEnum(
     "l0",
     "l1",
     "l1a",
@@ -50,9 +52,13 @@ data_levels = Enum(
 )
 
 # status enums for the status tracking table
-statuses = Enum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
+statuses = SqlEnum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
 
-dependency_directions = Enum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
+# "upstream" dependency means an instrument's processing depends on the existence
+# of another instrument's data
+# "downstream" dependency means that the instrument's data is used in another
+# instrument's processing
+dependency_directions = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
 
 
 class Base(DeclarativeBase):

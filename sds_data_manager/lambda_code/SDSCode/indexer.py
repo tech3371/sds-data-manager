@@ -5,7 +5,7 @@ import os
 import sys
 
 import boto3
-from sqlalchemy import inspect
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from .database import database as db
@@ -48,15 +48,14 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
     dependency = []
     # Send EventBridge event for downstream dependency
     with Session(db.get_engine()) as session:
-        results = (
-            session.query(models.PreProcessingDependency)
-            .filter(models.PreProcessingDependency.primary_instrument == instrument)
-            .filter(models.PreProcessingDependency.primary_data_level == data_level)
-            .filter(models.PreProcessingDependency.primary_descriptor == descriptor)
-            .filter(models.PreProcessingDependency.direction == direction)
-            .filter(models.PreProcessingDependency.relationship == relationship)
-            .all()
+        query = select(models.PreProcessingDependency.__table__).where(
+            models.PreProcessingDependency.primary_instrument == instrument,
+            models.PreProcessingDependency.primary_data_level == data_level,
+            models.PreProcessingDependency.primary_descriptor == descriptor,
+            models.PreProcessingDependency.direction == direction,
+            models.PreProcessingDependency.relationship == relationship,
         )
+        results = session.execute(query).all()
         for result in results:
             dependency.append(result)
     return dependency
