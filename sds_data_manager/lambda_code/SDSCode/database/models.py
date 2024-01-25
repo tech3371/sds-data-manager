@@ -4,6 +4,8 @@ This module is used to define the database Object Relational Mappers (ORMs).
 Each class within maps to a table in the database.
 """
 
+from enum import Enum
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -15,7 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy import (
-    Enum as SqlEnum,
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import DeclarativeBase
 
@@ -59,14 +61,19 @@ DATA_LEVELS = SqlEnum(
 # extension enums for the file catalog table
 EXTENSIONS = SqlEnum("pkts", "cdf")
 
-# status enums for the status tracking table
-STATUSES = SqlEnum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
-
 # "upstream" dependency means an instrument's processing depends on the existence
 # of another instrument's data
 # "downstream" dependency means that the instrument's data is used in another
 # instrument's processing
 DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
+
+class Status(Enum):
+    INPROGRESS = "INPROGRESS"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+
+STATUSES = SQLEnum(Status)
 
 
 class Base(DeclarativeBase):
@@ -129,8 +136,9 @@ class FileCatalog(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(6), nullable=False)
     extension = Column(EXTENSIONS, nullable=False)
-    status_tracking_id = Column(Integer, ForeignKey("status_tracking.id"))
-
+    status_tracking_id = Column(
+        Integer, ForeignKey("status_tracking.id"), nullable=False
+    )
 
 class PreProcessingDependency(Base):
     """Preprocessing dependency table"""

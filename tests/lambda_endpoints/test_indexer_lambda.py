@@ -1,20 +1,26 @@
 """Test indexer lambda"""
 
 
+import os
+
 import pytest
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import database as db
-from sds_data_manager.lambda_code.SDSCode.database.models import PreProcessingDependency
+from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.indexer import get_dependency
+from sds_data_manager.lambda_code.SDSCode.path_helper import (
+    InvalidScienceFileError,
+    ScienceFilepathManager,
+)
 
 
 @pytest.fixture()
 def populate_db(test_engine):
     """Populate database with test data"""
     test_data = [
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swapi",
             primary_data_level="l2",
             primary_descriptor="sci-1m",
@@ -24,7 +30,7 @@ def populate_db(test_engine):
             relationship="HARD",
             direction="UPSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l2",
             primary_descriptor="sci",
@@ -34,7 +40,7 @@ def populate_db(test_engine):
             relationship="HARD",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -44,7 +50,7 @@ def populate_db(test_engine):
             relationship="HARD",
             direction="UPSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -54,7 +60,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -64,7 +70,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="swe",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -74,7 +80,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="codice",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -84,7 +90,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="codice",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -94,7 +100,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="codice",
             primary_data_level="l1b",
             primary_descriptor="sci",
@@ -104,7 +110,7 @@ def populate_db(test_engine):
             relationship="SOFT",
             direction="DOWNSTREAM",
         ),
-        PreProcessingDependency(
+        models.PreProcessingDependency(
             primary_instrument="hit",
             primary_data_level="l2",
             primary_descriptor="sci",
@@ -123,28 +129,32 @@ def populate_db(test_engine):
 
 
 def test_batch_job_event(test_engine):
-    # TODO: replace event with other event source
-    # dict. We don't use "Records" anymore. But
-    # leaving for now to test database capabilities.
-    # Will remove in upcoming PR.
+    """Test batch job event"""
+    # TODO: Will update this test further
+    # when I extend batch job event handler.
     event = {
-        "Records": [
-            {
-                "detail-type": "Object Created",
-                "source": "aws.s3",
-                "s3": {
-                    "version": "0",
-                    "bucket": {"name": "sds-data-449431850278"},
-                    "object": {
-                        "key": "imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts",
-                        "reason": "PutObject",
-                    },
-                },
-            }
-        ]
+        "detail-type": "Batch Job State Change",
+        "source": "aws.batch",
+        "detail": {
+            "jobName": "test-batch-tenzin",
+            "status": "FAILED",
+            "statusReason": "some error message",
+            "container": {
+                "image": (
+                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
+                ),
+                "command": [
+                    "python",
+                    (
+                        "imap_cli --instrument codice --level l1a "
+                        "--filename '<s3-filepath>'"
+                    ),
+                ],
+            },
+        },
     }
     returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value is None
+    assert returned_value["statusCode"] == 200
 
 
 def test_pre_processing_dependency(test_engine, populate_db):
@@ -172,3 +182,102 @@ def test_pre_processing_dependency(test_engine, populate_db):
     assert swapi_dependency[0].dependent_instrument == "swapi"
     assert swapi_dependency[0].dependent_data_level == "l1"
     assert swapi_dependency[0].dependent_descriptor == "hk"
+
+
+def test_custom_lambda_event(test_engine):
+    """Test custom PutEvent from lambda"""
+    # Took out unused parameters from event
+    event = {
+        "detail-type": "Job Started",
+        "source": "imap.lambda",
+        "detail": {
+            "file_to_create": (
+                "imap/swapi/l1/2023/01/"
+                "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
+            ),
+            "status": "INPROGRESS",
+            "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
+        },
+    }
+
+    # Test for good event
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 200
+
+    # Check that data was written to database by lambda
+    with Session(db.get_engine()) as session:
+        result = session.query(models.StatusTracking).all()
+        assert len(result) == 1
+        assert (
+            result[0].file_to_create_path
+            == "imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
+        )
+        assert result[0].status == models.Status.INPROGRESS
+
+
+def test_s3_event(test_engine):
+    """Test s3 event"""
+    # Took out unused parameters from event
+    event = {
+        "detail-type": "Object Created",
+        "source": "aws.s3",
+        "time": "2024-01-16T17:35:08Z",
+        "detail": {
+            "version": "0",
+            "bucket": {"name": "sds-data-123456789012"},
+            "object": {
+                "key": (
+                    "imap/hit/l0/2024/01/"
+                    "imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts"
+                ),
+                "reason": "PutObject",
+            },
+        },
+    }
+    # Test for good event
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 200
+
+    # Check that data was written to database by lambda
+    with Session(db.get_engine()) as session:
+        result = session.query(models.FileCatalog).all()
+        assert len(result) == 1
+        assert (
+            result[0].file_path
+            == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts"
+        )
+        assert result[0].data_level == "l0"
+        assert result[0].instrument == "hit"
+        assert result[0].extension == "pkts"
+
+    # Test for bad filename input
+    event["detail"]["object"]["key"] = (
+        "imap/hit/l0/2024/01/" "imap_hit_l0_sci-test_20240101_20240104_v02-01.cdf"
+    )
+
+    expected_msg = (
+        "Invalid extension. Extension should be pkts for data level l0"
+        " and cdf for data level higher than l0"
+    )
+
+    with pytest.raises(InvalidScienceFileError) as excinfo:
+        ScienceFilepathManager(os.path.basename(event["detail"]["object"]["key"]))
+    # Wrote this test outside because pre-commit complains
+    assert str(excinfo.value) == expected_msg
+
+    # Test for higher data level input
+    event["detail"]["object"]["key"] = (
+        "imap/hit/l1a/2024/01/" "imap_hit_l1a_sci-test_20240101_20240104_v02-01.cdf"
+    )
+
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 400
+    assert returned_value["body"] == "Invalid data level"
+
+
+def test_unknown_event(test_engine):
+    """Test for unknown event source"""
+    event = {"source": "test"}
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 400
+    assert returned_value["body"] == "Unknown event source"

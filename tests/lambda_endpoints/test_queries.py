@@ -3,16 +3,38 @@ import datetime
 import json
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode import queries
+from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.lambda_code.SDSCode.database_handler import update_status_table
 
 
 @pytest.fixture()
 def setup_test_data(test_engine):
+    filepath = "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts"
+    # Get status tracking object
+    status_params = {
+        "file_to_create_path": filepath,
+        "status": models.Status.SUCCEEDED,
+        "job_definition": None,
+        "ingestion_date": datetime.datetime.strptime("20251107", "%Y%m%d"),
+    }
+    # Add data to the status tracking table
+    update_status_table(status_params)
+    status_tracking = None
+    # query table
+    with Session(db.get_engine()) as session:
+        # Query to get foreign key id for catalog table
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.file_to_create_path == filepath
+        )
+
+        status_tracking = session.execute(query).first()
     metadata_params = {
-        "file_path": "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts",
+        "file_path": filepath,
         "instrument": "hit",
         "data_level": "l0",
         "descriptor": "raw",
@@ -20,6 +42,7 @@ def setup_test_data(test_engine):
         "end_date": datetime.datetime.strptime("20251108", "%Y%m%d"),
         "version": "v02-01",
         "extension": "pkts",
+        "status_tracking_id": status_tracking.id,
     }
 
     # Add data to the file catalog
@@ -46,7 +69,7 @@ def expected_response():
                     datetime.datetime(2025, 11, 8, 0, 0),
                     "v02-01",
                     "pkts",
-                    None,
+                    1,
                 )
             ]
         )

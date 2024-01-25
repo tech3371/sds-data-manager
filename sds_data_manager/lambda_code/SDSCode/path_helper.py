@@ -1,43 +1,37 @@
 """Functions to store file pattern, validate and construct upload path
 """
 import re
-from dataclasses import dataclass, field
 from datetime import datetime
 
+VALID_INSTRUMENTS = {
+    "codice",
+    "glows",
+    "hit",
+    "hi-45",
+    "hi-90",
+    "idex",
+    "lo",
+    "mag",
+    "swapi",
+    "swe",
+    "ultra-45",
+    "ultra-90",
+}
 
-@dataclass
-class FilenamePatternConfig:
-    """This class stores filename pattern configuration."""
+VALID_DATALEVELS = {"l0", "l1", "l1a", "l1b", "l1c", "l1d", "l2"}
 
-    mission: str = "imap"
-    instruments: list = field(
-        default_factory=lambda: [
-            "codice",
-            "glows",
-            "hit",
-            "hi-45",
-            "idex",
-            "lo",
-            "mag",
-            "swapi",
-            "swe",
-            "ultra-45",
-        ]
-    )
-    data_level: list = field(
-        default_factory=lambda: ["l0", "l1", "l1a", "l1b", "l1c", "l1d", "l2"]
-    )
-    descriptor: str = None
-    startdate: str = "YYYYMMDD"
-    enddate: str = "YYYYMMDD"
-    version: str = r"^v\d{2}-\d{2}$"
-    extensions: list = field(default_factory=lambda: ["pkts", "cdf"])
+VALID_FILE_EXTENSION = {"pkts", "cdf"}
 
 
-class FilenameParser:
+class InvalidScienceFileError(Exception):
+    """Indicates a bad file type"""
+
+    pass
+
+
+class ScienceFilepathManager:
     def __init__(self, filename):
-        """Stores common methods to check
-        file patterns and build upload path.
+        """Class to store file pattern
 
         Current filename convention:
         <mission>_<instrument>_<datalevel>_<descriptor>_<startdate>_<enddate>_<version>.<extension>
@@ -58,14 +52,20 @@ class FilenameParser:
         Parameters
         ----------
         filename : str
-            Filename
+            Science data filename
         """
         self.filename = filename
-        self.filename_convention = (
+        split_filename = self.filename.split("_")
+        filename_convention = (
             "<mission>_<instrument>_<datalevel>_<descriptor>_"
             "<startdate>_<enddate>_<version>.<extension>"
         )
-        self.split_filename = filename.split("_")
+
+        if len(split_filename) != 7:
+            raise InvalidScienceFileError(
+                f"Invalid filename. Expected - {filename_convention}"
+            )
+
         (
             self.mission,
             self.instrument,
@@ -73,12 +73,19 @@ class FilenameParser:
             self.descriptor,
             self.startdate,
             self.enddate,
-            self.last_value,
-        ) = self.split_filename
-        (self.version, self.extension) = self.last_value.split(".")
-        # This message is returned to user through API to indicate why filename was not
-        # correct.
-        self.message = None
+            last_value,
+        ) = split_filename
+        if "." not in last_value:
+            raise InvalidScienceFileError(
+                f"Invalid filename. Expected - {filename_convention}"
+            )
+
+        (self.version, self.extension) = last_value.split(".")
+
+        (self.is_valid, self.error_message) = self.is_filename_valid()
+
+        if not self.is_valid:
+            raise InvalidScienceFileError(f"{self.error_message}")
 
     def check_date_input(self, input_date: str) -> bool:
         """Check input date string is in valid format and is correct date
@@ -99,30 +106,27 @@ class FilenameParser:
             # This checks if date is in YYYYMMDD format.
             # Sometimes, date is correct but not in the format we want
             if len(input_date) != 8:
-                raise ValueError("Invalid date format.")
+                raise ValueError("Invalid date format. Expected - YYYYMMDD")
             datetime.strptime(input_date, "%Y%m%d")
             return True
         except ValueError:
             return False
 
-    def validate_filename(self, file_pattern_config=None) -> bool:
-        """Validate filename patterns.
-
-        Parameters
-        ----------
-        file_pattern_config : FilenamePatternConfig
-            Filename pattern configuration. Default is FilenamePatternConfig().
-            This is used to validate filename. If you want to validate filename
-            for your own purpose, you can pass your own configuration.
-            See FilenamePatternConfig class for more details.
+    def is_filename_valid(self):
+        """Check if filename is in valid format.
 
         Returns
         -------
         bool
-            Whether filename format is valid or not
+            Whether filename is valid or not
+        str
+            Error message or "Correct"
         """
-        if file_pattern_config is None:
-            file_pattern_config = FilenamePatternConfig()
+
+        filename_convention = (
+            "<mission>_<instrument>_<datalevel>_<descriptor>_"
+            "<startdate>_<enddate>_<version>.<extension>"
+        )
 
         # First check if any of parameter is missing
         if any(
@@ -138,27 +142,24 @@ class FilenameParser:
                 self.extension,
             ]
         ):
-            return False
+            default_message = (
+                f"Invalid filename. Filename convention is {filename_convention}"
+            )
+            return False, default_message
 
         # Dictionary to map fields to their valid values and error messages
         validation_checks = {
             "mission": (
-                self.mission == file_pattern_config.mission,
+                self.mission == "imap",
                 "Invalid mission.",
             ),
             "instrument": (
-                self.instrument in file_pattern_config.instruments,
-                (
-                    "Invalid instrument. Please choose from "
-                    f"{file_pattern_config.instruments}"
-                ),
+                self.instrument in VALID_INSTRUMENTS,
+                ("Invalid instrument. Please choose from " f"{VALID_INSTRUMENTS}"),
             ),
             "data_level": (
-                self.data_level in file_pattern_config.data_level,
-                (
-                    "Invalid data level. Please choose from "
-                    f"{file_pattern_config.data_level}"
-                ),
+                self.data_level in VALID_DATALEVELS,
+                ("Invalid data level. Please choose from " f"{VALID_DATALEVELS}"),
             ),
             "startdate": (
                 self.check_date_input(self.startdate),
@@ -169,11 +170,11 @@ class FilenameParser:
                 "Invalid end date format. Please use YYYYMMDD format.",
             ),
             "version": (
-                bool(re.match(file_pattern_config.version, self.version)),
+                bool(re.match(r"^v\d{2}-\d{2}$", self.version)),
                 "Invalid version format. Please use vxx-xx format.",
             ),
             "extension": (
-                self.extension in file_pattern_config.extensions
+                self.extension in VALID_FILE_EXTENSION
                 and (
                     (self.data_level == "l0" and self.extension == "pkts")
                     or (self.data_level != "l0" and self.extension == "cdf")
@@ -186,42 +187,43 @@ class FilenameParser:
         }
 
         # Iterate through each validation check
-        for _field, (is_valid, error_message) in validation_checks.items():
+        for _, (is_valid, error_message) in validation_checks.items():
             if not is_valid:
-                self.message = error_message
-                return False
-        return True
+                return False, error_message
 
-    def create_path_to_upload(self) -> str:
-        """Create upload path to S3 bucket.
+        return True, "Correct"
 
-        path to upload file follows this format:
-        mission/instrument/data_level/year/month/filename
-        NOTE: year and month is from startdate and startdate format is YYYYMMDD.
+    def construct_upload_path(self):
+        """Construct upload path
 
         Returns
         -------
         str
-            path to upload file
+            Upload path
         """
-        path_to_upload_file = (
+        upload_path = (
             f"{self.mission}/{self.instrument}/{self.data_level}/"
             f"{self.startdate[:4]}/{self.startdate[4:6]}/{self.filename}"
         )
 
-        return path_to_upload_file
+        return upload_path
 
-    def upload_filepath(self):
-        """Return upload path or error message.
+    def get_file_metadata_params(self):
+        """Get file metadata parameters
 
         Returns
         -------
         dict
-            Upload path or error message
+            File metadata parameters
         """
-        if not self.validate_filename():
-            default_message = (
-                f"Invalid filename. Filename convention is {self.filename_convention}"
-            )
-            return {"statusCode": 400, "body": self.message or default_message}
-        return {"statusCode": 200, "body": self.create_path_to_upload()}
+
+        return {
+            "file_path": None,
+            "instrument": self.instrument,
+            "data_level": self.data_level,
+            "descriptor": self.descriptor,
+            "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
+            "end_date": datetime.strptime(self.enddate, "%Y%m%d"),
+            "version": self.version,
+            "extension": self.extension,
+        }
