@@ -5,12 +5,13 @@ import os
 import sys
 
 import boto3
-from sqlalchemy import inspect, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
-from .path_helper import FilenameParser
+from .database_handler import update_file_catalog_table, update_status_table
+from .path_helper import InvalidScienceFileError, ScienceFilepathManager
 
 # Logger setup
 logger = logging.getLogger()
@@ -61,6 +62,226 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
     return dependency
 
 
+def http_response(headers=None, status_code=200, body="Success"):
+    """Customizes HTTP response for the lambda function.
+
+    Parameters
+    ----------
+    headers : dict, optional
+        Content headers for the response, defaults to Content-type: text/html.
+    status_code : int, optional
+        HTTP status code indicating the result of the operation, defaults to 200.
+    body : str, optional
+        The content of the response, defaults to 'Success'.
+
+    Returns
+    -------
+    dict
+        A dictionary containing headers, status code, and body, designed to be returned
+        by a Lambda function as an API response.
+    """
+    if headers is None:
+        headers = (
+            {
+                "Content-Type": "text/html",
+            },
+        )
+    return {
+        "headers": headers,
+        "statusCode": status_code,
+        "body": body,
+    }
+
+
+def s3_event_handler(event):
+    """Handler function for S3 events.
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the data required for the
+        lambda function to process
+
+    Returns
+    -------
+    dict
+        HTTP response
+    """
+    # Retrieve the Object name
+    s3_filepath = event["detail"]["object"]["key"]
+
+    filename = os.path.basename(s3_filepath)
+    # TODO: add checks for SPICE or other
+    # data types
+
+    try:
+        science_file = ScienceFilepathManager(filename)
+    except InvalidScienceFileError as e:
+        logger.info(str(e))
+        return http_response(status_code=400, body=str(e))
+
+    # setup a dictionary of metadata parameters to unpack in the
+    # file catalog table
+    metadata_params = science_file.get_file_metadata_params()
+    metadata_params["file_path"] = s3_filepath
+
+    if metadata_params["data_level"] != "l0":
+        logger.info("Invalid data level. Expected l0")
+        return http_response(status_code=400, body="Invalid data level")
+
+    # Add data to the file catalog and status tables
+    # create status params
+    # Event time looks like this:
+    # "time": "2024-01-16T17:35:08Z"
+    # Parses the time string from the event to a datetime object.
+    ingestion_date = datetime.datetime.strptime(event["time"], "%Y-%m-%dT%H:%M:%SZ")
+    # Formats the datetime object to a string with the format "%Y%m%d".
+    ingestion_data_str = ingestion_date.strftime("%Y%m%d")
+    # Parses the newly formatted string back into a datetime
+    # object with the desired structure.
+    ingestion_date_object = datetime.datetime.strptime(ingestion_data_str, "%Y%m%d")
+    status_params = {
+        "file_to_create_path": s3_filepath,
+        "status": models.Status.SUCCEEDED,
+        "job_definition": None,
+        "ingestion_date": ingestion_date_object,
+    }
+    try:
+        logger.info(f"Inserting {filename} into database")
+        update_status_table(status_params)
+    except Exception as e:
+        logger.info(str(e))
+        return http_response(status_code=400, body=str(e))
+
+    # Query to get foreign key id for catalog table
+    status_tracking = None
+    with Session(db.get_engine()) as session:
+        # Query to get foreign key id for catalog table
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.file_to_create_path == s3_filepath
+        )
+
+        status_tracking = session.execute(query).first()
+
+    if status_tracking is None:
+        logger.info("No status tracking record found")
+        return http_response(status_code=400, body="No status tracking record found")
+
+    try:
+        metadata_params["status_tracking_id"] = status_tracking.id
+        update_file_catalog_table(metadata_params)
+    except Exception as e:
+        logger.info(str(e))
+        return http_response(status_code=400, body=str(e))
+
+    return http_response(status_code=200, body="Success")
+
+
+def batch_event_handler(event):
+    """Handler for Batch event
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the data required for the
+        lambda function to process
+
+    Example event input:
+    Kept only parameter of interest
+    event = {
+        "detail-type": "Batch Job State Change",
+        "source": "aws.batch",
+        "detail": {
+            "jobName": "test-batch-tenzin",
+            "status": "FAILED",
+            "statusReason": "some error message",
+            "container": {
+                "image": (
+                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
+                ),
+                "command": [
+                    "python",
+                    (
+                        "imap_cli --instrument codice --level l1a "
+                        "--filename '<s3-filepath>'"
+                    ),
+                ],
+            },
+        },
+    }
+
+    Returns
+    -------
+    dict
+        HTTP response
+    """
+
+    if event["detail-type"] != "Batch Job State Change":
+        return http_response(status_code=400, body="Invalid event")
+    if event["detail"]["status"] == "SUCCEEDED":
+        # TODO:
+        # Get filename and then
+        # write it to file catalog table
+        pass
+
+    # TODO: update status table
+
+    return http_response(status_code=200, body="Success")
+
+
+def custom_event_handler(event):
+    """_summary_
+
+    Parameters
+    ----------
+    event : dict
+        The JSON formatted document with the data required for the
+        lambda function to process
+
+    PutEvent Example:
+        {
+        "DetailType": "Batch Job Started",
+        "Source": "imap.lambda",
+        "Detail": {
+          "file_to_create": "str",
+          "status": "INPRGRESS",
+          "dependency": json.dumps({
+              "codice": "s3-filepath",
+              "mag": "s3-filepath"}
+          )
+        }}
+
+    Returns
+    -------
+    dict
+        HTTP response
+    """
+    file_to_create = event["detail"]["file_to_create"]
+    filename = os.path.basename(file_to_create)
+    logger.info(f"Attempting to insert {filename} into database")
+
+    try:
+        _ = ScienceFilepathManager(filename)
+    except InvalidScienceFileError as e:
+        logger.info(str(e))
+        return http_response(status_code=400, body=str(e))
+
+    # Write event information to status tracking table.
+    logger.info(f"Inserting {filename} into database")
+    status_params = {
+        "file_to_create_path": file_to_create,
+        "status": models.Status.INPROGRESS,
+        "job_definition": None,
+        "ingestion_date": None,
+    }
+    try:
+        update_status_table(status_params)
+    except Exception as e:
+        return http_response(status_code=400, body=str(e))
+
+    return http_response(status_code=200, body="Success")
+
+
 def lambda_handler(event, context):
     """Handler function for creating metadata, adding it to the database.
 
@@ -80,54 +301,15 @@ def lambda_handler(event, context):
     """
     logger.info("Received event: " + json.dumps(event, indent=2))
 
-    logger.info(f"Event: {event}")
-    logger.info(f"Context: {context}")
-    engine = db.get_engine()
-
-    # We're only expecting one record, but for some reason the Records are a list object
-    # TODO: events no longer have a Records key with list. This is already planned for
-    # removal in an upcoming PR.
-    for record in event["Records"]:
-        # Retrieve the Object name
-        logger.info(f"Record Received: {record}")
-        filename = record["s3"]["object"]["key"]
-
-        logger.info(f"Attempting to insert {os.path.basename(filename)} into database")
-        filename_parsed = FilenameParser(os.path.basename(filename))
-        filepath = filename_parsed.upload_filepath()
-
-        # confirm that the file is valid
-        if filepath["statusCode"] != 200:
-            logger.error(filepath["body"])
-            break
-
-        # setup a dictionary of metadata parameters to unpack in the
-        # instrument table
-        metadata_params = {
-            "file_path": filepath["body"],
-            "instrument": filename_parsed.instrument,
-            "data_level": filename_parsed.data_level,
-            "descriptor": filename_parsed.descriptor,
-            "start_date": datetime.datetime.strptime(
-                filename_parsed.startdate, "%Y%m%d"
-            ),
-            "end_date": datetime.datetime.strptime(filename_parsed.enddate, "%Y%m%d"),
-            "version": filename_parsed.version,
-            "extension": filename_parsed.extension,
-        }
-
-        # Add data to the file catalog
-        with Session(engine) as session:
-            session.add(models.FileCatalog(**metadata_params))
-            session.commit()
-
-            # TODO: These are sanity check. will remove
-            # from upcoming PR
-            result = session.query(models.FileCatalog).all()
-            for row in result:
-                print(row.instrument)
-                print(row.file_path)
-
-            inspector = inspect(engine)
-            table_names = inspector.get_table_names()
-            print(table_names)
+    # L0 data or other data type such as SPICE data ingestion
+    if event["source"] == "aws.s3":
+        return s3_event_handler(event)
+    # Data processing status
+    elif event["source"] == "aws.batch":
+        return batch_event_handler(event)
+    # Data processing initiation
+    elif event["source"] == "imap.lambda":
+        return custom_event_handler(event)
+    else:
+        logger.error("Unknown event source")
+        return http_response(status_code=400, body="Unknown event source")

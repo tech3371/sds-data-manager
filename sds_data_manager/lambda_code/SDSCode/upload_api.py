@@ -3,7 +3,7 @@ import logging
 import os
 
 import boto3
-from SDSCode.path_helper import FilenameParser
+from SDSCode.path_helper import ScienceFilepathManager
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -60,12 +60,14 @@ def lambda_handler(event, context):
         }
 
     filename = event["queryStringParameters"]["filename"]
-    filename_parsed = FilenameParser(filename)
-    upload_path = filename_parsed.upload_filepath()
-    if upload_path["statusCode"] != 200:
-        return upload_path
 
-    s3_key_path = upload_path["body"]
+    science_file = ScienceFilepathManager(filename)
+
+    if not science_file.is_valid:
+        return {"statusCode": 400, "body": science_file.error_message}
+
+    s3_key_path = science_file.construct_upload_path()
+
     url = _generate_signed_upload_url(s3_key_path, tags=event["queryStringParameters"])
 
     if url is None:
