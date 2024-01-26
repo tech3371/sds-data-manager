@@ -229,10 +229,11 @@ def batch_event_handler(event):
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
                 ),
                 "command": [
-                    "python",
                     (
-                        "imap_cli --instrument codice --level l1a "
-                        "--s3_uri '<s3-filepath>' --dependency '{}'"
+                        "--instrument hit --level l1a "
+                        "--s3_uri 's3://bucket_name/imap/hit/l1a/2024/01/"
+                        "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
+                        "--dependency [{}]"
                     ),
                 ],
             },
@@ -245,10 +246,17 @@ def batch_event_handler(event):
         HTTP response
     """
     # splited command looks like this:
-    # ['imap_cli', '--instrument', 'codice', '--level', 'l1a',
-    # '--s3_uri', "'s3://bucket/<s3-filepath>'", '--dependency', "'{}'"]
-    command = event["detail"]["container"]["command"][1].split(" ")
-    s3_uri = command[6].replace("'", "")
+    # [
+    #   '',
+    #   'instrument codice ',
+    #   'level l1a ',
+    #   "s3_uri 's3://data-bucket/path/filename'",
+    #   "dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
+    #  ]
+    command = event["detail"]["container"]["command"][0].split("--")
+
+    # Get event inputs ready
+    s3_uri = command[3].replace("s3_uri '", "").replace("'", "")
     filename = os.path.basename(s3_uri)
 
     # TODO: post demo, revisit this and improve it
@@ -282,8 +290,18 @@ def batch_event_handler(event):
                 metadata_params["file_path"] = s3_uri
                 metadata_params["status_tracking_id"] = result.id
                 update_file_catalog_table(metadata_params)
-                # TODO: send event to batch starter with s3_uri information
-                # in upcoming PR. This is last component needed for demo
+                # TODO: send event to batch starter with filename information
+                # in upcoming PR. This is last component needed for demo.
+                # Event input will looks something like this:
+                # event = {
+                #     "Source": "imap.lambda",
+                #     "DetailType": "Processed File",
+                #     "Detail": {
+                #         "object": {
+                #               "key": filename
+                #         },
+                #     },
+                # }
         except Exception as e:
             logger.info(str(e))
             return http_response(status_code=400, body=str(e))

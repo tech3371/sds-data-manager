@@ -184,13 +184,13 @@ def test_batch_job_event(test_engine, write_to_s3):
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
                 ),
                 "command": [
-                    "python",
                     (
-                        "imap_cli --instrument codice --level l1a "
+                        "--instrument codice --level l1a "
                         "--s3_uri 's3://data-bucket/"
                         "imap/swapi/l1/2023/01/"
                         "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf'"
-                        " --dependency '{}'"
+                        "--dependency [{'instrument': 'hit', 'level': 'l0',"
+                        " 'version': 'v00-01'}]"
                     ),
                 ],
             },
