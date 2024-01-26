@@ -17,7 +17,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 # Create a batch client
-batch_client = boto3.client("batch", region_name="us-west-2")
+batch_client = boto3.client("batch")
 
 
 def query_instrument(session, upstream_dependency, start_date, end_date):
