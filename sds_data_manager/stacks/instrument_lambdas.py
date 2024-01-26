@@ -4,6 +4,10 @@ from pathlib import Path
 
 from aws_cdk import Duration, Stack
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_events as events
+from aws_cdk import (
+    aws_events_targets as targets,
+)
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
 from aws_cdk import aws_s3 as s3
@@ -64,8 +68,8 @@ class BatchStarterLambda(Stack):
             self,
             "BatchStarterLambda",
             function_name="BatchStarterLambda",
-            entry=str(code_path),
-            index="batch_starter.py",
+            entry=str(Path(__file__).parent.joinpath("..", "lambda_code").resolve()),
+            index="SDSCode/batch_starter.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_11,
             environment=lambda_environment,
@@ -84,3 +88,21 @@ class BatchStarterLambda(Stack):
             self, "rds_secret", rds_stack.secret_name
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)
+
+        # EventBridge Rule for this lambda
+        event_from_indexer_lambda = events.Rule(
+            self,
+            "EventFromIndexerLambda",
+            rule_name="event-from-indexer-lambda",
+            event_pattern=events.EventPattern(
+                source=["imap.lambda"],
+                detail_type=["Processed File"],
+                detail={
+                    "object": {"key": [{"exists": True}]},
+                },
+            ),
+        )
+
+        event_from_indexer_lambda.add_target(
+            targets.LambdaFunction(self.instrument_lambda)
+        )

@@ -2,21 +2,22 @@ import json
 import logging
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
 import boto3
 from sqlalchemy.orm import Session
 
-from .SDSCode.database import database as db
-from .SDSCode.database import models
+from .database import database as db
+from .database import models
 
-# Setup the logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+# Logger setup
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 # Create a batch client
-batch_client = boto3.client("batch")
+batch_client = boto3.client("batch", region_name="us-west-2")
 
 
 def query_instrument(session, upstream_dependency, start_date, end_date):
@@ -334,6 +335,9 @@ def extract_components(filename: str):
         r"\.cdf$"
     )
     match = re.match(pattern, filename)
+    if match is None:
+        logger.info(f"doesn't match pattern - {filename}")
+        return
     components = match.groupdict()
     return components
 
@@ -346,6 +350,7 @@ def lambda_handler(event: dict, context):
     # Event details:
     filename = event["detail"]["object"]["key"]
     components = extract_components(filename)
+    logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
     level = components["datalevel"]
     version = components["version"]
@@ -358,6 +363,7 @@ def lambda_handler(event: dict, context):
     # Retrieve dependency data.
     dependency_path = Path(__file__).resolve().parent / "downstream_dependents.json"
     data = load_data(dependency_path)
+    logger.info(f"loaded dependent data - {data}")
     # Downstream dependents that are candidates for the batch job.
     downstream_dependents = data[instrument][level]
 
