@@ -52,11 +52,14 @@ class NetworkingStack(Stack):
         )
 
         # Adding this endpoint so that lambda within
-        # this VPC can perform boto3.clinet("events")
-        # operations
+        # this VPC can perform boto3.client("events")
+        # or boto3.client("batch") operations
         self.vpc.add_interface_endpoint(
             "EventBridgeEndpoint",
             service=ec2.InterfaceVpcEndpointAwsService.EVENTBRIDGE,
+        )
+        self.vpc.add_interface_endpoint(
+            "BatchJobEndpoint", service=ec2.InterfaceVpcEndpointAwsService.BATCH
         )
 
         # Create security group for the RDS instance
