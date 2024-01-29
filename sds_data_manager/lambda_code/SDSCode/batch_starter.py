@@ -10,13 +10,11 @@ from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
+from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
-
-# Create a batch client
-batch_client = boto3.client("batch")
 
 
 def query_instrument(session, upstream_dependency, start_date, end_date):
@@ -341,6 +339,60 @@ def extract_components(filename: str):
     return components
 
 
+def send_lambda_put_event(command_parameters):
+    """Sends custom PutEvent to EventBridge
+
+    Example of what PutEvent looks like:
+    event = {
+        "Source": "imap.lambda",
+        "DetailType": "Job Started",
+        "Detail": {
+            "file_to_create": "<s3_uri>",
+            "status": "INPROGRESS",
+            "dependency": "[{
+                "codice": "s3-test",
+                "mag": "s3-filepath"
+            }]")
+        },
+    }
+
+    Parameters
+    ----------
+    command_parameters : str
+        IMAP cli command input parameters.
+        Example of input:
+            "--instrument codice
+            --level l1a
+            --s3_uri '<s3-filepath>'
+            --dependency 'list of dict'"
+    Returns
+    -------
+    dict
+        EventBridge response
+    """
+    event_client = boto3.client("events")
+
+    # Get event inputs ready
+    command = command_parameters.split("--")
+    s3_uri = command[3].replace("s3_uri '", "").replace("' ", "")
+    dependency = command[-1].replace("dependency ", "")
+
+    # Create event["detail"] information
+    detail = {
+        "file_to_create": s3_uri,
+        "status": models.Status.INPROGRESS.value,
+        "dependency": dependency,
+    }
+
+    # create PutEvent dictionary
+    event = IMAPLambdaPutEvent(detail_type="Job Started", detail=detail)
+    event_data = event.to_event()
+
+    # Send event to EventBridge
+    response = event_client.put_events(Entries=[event_data])
+    return response
+
+
 def lambda_handler(event: dict, context):
     """Handler function"""
     logger.info(f"Event: {event}")
@@ -369,6 +421,8 @@ def lambda_handler(event: dict, context):
     # Get information for the batch job.
     session = boto3.session.Session()
     sts_client = boto3.client("sts")
+    # Create a batch client
+    batch_client = boto3.client("batch")
     region = session.region_name
     account = sts_client.get_caller_identity()["Account"]
 
@@ -411,5 +465,5 @@ def lambda_handler(event: dict, context):
                     "command": [instrument["prepared_data"]],
                 },
             )
-
-        # TODO: Add put logic here for indexer_lambda
+            # Send EventBridge event to indexer lambda
+            send_lambda_put_event(instrument)
