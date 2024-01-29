@@ -284,7 +284,7 @@ def test_custom_lambda_event(test_engine):
         assert result[0].status == models.Status.INPROGRESS
 
 
-def test_s3_event(test_engine):
+def test_s3_event(test_engine, events_client):
     """Test s3 event"""
     # Took out unused parameters from event
     event = {
