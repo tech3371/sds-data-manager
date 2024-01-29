@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import re
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -14,8 +13,8 @@ from .database import models
 
 # Logger setup
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logger.setLevel(logging.DEBUG)
+
 # Create a batch client
 batch_client = boto3.client("batch")
 
