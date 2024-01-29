@@ -334,7 +334,8 @@ def batch_event_handler(event):
                 update_file_catalog_table(metadata_params)
                 # Send event from this lambda for Batch starter
                 # lambda
-                send_event_from_indexer(filename)
+                response = send_event_from_indexer(filename)
+                logger.info(f"Sent event to EventBridge - {response}")
 
         except Exception as e:
             logger.error(str(e))
