@@ -142,7 +142,7 @@ class FileCatalog(Base):
     descriptor = Column(String(20), nullable=False)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
-    version = Column(String(6), nullable=False)
+    version = Column(String(8), nullable=False)
     extension = Column(EXTENSIONS, nullable=False)
     status_tracking_id = Column(
         Integer, ForeignKey("status_tracking.id"), nullable=False
