@@ -5,9 +5,8 @@ from pathlib import Path
 from aws_cdk import Duration, Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_events as events
-from aws_cdk import (
-    aws_events_targets as targets,
-)
+from aws_cdk import aws_events_targets as targets
+from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
 from aws_cdk import aws_s3 as s3
@@ -83,6 +82,17 @@ class BatchStarterLambda(Stack):
             security_groups=[rds_security_group],
             allow_public_subnet=True,
         )
+
+        # Permissions to send event to EventBridge
+        # and submit batch job
+        lambda_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["events:PutEvents", "batch:SubmitJob"],
+            resources=[
+                "*",
+            ],
+        )
+        self.instrument_lambda.add_to_role_policy(lambda_policy)
 
         data_bucket.grant_read_write(self.instrument_lambda)
 
