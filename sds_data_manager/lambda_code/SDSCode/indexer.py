@@ -21,6 +21,35 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 s3 = boto3.client("s3")
 
 
+def get_file_creation_date(s3_uri):
+    """Get s3 file creation date.
+
+    Parameters
+    ----------
+    s3_uri: str
+        S3 URI. Eg. s3://bucket/filepath/filename.ext
+
+    creation_date: datetime.datetime
+        Last modified data of s3 file.
+    """
+    # Create an S3 client
+    s3_client = boto3.client("s3")
+
+    # Retrieve the metadata of the object
+    bucket_name, key = s3_uri.replace("s3://", "").split("/", 1)
+    logger.info(f"bucket_name: {bucket_name}")
+    logger.info(f"key: {key}")
+
+    response = s3_client.head_object(Bucket=bucket_name, Key=key)
+    file_creation_date = response["LastModified"]
+
+    # time looks like this:
+    # 2024-01-25 23:35:26+00:00
+    # Formats the datetime object to a string with the format "%Y%m%d".
+    # ingestion_data_str = file_creation_date.strftime("%Y%m%d")
+    return file_creation_date
+
+
 def get_dependency(instrument, data_level, descriptor, direction, relationship):
     """Make query to dependency table to get dependency.
 
@@ -117,7 +146,7 @@ def s3_event_handler(event):
     try:
         science_file = ScienceFilepathManager(filename)
     except InvalidScienceFileError as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     # setup a dictionary of metadata parameters to unpack in the
@@ -126,7 +155,7 @@ def s3_event_handler(event):
     metadata_params["file_path"] = s3_filepath
 
     if metadata_params["data_level"] != "l0":
-        logger.info("Invalid data level. Expected l0")
+        logger.error("Invalid data level. Expected l0")
         return http_response(status_code=400, body="Invalid data level")
 
     # Add data to the file catalog and status tables
@@ -150,7 +179,7 @@ def s3_event_handler(event):
         logger.info(f"Inserting {filename} into database")
         update_status_table(status_params)
     except Exception as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     # Query to get foreign key id for catalog table
@@ -164,14 +193,14 @@ def s3_event_handler(event):
         status_tracking = session.execute(query).first()
 
     if status_tracking is None:
-        logger.info("No status tracking record found")
+        logger.error("No status tracking record found")
         return http_response(status_code=400, body="No status tracking record found")
 
     try:
         metadata_params["status_tracking_id"] = status_tracking.id
         update_file_catalog_table(metadata_params)
     except Exception as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     return http_response(status_code=200, body="Success")
@@ -200,10 +229,11 @@ def batch_event_handler(event):
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
                 ),
                 "command": [
-                    "python",
                     (
-                        "imap_cli --instrument codice --level l1a "
-                        "--filename '<s3-filepath>'"
+                        "--instrument hit --level l1a "
+                        "--s3_uri 's3://bucket_name/imap/hit/l1a/2024/01/"
+                        "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
+                        "--dependency [{}]"
                     ),
                 ],
             },
@@ -215,16 +245,94 @@ def batch_event_handler(event):
     dict
         HTTP response
     """
+    # splited command looks like this:
+    # [
+    #   '',
+    #   'instrument codice ',
+    #   'level l1a ',
+    #   "s3_uri 's3://data-bucket/path/filename'",
+    #   "dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
+    #  ]
+    command = event["detail"]["container"]["command"][0].split("--")
 
-    if event["detail-type"] != "Batch Job State Change":
-        return http_response(status_code=400, body="Invalid event")
+    # Get event inputs ready
+    s3_uri = command[3].replace("s3_uri '", "").replace("'", "")
+    filename = os.path.basename(s3_uri)
+
+    # TODO: post demo, revisit this and improve it
     if event["detail"]["status"] == "SUCCEEDED":
-        # TODO:
-        # Get filename and then
-        # write it to file catalog table
-        pass
+        # Frist write to status table and then
+        # write to file catalog with foreign key
+        # information
+        try:
+            # query and update status table record with new
+            # information from batch
+            with Session(db.get_engine()) as session:
+                # Had to query this way because the select statement
+                # returns a RowProxy object when it executes it,
+                # not the actual StatusTracking model instance,
+                # which is why it can't update table row directly.
+                result = (
+                    session.query(models.StatusTracking)
+                    .filter(models.StatusTracking.file_to_create_path == s3_uri)
+                    .first()
+                )
 
-    # TODO: update status table
+                # update three fields with updated information
+                result.status = models.Status.SUCCEEDED
+                result.job_definition = event["detail"]["jobDefinition"]
+                result.ingestion_date = get_file_creation_date(s3_uri)
+                session.commit()
+
+                # Then write to file catalog table
+                sci_file = ScienceFilepathManager(filename)
+                metadata_params = sci_file.get_file_metadata_params()
+                metadata_params["file_path"] = s3_uri
+                metadata_params["status_tracking_id"] = result.id
+                update_file_catalog_table(metadata_params)
+                # TODO: send event to batch starter with filename information
+                # in upcoming PR. This is last component needed for demo.
+                # Event input will looks something like this:
+                # event = {
+                #     "Source": "imap.lambda",
+                #     "DetailType": "Processed File",
+                #     "Detail": {
+                #         "object": {
+                #               "key": filename
+                #         },
+                #     },
+                # }
+        except Exception as e:
+            logger.error(str(e))
+            return http_response(status_code=400, body=str(e))
+
+    elif event["detail"]["status"] == "FAILED":
+        try:
+            # Update only status table with Failed status
+            with Session(db.get_engine()) as session:
+                # Had to query this way because the select statement
+                # returns a RowProxy object when it executes it,
+                # not the actual StatusTracking model instance,
+                # which is why it can't update table row directly.
+                result = (
+                    session.query(models.StatusTracking)
+                    .filter(models.StatusTracking.file_to_create_path == s3_uri)
+                    .first()
+                )
+
+                # update two fields with updated information
+                result.status = models.Status.FAILED
+                result.job_definition = event["detail"]["jobDefinition"]
+                session.commit()
+        except Exception as e:
+            logger.error(str(e))
+            return http_response(status_code=400, body=str(e))
+
+    else:
+        # Technically, we shouldn't get other job status since event
+        # bridge filters out only succeeded or failed status.
+        logger.error("Unknown batch job status")
+        return http_response(status_code=400, body="Unknown batch job status")
 
     return http_response(status_code=200, body="Success")
 
@@ -263,7 +371,7 @@ def custom_event_handler(event):
     try:
         _ = ScienceFilepathManager(filename)
     except InvalidScienceFileError as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     # Write event information to status tracking table.

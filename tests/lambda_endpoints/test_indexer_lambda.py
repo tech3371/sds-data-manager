@@ -4,6 +4,7 @@
 import os
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode import indexer
@@ -128,8 +129,44 @@ def populate_db(test_engine):
         yield session
 
 
-def test_batch_job_event(test_engine):
+@pytest.fixture()
+def write_to_s3(s3_client):
+    """Write test data to s3"""
+    # first create test bucket
+    s3_client.create_bucket(
+        Bucket="data-bucket",
+        CreateBucketConfiguration={"LocationConstraint": "us-west-2"},
+    )
+    # write file to s3
+    s3_client.put_object(
+        Bucket="data-bucket",
+        Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"),
+        Body=b"test",
+    )
+    return s3_client
+
+
+def test_batch_job_event(test_engine, write_to_s3):
     """Test batch job event"""
+    # Send s3 event first to write initial data to satus
+    # table
+    custom_event = {
+        "detail-type": "Job Started",
+        "source": "imap.lambda",
+        "detail": {
+            "file_to_create": (
+                "s3://data-bucket/imap/swapi/l1/2023/01/"
+                "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
+            ),
+            "status": "INPROGRESS",
+            "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
+        },
+    }
+
+    # Test for good event
+    returned_value = indexer.lambda_handler(event=custom_event, context={})
+    assert returned_value["statusCode"] == 200
+
     # TODO: Will update this test further
     # when I extend batch job event handler.
     event = {
@@ -137,6 +174,7 @@ def test_batch_job_event(test_engine):
         "source": "aws.batch",
         "detail": {
             "jobName": "test-batch-tenzin",
+            "jobDefinition": "test-batch-job-definition",
             "status": "FAILED",
             "statusReason": "some error message",
             "container": {
@@ -144,10 +182,13 @@ def test_batch_job_event(test_engine):
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
                 ),
                 "command": [
-                    "python",
                     (
-                        "imap_cli --instrument codice --level l1a "
-                        "--filename '<s3-filepath>'"
+                        "--instrument codice --level l1a "
+                        "--s3_uri 's3://data-bucket/"
+                        "imap/swapi/l1/2023/01/"
+                        "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf'"
+                        "--dependency [{'instrument': 'hit', 'level': 'l0',"
+                        " 'version': 'v00-01'}]"
                     ),
                 ],
             },
@@ -155,6 +196,31 @@ def test_batch_job_event(test_engine):
     }
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value["statusCode"] == 200
+
+    with Session(db.get_engine()) as session:
+        s3_uri = custom_event["detail"]["file_to_create"]
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.file_to_create_path == s3_uri
+        )
+
+        status_tracking = session.execute(query).first()
+        assert status_tracking.status == models.Status.FAILED
+        assert status_tracking.ingestion_date is None
+
+    # Test for succeeded case
+    event["detail"]["status"] = "SUCCEEDED"
+    returned_value = indexer.lambda_handler(event=event, context={})
+    assert returned_value["statusCode"] == 200
+
+    with Session(db.get_engine()) as session:
+        s3_uri = custom_event["detail"]["file_to_create"]
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.file_to_create_path == s3_uri
+        )
+
+        status_tracking = session.execute(query).first()
+        assert status_tracking.status == models.Status.SUCCEEDED
+        assert status_tracking.ingestion_date is not None
 
 
 def test_pre_processing_dependency(test_engine, populate_db):

@@ -54,6 +54,7 @@ class ScienceFilepathManager:
         filename : str
             Science data filename
         """
+        # TODO: refactor this post demo
         self.filename = filename
         split_filename = self.filename.split("_")
         filename_convention = (

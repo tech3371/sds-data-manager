@@ -6,7 +6,7 @@ import pytest
 from moto import mock_batch, mock_sts
 from sqlalchemy.orm import Session
 
-from sds_data_manager.lambda_code.batch_starter import (
+from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     append_attributes,
     extract_components,
     find_upstream_dependencies,
@@ -127,7 +127,9 @@ def test_append_attributes(test_file_catalog_simulation):
 def test_load_data():
     "Tests load_data function."
     base_directory = Path(__file__).resolve()
-    base_path = base_directory.parents[2] / "sds_data_manager" / "lambda_code"
+    base_path = (
+        base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
+    )
     filepath = base_path / "downstream_dependents.json"
 
     data = load_data(filepath)
@@ -138,7 +140,9 @@ def test_load_data():
 def test_find_upstream_dependencies():
     "Tests find_upstream_dependencies function."
     base_directory = Path(__file__).resolve()
-    base_path = base_directory.parents[2] / "sds_data_manager" / "lambda_code"
+    base_path = (
+        base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
+    )
     filepath = base_path / "downstream_dependents.json"
 
     data = load_data(filepath)
@@ -161,6 +165,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
         base_directory.parents[2]
         / "sds_data_manager"
         / "lambda_code"
+        / "SDSCode"
         / "downstream_dependents.json"
     )
 
