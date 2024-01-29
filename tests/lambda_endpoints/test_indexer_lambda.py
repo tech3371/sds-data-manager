@@ -140,9 +140,7 @@ def write_to_s3(s3_client):
     # write file to s3
     s3_client.put_object(
         Bucket="data-bucket",
-        Key=(
-            "imap/swapi/l1/2023/01/" "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
-        ),
+        Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"),
         Body=b"test",
     )
     return s3_client

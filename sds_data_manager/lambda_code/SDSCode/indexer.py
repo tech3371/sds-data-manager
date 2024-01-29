@@ -46,8 +46,8 @@ def get_file_creation_date(s3_uri):
     # time looks like this:
     # 2024-01-25 23:35:26+00:00
     # Formats the datetime object to a string with the format "%Y%m%d".
-    ingestion_data_str = file_creation_date.strftime("%Y%m%d")
-    return datetime.datetime.strptime(ingestion_data_str, "%Y%m%d")
+    # ingestion_data_str = file_creation_date.strftime("%Y%m%d")
+    return file_creation_date
 
 
 def get_dependency(instrument, data_level, descriptor, direction, relationship):
@@ -146,7 +146,7 @@ def s3_event_handler(event):
     try:
         science_file = ScienceFilepathManager(filename)
     except InvalidScienceFileError as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     # setup a dictionary of metadata parameters to unpack in the
@@ -155,7 +155,7 @@ def s3_event_handler(event):
     metadata_params["file_path"] = s3_filepath
 
     if metadata_params["data_level"] != "l0":
-        logger.info("Invalid data level. Expected l0")
+        logger.error("Invalid data level. Expected l0")
         return http_response(status_code=400, body="Invalid data level")
 
     # Add data to the file catalog and status tables
@@ -179,7 +179,7 @@ def s3_event_handler(event):
         logger.info(f"Inserting {filename} into database")
         update_status_table(status_params)
     except Exception as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     # Query to get foreign key id for catalog table
@@ -193,14 +193,14 @@ def s3_event_handler(event):
         status_tracking = session.execute(query).first()
 
     if status_tracking is None:
-        logger.info("No status tracking record found")
+        logger.error("No status tracking record found")
         return http_response(status_code=400, body="No status tracking record found")
 
     try:
         metadata_params["status_tracking_id"] = status_tracking.id
         update_file_catalog_table(metadata_params)
     except Exception as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     return http_response(status_code=200, body="Success")
@@ -303,7 +303,7 @@ def batch_event_handler(event):
                 #     },
                 # }
         except Exception as e:
-            logger.info(str(e))
+            logger.error(str(e))
             return http_response(status_code=400, body=str(e))
 
     elif event["detail"]["status"] == "FAILED":
@@ -325,13 +325,13 @@ def batch_event_handler(event):
                 result.job_definition = event["detail"]["jobDefinition"]
                 session.commit()
         except Exception as e:
-            logger.info(str(e))
+            logger.error(str(e))
             return http_response(status_code=400, body=str(e))
 
     else:
         # Technically, we shouldn't get other job status since event
         # bridge filters out only succeeded or failed status.
-        logger.info("Unknown batch job status")
+        logger.error("Unknown batch job status")
         return http_response(status_code=400, body="Unknown batch job status")
 
     return http_response(status_code=200, body="Success")
@@ -371,7 +371,7 @@ def custom_event_handler(event):
     try:
         _ = ScienceFilepathManager(filename)
     except InvalidScienceFileError as e:
-        logger.info(str(e))
+        logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 
     # Write event information to status tracking table.
