@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
-from .lambda_custom_events import EventDetail, IMAPLambdaPutEvent
+from .lambda_custom_events import IMAPLambdaPutEvent
+
 
 # Logger setup
 logger = logging.getLogger()
@@ -378,11 +379,11 @@ def send_lambda_put_event(command_parameters):
     dependency = command[-1].replace("dependency ", "")
 
     # Create event["detail"] information
-    detail = EventDetail(
-        file_to_create=s3_uri,
-        status=models.Status.INPROGRESS.value,
-        dependency=dependency,
-    )
+    detail = {
+        "file_to_create": s3_uri,
+        "status": models.Status.INPROGRESS.value,
+        "dependency": dependency,
+    }
 
     # create PutEvent dictionary
     event = IMAPLambdaPutEvent(detail_type="Job Started", detail=detail)
