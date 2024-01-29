@@ -12,7 +12,6 @@ from .database import database as db
 from .database import models
 from .lambda_custom_events import IMAPLambdaPutEvent
 
-
 # Logger setup
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
