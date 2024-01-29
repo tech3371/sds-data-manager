@@ -32,7 +32,7 @@ def test_file_catalog_simulation(test_engine):
         start_date=datetime(2024, 1, 1),
         end_date=datetime(2024, 1, 2),
         version="v00-01",
-        extension=".cdf",
+        extension="cdf",
         status_tracking_id=1,  # Assuming a valid ID from 'status_tracking' table
     )
 
@@ -44,7 +44,7 @@ def test_file_catalog_simulation(test_engine):
         start_date=datetime(2024, 1, 1),
         end_date=datetime(2024, 1, 2),
         version="v00-01",
-        extension=".cdf",
+        extension="cdf",
         status_tracking_id=1,  # Assuming a valid ID from 'status_tracking' table
     )
     with Session(db.get_engine()) as session:

@@ -1,4 +1,8 @@
-"""Main file to store schema definition"""
+"""Stores the IMAP SDC database schema definition
+
+This module is used to define the database Object Relational Mappers (ORMs).
+Each class within maps to a table in the database.
+"""
 
 from enum import Enum
 
@@ -10,14 +14,15 @@ from sqlalchemy import (
     Identity,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy import (
-    Enum as SQLEnum,
+    Enum as SqlEnum,
 )
 from sqlalchemy.orm import DeclarativeBase
 
 # Instrument name Enums for the file catalog table
-instruments = SQLEnum(
+INSTRUMENTS = SqlEnum(
     "codice",
     "glows",
     "hi-45",
@@ -34,7 +39,7 @@ instruments = SQLEnum(
 )
 
 # data level enums for the file catalog table
-data_levels = SQLEnum(
+DATA_LEVELS = SqlEnum(
     "l0",
     "l1",
     "l1a",
@@ -53,14 +58,14 @@ data_levels = SQLEnum(
     name="data_level",
 )
 
-# status enums for the status tracking table
-statuses = SQLEnum("INPROGRESS", "SUCCEEDED", "FAILED", name="status")
+# extension enums for the file catalog table
+EXTENSIONS = SqlEnum("pkts", "cdf")
 
 # "upstream" dependency means an instrument's processing depends on the existence
 # of another instrument's data
 # "downstream" dependency means that the instrument's data is used in another
 # instrument's processing
-dependency_directions = SQLEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
+DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
 
 
 class Status(Enum):
@@ -69,7 +74,7 @@ class Status(Enum):
     FAILED = "FAILED"
 
 
-statuses = SQLEnum(Status)
+STATUSES = SqlEnum(Status)
 
 
 class Base(DeclarativeBase):
@@ -97,29 +102,48 @@ class StatusTracking(Base):
     """Status tracking table"""
 
     __tablename__ = "status_tracking"
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "file_to_create_path",
+            "status",
+            name="status_tracking_uc",
+        ),
+    )
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_to_create_path = Column(String, nullable=False)
-    status = Column(statuses, nullable=False)
-    job_definition = Column(String, nullable=True)
-    ingestion_date = Column(DateTime, nullable=True)
+    status = Column(STATUSES, nullable=False)
+    job_definition = Column(String)
+    ingestion_date = Column(DateTime)
 
 
 class FileCatalog(Base):
     """File catalog table"""
 
     __tablename__ = "file_catalog"
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "file_path",
+            "instrument",
+            "data_level",
+            "start_date",
+            "end_date",
+            name="file_catalog_uc",
+        ),
+    )
 
     # TODO: determine cap for strings
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_path = Column(String, nullable=False)
-    instrument = Column(instruments, nullable=False)
-    data_level = Column(data_levels, nullable=False)
-    descriptor = Column(String, nullable=False)
+    instrument = Column(INSTRUMENTS, nullable=False)
+    data_level = Column(DATA_LEVELS, nullable=False)
+    descriptor = Column(String(20), nullable=False)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
-    version = Column(String, nullable=False)
-    extension = Column(String, nullable=False)
+    version = Column(String(8), nullable=False)
+    extension = Column(EXTENSIONS, nullable=False)
     status_tracking_id = Column(
         Integer, ForeignKey("status_tracking.id"), nullable=False
     )
@@ -129,14 +153,56 @@ class PreProcessingDependency(Base):
     """Preprocessing dependency table"""
 
     __tablename__ = "preprocessing_dependency"
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "primary_instrument",
+            "primary_data_level",
+            "primary_descriptor",
+            "dependent_instrument",
+            "dependent_data_level",
+            "dependent_descriptor",
+            "relationship",
+            "direction",
+            name="preprocessing_dependency_uc",
+        ),
+    )
 
     # TODO: improve this table after February demo
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
-    primary_instrument = Column(instruments, nullable=False)
-    primary_data_level = Column(data_levels, nullable=False)
+    primary_instrument = Column(INSTRUMENTS, nullable=False)
+    primary_data_level = Column(DATA_LEVELS, nullable=False)
     primary_descriptor = Column(String, nullable=False)
-    dependent_instrument = Column(instruments, nullable=False)
-    dependent_data_level = Column(data_levels, nullable=False)
+    dependent_instrument = Column(INSTRUMENTS, nullable=False)
+    dependent_data_level = Column(DATA_LEVELS, nullable=False)
     dependent_descriptor = Column(String, nullable=False)
     relationship = Column(String, nullable=False)
-    direction = Column(dependency_directions, nullable=False)
+    direction = Column(DEPENDENCY_DIRECTIONS, nullable=False)
+
+
+class Version(Base):
+    """Version table"""
+
+    __tablename__ = "version"
+    __table_args__ = (
+        UniqueConstraint(
+            "id",
+            "instrument",
+            "data_level",
+            "software_version",
+            "data_version",
+            "updated_date",
+            name="version_uc",
+        ),
+    )
+
+    # TODO: improve this table after February demo
+    id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
+    instrument = Column(INSTRUMENTS, nullable=False)
+    data_level = Column(DATA_LEVELS, nullable=False)
+    software_version = Column(String(2), nullable=False)
+    data_version = Column(String(2), nullable=False)
+    updated_date = Column(DateTime, nullable=False)
+
+
+# TODO: Create table for SPICE file tracking
