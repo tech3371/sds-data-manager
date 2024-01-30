@@ -133,23 +133,16 @@ def populate_db(test_engine):
 
 
 @pytest.fixture()
-def set_env():
-    # Set the environment variable
-    os.environ["S3_DATA_BUCKET"] = "data-bucket"
-    return ""
-
-
-@pytest.fixture()
 def write_to_s3(s3_client):
     """Write test data to s3"""
     # first create test bucket
     s3_client.create_bucket(
-        Bucket="data-bucket",
+        Bucket="test-data-bucket",
         CreateBucketConfiguration={"LocationConstraint": "us-west-2"},
     )
     # write file to s3
     s3_client.put_object(
-        Bucket="data-bucket",
+        Bucket="test-data-bucket",
         Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"),
         Body=b"test",
     )
