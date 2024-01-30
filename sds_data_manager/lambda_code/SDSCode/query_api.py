@@ -1,4 +1,5 @@
-# Standard
+"""Contains the lambda handler for the 'query' data access API"""
+
 import datetime
 import json
 import logging
@@ -81,19 +82,23 @@ def lambda_handler(event, context):
 
     engine = db.get_engine()
     with Session(engine) as session:
-        search_result = session.execute(query).all()
+        search_results = session.execute(query).all()
+
+    # Convert the search results (list of tuples) to a list of dicts
+    search_results = [result._asdict() for result in search_results]
 
     logger.info(
-        "Found [%s] Query Search Results: %s", len(search_result), str(search_result)
+        "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
 
     # Format the response
     response = {
         "statusCode": 200,
-        "body": json.dumps(str(search_result)),  # returns a list of tuples
+        "body": json.dumps(str(search_results)),  # returns a list of tuples
         "headers": {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",  # Allow CORS
         },
     }
+
     return response

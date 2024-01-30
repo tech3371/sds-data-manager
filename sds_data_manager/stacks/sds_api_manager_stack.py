@@ -100,7 +100,7 @@ class SdsApiManager(Stack):
             id="QueryAPILambda",
             function_name="query-api-handler",
             entry=lambda_code_directory_str,
-            index="SDSCode/queries.py",
+            index="SDSCode/query_api.py",
             handler="lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_9,
             timeout=cdk.Duration.minutes(1),
