@@ -133,6 +133,13 @@ def populate_db(test_engine):
 
 
 @pytest.fixture()
+def set_env():
+    # Set the environment variable
+    os.environ["S3_DATA_BUCKET"] = "data-bucket"
+    return ""
+
+
+@pytest.fixture()
 def write_to_s3(s3_client):
     """Write test data to s3"""
     # first create test bucket
@@ -149,7 +156,7 @@ def write_to_s3(s3_client):
     return s3_client
 
 
-def test_batch_job_event(test_engine, write_to_s3, events_client):
+def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     """Test batch job event"""
     # Send s3 event first to write initial data to satus
     # table
@@ -158,7 +165,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
         "source": "imap.lambda",
         "detail": {
             "file_to_create": (
-                "s3://data-bucket/imap/swapi/l1/2023/01/"
+                "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
             "status": "INPROGRESS",
@@ -187,8 +194,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
                 "command": [
                     (
                         "--instrument codice --level l1a "
-                        "--s3_uri 's3://data-bucket/"
-                        "imap/swapi/l1/2023/01/"
+                        "--file_path 'imap/swapi/l1/2023/01/"
                         "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf'"
                         "--dependency [{'instrument': 'hit', 'level': 'l0',"
                         " 'version': 'v00-01'}]"
@@ -201,9 +207,9 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        s3_uri = custom_event["detail"]["file_to_create"]
+        file_path = custom_event["detail"]["file_to_create"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_to_create_path == s3_uri
+            models.StatusTracking.file_to_create_path == file_path
         )
 
         status_tracking = session.execute(query).first()
@@ -216,9 +222,9 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        s3_uri = custom_event["detail"]["file_to_create"]
+        file_path = custom_event["detail"]["file_to_create"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_to_create_path == s3_uri
+            models.StatusTracking.file_to_create_path == file_path
         )
 
         status_tracking = session.execute(query).first()

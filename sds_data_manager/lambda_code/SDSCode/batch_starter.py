@@ -221,7 +221,7 @@ def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket)
                 f"imap_{instrument}_{level}_sci_{start_date}_{end_date}_{version}.cdf"
             )
 
-            prepared_data = prepare_data(filename, upstream_dependencies, s3_bucket)
+            prepared_data = prepare_data(filename, upstream_dependencies)
             instruments_to_process.append(
                 {"filename": filename, "prepared_data": prepared_data}
             )
@@ -253,7 +253,7 @@ def load_data(filepath: Path):
     return data
 
 
-def prepare_data(filename, upstream_dependencies, s3_bucket):
+def prepare_data(filename, upstream_dependencies):
     """
     Prepares data for batch job.
 
@@ -270,8 +270,6 @@ def prepare_data(filename, upstream_dependencies, s3_bucket):
     upstream_dependencies : list of dict
         A list of dictionaries containing dependency instrument,
         data level, and version.
-    s3_bucket : str
-        S3 bucket name.
 
     Returns
     -------
@@ -292,16 +290,16 @@ def prepare_data(filename, upstream_dependencies, s3_bucket):
     month = format_start_date.strftime("%m")
 
     # Base S3 path
-    s3_base_path = f"s3://{s3_bucket}/imap/{instrument}/{level}/{year}/{month}/"
+    s3_base_path = f"imap/{instrument}/{level}/{year}/{month}/"
 
     # Prepare the final command
     # Pre-construct parts of the string
     instrument_part = f"--instrument {instrument}"
     level_part = f"--level {level}"
-    s3_uri = f"--s3_uri '{s3_base_path}{filename}'"
+    file_path = f"--file_path '{s3_base_path}{filename}'"
     dependency_part = f"--dependency {upstream_dependencies}"
 
-    prepared_data = f"{instrument_part} {level_part} {s3_uri} {dependency_part}"
+    prepared_data = f"{instrument_part} {level_part} {file_path} {dependency_part}"
 
     return prepared_data
 
@@ -347,7 +345,7 @@ def send_lambda_put_event(command_parameters):
         "Source": "imap.lambda",
         "DetailType": "Job Started",
         "Detail": {
-            "file_to_create": "<s3_uri>",
+            "file_to_create": "<file_path>",
             "status": "INPROGRESS",
             "dependency": "[{
                 "codice": "s3-test",
@@ -363,7 +361,7 @@ def send_lambda_put_event(command_parameters):
         Example of input:
             "--instrument codice
             --level l1a
-            --s3_uri '<s3-filepath>'
+            --file_path '<s3-filepath>'
             --dependency 'list of dict'"
     Returns
     -------
@@ -374,12 +372,12 @@ def send_lambda_put_event(command_parameters):
 
     # Get event inputs ready
     command = command_parameters.split("--")
-    s3_uri = command[3].replace("s3_uri '", "").replace("' ", "")
+    file_path = command[3].replace("file_path '", "").replace("' ", "")
     dependency = command[-1].replace("dependency ", "")
 
     # Create event["detail"] information
     detail = {
-        "file_to_create": s3_uri,
+        "file_to_create": file_path,
         "status": models.Status.INPROGRESS.value,
         "dependency": dependency,
     }
