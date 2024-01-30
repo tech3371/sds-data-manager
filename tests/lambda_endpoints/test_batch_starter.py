@@ -204,12 +204,11 @@ def test_prepare_data():
     prepared_data = prepare_data(
         "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf",
         upstream_dependencies,
-        "bucket_name",
     )
 
     expected_prepared_data = (
         "--instrument hit --level l1a "
-        "--s3_uri 's3://bucket_name/imap/hit/l1a/2024/01/"
+        "--file_path 'imap/hit/l1a/2024/01/"
         "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
         "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
     )
@@ -230,7 +229,7 @@ def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
 def test_send_lambda_put_event(events_client):
     expected_prepared_data = (
         "--instrument hit --level l1a "
-        "--s3_uri 's3://data-bucket/imap/swapi/l1/2023/01/"
+        "--file_path 'imap/swapi/l1/2023/01/"
         "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf' "
         "--dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
     )

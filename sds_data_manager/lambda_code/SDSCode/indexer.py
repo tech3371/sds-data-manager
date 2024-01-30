@@ -22,13 +22,13 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 s3 = boto3.client("s3")
 
 
-def get_file_creation_date(s3_uri):
+def get_file_creation_date(file_path):
     """Get s3 file creation date.
 
     Parameters
     ----------
-    s3_uri: str
-        S3 URI. Eg. s3://bucket/filepath/filename.ext
+    file_path: str
+        S3 object path. Eg. filepath/filename.ext
 
     creation_date: datetime.datetime
         Last modified data of s3 file.
@@ -37,7 +37,8 @@ def get_file_creation_date(s3_uri):
     s3_client = boto3.client("s3")
 
     # Retrieve the metadata of the object
-    bucket_name, key = s3_uri.replace("s3://", "").split("/", 1)
+    bucket_name = os.environ.get("S3_DATA_BUCKET")
+    key = file_path
     logger.info(f"bucket_name: {bucket_name}")
     logger.info(f"key: {key}")
 
@@ -214,7 +215,7 @@ def s3_event_handler(event):
     # object with the desired structure.
     ingestion_date_object = datetime.datetime.strptime(ingestion_data_str, "%Y%m%d")
     status_params = {
-        "file_to_create_path": s3_filepath,
+        "file_path_to_create": s3_filepath,
         "status": models.Status.SUCCEEDED,
         "job_definition": None,
         "ingestion_date": ingestion_date_object,
@@ -232,7 +233,7 @@ def s3_event_handler(event):
     with Session(db.get_engine()) as session:
         # Query to get foreign key id for catalog table
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_to_create_path == s3_filepath
+            models.StatusTracking.file_path_to_create == s3_filepath
         )
 
         status_tracking = session.execute(query).first()
@@ -280,7 +281,7 @@ def batch_event_handler(event):
                 "command": [
                     (
                         "--instrument hit --level l1a "
-                        "--s3_uri 's3://bucket_name/imap/hit/l1a/2024/01/"
+                        "--file_path 'imap/hit/l1a/2024/01/"
                         "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf' "
                         "--dependency [{}]"
                     ),
@@ -299,14 +300,14 @@ def batch_event_handler(event):
     #   '',
     #   'instrument codice ',
     #   'level l1a ',
-    #   "s3_uri 's3://data-bucket/path/filename'",
+    #   "file_path 'path/filename'",
     #   "dependency [{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]"
     #  ]
     command = event["detail"]["container"]["command"][0].split("--")
 
     # Get event inputs ready
-    s3_uri = command[3].replace("s3_uri '", "").replace("'", "")
-    filename = os.path.basename(s3_uri)
+    file_path = command[3].replace("file_path '", "").replace("'", "")
+    filename = os.path.basename(file_path)
 
     # TODO: post demo, revisit this and improve it
     if event["detail"]["status"] == "SUCCEEDED":
@@ -323,20 +324,20 @@ def batch_event_handler(event):
                 # which is why it can't update table row directly.
                 result = (
                     session.query(models.StatusTracking)
-                    .filter(models.StatusTracking.file_to_create_path == s3_uri)
+                    .filter(models.StatusTracking.file_path_to_create == file_path)
                     .first()
                 )
 
                 # update three fields with updated information
                 result.status = models.Status.SUCCEEDED
                 result.job_definition = event["detail"]["jobDefinition"]
-                result.ingestion_date = get_file_creation_date(s3_uri)
+                result.ingestion_date = get_file_creation_date(file_path)
                 session.commit()
 
                 # Then write to file catalog table
                 sci_file = ScienceFilepathManager(filename)
                 metadata_params = sci_file.get_file_metadata_params()
-                metadata_params["file_path"] = s3_uri
+                metadata_params["file_path"] = file_path
                 metadata_params["status_tracking_id"] = result.id
                 update_file_catalog_table(metadata_params)
                 # Send event from this lambda for Batch starter
@@ -358,7 +359,7 @@ def batch_event_handler(event):
                 # which is why it can't update table row directly.
                 result = (
                     session.query(models.StatusTracking)
-                    .filter(models.StatusTracking.file_to_create_path == s3_uri)
+                    .filter(models.StatusTracking.file_path_to_create == file_path)
                     .first()
                 )
 
@@ -393,7 +394,7 @@ def custom_event_handler(event):
         "DetailType": "Batch Job Started",
         "Source": "imap.lambda",
         "Detail": {
-          "file_to_create": "str",
+          "file_path_to_create": "str",
           "status": "INPRGRESS",
           "dependency": json.dumps({
               "codice": "s3-filepath",
@@ -406,8 +407,8 @@ def custom_event_handler(event):
     dict
         HTTP response
     """
-    file_to_create = event["detail"]["file_to_create"]
-    filename = os.path.basename(file_to_create)
+    file_path_to_create = event["detail"]["file_path_to_create"]
+    filename = os.path.basename(file_path_to_create)
     logger.info(f"Attempting to insert {filename} into database")
 
     try:
@@ -419,7 +420,7 @@ def custom_event_handler(event):
     # Write event information to status tracking table.
     logger.info(f"Inserting {filename} into database")
     status_params = {
-        "file_to_create_path": file_to_create,
+        "file_path_to_create": file_path_to_create,
         "status": models.Status.INPROGRESS,
         "job_definition": None,
         "ingestion_date": None,

@@ -17,7 +17,7 @@ def setup_test_data(test_engine):
     filepath = "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts"
     # Get status tracking object
     status_params = {
-        "file_to_create_path": filepath,
+        "file_path_to_create": filepath,
         "status": models.Status.SUCCEEDED,
         "job_definition": None,
         "ingestion_date": datetime.datetime.strptime("20251107", "%Y%m%d"),
@@ -29,7 +29,7 @@ def setup_test_data(test_engine):
     with Session(db.get_engine()) as session:
         # Query to get foreign key id for catalog table
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_to_create_path == filepath
+            models.StatusTracking.file_path_to_create == filepath
         )
 
         status_tracking = session.execute(query).first()
