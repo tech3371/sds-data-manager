@@ -215,7 +215,7 @@ def s3_event_handler(event):
     # object with the desired structure.
     ingestion_date_object = datetime.datetime.strptime(ingestion_data_str, "%Y%m%d")
     status_params = {
-        "file_to_create_path": s3_filepath,
+        "file_path_to_create": s3_filepath,
         "status": models.Status.SUCCEEDED,
         "job_definition": None,
         "ingestion_date": ingestion_date_object,
@@ -233,7 +233,7 @@ def s3_event_handler(event):
     with Session(db.get_engine()) as session:
         # Query to get foreign key id for catalog table
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_to_create_path == s3_filepath
+            models.StatusTracking.file_path_to_create == s3_filepath
         )
 
         status_tracking = session.execute(query).first()
@@ -324,7 +324,7 @@ def batch_event_handler(event):
                 # which is why it can't update table row directly.
                 result = (
                     session.query(models.StatusTracking)
-                    .filter(models.StatusTracking.file_to_create_path == file_path)
+                    .filter(models.StatusTracking.file_path_to_create == file_path)
                     .first()
                 )
 
@@ -359,7 +359,7 @@ def batch_event_handler(event):
                 # which is why it can't update table row directly.
                 result = (
                     session.query(models.StatusTracking)
-                    .filter(models.StatusTracking.file_to_create_path == file_path)
+                    .filter(models.StatusTracking.file_path_to_create == file_path)
                     .first()
                 )
 
@@ -394,7 +394,7 @@ def custom_event_handler(event):
         "DetailType": "Batch Job Started",
         "Source": "imap.lambda",
         "Detail": {
-          "file_to_create_path": "str",
+          "file_path_to_create": "str",
           "status": "INPRGRESS",
           "dependency": json.dumps({
               "codice": "s3-filepath",
@@ -407,8 +407,8 @@ def custom_event_handler(event):
     dict
         HTTP response
     """
-    file_to_create_path = event["detail"]["file_to_create_path"]
-    filename = os.path.basename(file_to_create_path)
+    file_path_to_create = event["detail"]["file_path_to_create"]
+    filename = os.path.basename(file_path_to_create)
     logger.info(f"Attempting to insert {filename} into database")
 
     try:
@@ -420,7 +420,7 @@ def custom_event_handler(event):
     # Write event information to status tracking table.
     logger.info(f"Inserting {filename} into database")
     status_params = {
-        "file_to_create_path": file_to_create_path,
+        "file_path_to_create": file_path_to_create,
         "status": models.Status.INPROGRESS,
         "job_definition": None,
         "ingestion_date": None,

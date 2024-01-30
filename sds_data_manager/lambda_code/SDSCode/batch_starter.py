@@ -345,7 +345,7 @@ def send_lambda_put_event(command_parameters):
         "Source": "imap.lambda",
         "DetailType": "Job Started",
         "Detail": {
-            "file_to_create_path": "<file_path>",
+            "file_path_to_create": "<file_path>",
             "status": "INPROGRESS",
             "dependency": "[{
                 "codice": "s3-test",
@@ -377,7 +377,7 @@ def send_lambda_put_event(command_parameters):
 
     # Create event["detail"] information
     detail = {
-        "file_to_create_path": file_path,
+        "file_path_to_create": file_path,
         "status": models.Status.INPROGRESS.value,
         "dependency": dependency,
     }
