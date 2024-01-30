@@ -137,19 +137,19 @@ def write_to_s3(s3_client):
     """Write test data to s3"""
     # first create test bucket
     s3_client.create_bucket(
-        Bucket="data-bucket",
+        Bucket="test-data-bucket",
         CreateBucketConfiguration={"LocationConstraint": "us-west-2"},
     )
     # write file to s3
     s3_client.put_object(
-        Bucket="data-bucket",
+        Bucket="test-data-bucket",
         Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"),
         Body=b"test",
     )
     return s3_client
 
 
-def test_batch_job_event(test_engine, write_to_s3, events_client):
+def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     """Test batch job event"""
     # Send s3 event first to write initial data to satus
     # table
@@ -157,8 +157,8 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_to_create": (
-                "s3://data-bucket/imap/swapi/l1/2023/01/"
+            "file_path_to_create": (
+                "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
             "status": "INPROGRESS",
@@ -187,8 +187,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
                 "command": [
                     (
                         "--instrument codice --level l1a "
-                        "--s3_uri 's3://data-bucket/"
-                        "imap/swapi/l1/2023/01/"
+                        "--file_path 'imap/swapi/l1/2023/01/"
                         "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf'"
                         "--dependency [{'instrument': 'hit', 'level': 'l0',"
                         " 'version': 'v00-01'}]"
@@ -201,9 +200,9 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        s3_uri = custom_event["detail"]["file_to_create"]
+        file_path = custom_event["detail"]["file_path_to_create"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_to_create_path == s3_uri
+            models.StatusTracking.file_path_to_create == file_path
         )
 
         status_tracking = session.execute(query).first()
@@ -216,9 +215,9 @@ def test_batch_job_event(test_engine, write_to_s3, events_client):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        s3_uri = custom_event["detail"]["file_to_create"]
+        file_path = custom_event["detail"]["file_path_to_create"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_to_create_path == s3_uri
+            models.StatusTracking.file_path_to_create == file_path
         )
 
         status_tracking = session.execute(query).first()
@@ -260,7 +259,7 @@ def test_custom_lambda_event(test_engine):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_to_create": (
+            "file_path_to_create": (
                 "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
@@ -278,7 +277,7 @@ def test_custom_lambda_event(test_engine):
         result = session.query(models.StatusTracking).all()
         assert len(result) == 1
         assert (
-            result[0].file_to_create_path
+            result[0].file_path_to_create
             == "imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
         )
         assert result[0].status == models.Status.INPROGRESS

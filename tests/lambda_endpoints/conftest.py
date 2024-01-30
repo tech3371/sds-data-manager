@@ -21,6 +21,13 @@ def _aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
+@pytest.fixture(autouse=True)
+def set_env(monkeypatch):
+    # Set the environment variable
+    monkeypatch.setenv("S3_DATA_BUCKET", "test-data-bucket")
+    return ""
+
+
 @pytest.fixture()
 def s3_client(_aws_credentials):
     """Mocked S3 Client, so we don't need network requests."""

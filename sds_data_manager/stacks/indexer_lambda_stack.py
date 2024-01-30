@@ -145,7 +145,7 @@ class IndexerLambda(Stack):
         #     "DetailType": "Batch Job Started",
         #     "Source": "imap.lambda",
         #     "Detail": {
-        #       "file_to_create": "str",
+        #       "file_path_to_create": "str",
         #       "status": "InProgress",
         #       "dependency": json.dumps({
         #           "codice": "s3-filepath",
@@ -162,7 +162,7 @@ class IndexerLambda(Stack):
                 source=["imap.lambda"],
                 detail_type=["Job Started"],
                 detail={
-                    "file_to_create": [{"exists": True}],
+                    "file_path_to_create": [{"exists": True}],
                     "status": ["INPROGRESS"],
                     "dependency": [{"exists": True}],
                 },
