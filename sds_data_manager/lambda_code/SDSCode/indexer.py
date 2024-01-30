@@ -394,7 +394,7 @@ def custom_event_handler(event):
         "DetailType": "Batch Job Started",
         "Source": "imap.lambda",
         "Detail": {
-          "file_to_create": "str",
+          "file_to_create_path": "str",
           "status": "INPRGRESS",
           "dependency": json.dumps({
               "codice": "s3-filepath",
@@ -407,8 +407,8 @@ def custom_event_handler(event):
     dict
         HTTP response
     """
-    file_to_create = event["detail"]["file_to_create"]
-    filename = os.path.basename(file_to_create)
+    file_to_create_path = event["detail"]["file_to_create_path"]
+    filename = os.path.basename(file_to_create_path)
     logger.info(f"Attempting to insert {filename} into database")
 
     try:
@@ -420,7 +420,7 @@ def custom_event_handler(event):
     # Write event information to status tracking table.
     logger.info(f"Inserting {filename} into database")
     status_params = {
-        "file_to_create_path": file_to_create,
+        "file_to_create_path": file_to_create_path,
         "status": models.Status.INPROGRESS,
         "job_definition": None,
         "ingestion_date": None,

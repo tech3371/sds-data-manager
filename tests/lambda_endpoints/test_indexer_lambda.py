@@ -164,7 +164,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_to_create": (
+            "file_to_create_path": (
                 "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
@@ -207,7 +207,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["file_to_create"]
+        file_path = custom_event["detail"]["file_to_create_path"]
         query = select(models.StatusTracking.__table__).where(
             models.StatusTracking.file_to_create_path == file_path
         )
@@ -222,7 +222,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["file_to_create"]
+        file_path = custom_event["detail"]["file_to_create_path"]
         query = select(models.StatusTracking.__table__).where(
             models.StatusTracking.file_to_create_path == file_path
         )
@@ -266,7 +266,7 @@ def test_custom_lambda_event(test_engine):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_to_create": (
+            "file_to_create_path": (
                 "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
