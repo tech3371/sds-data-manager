@@ -87,6 +87,14 @@ def lambda_handler(event, context):
     # Convert the search results (list of tuples) to a list of dicts
     search_results = [result._asdict() for result in search_results]
 
+    # Convert datetimes to string values of format 'YYYYMMDD'
+    # Also remove values that are not needed by users
+    for result in search_results:
+        result["start_date"] = result["start_date"].strftime("%Y%m%d")
+        result["end_date"] = result["end_date"].strftime("%Y%m%d")
+        del result["id"]
+        del result["status_tracking_id"]
+
     logger.info(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
@@ -94,7 +102,7 @@ def lambda_handler(event, context):
     # Format the response
     response = {
         "statusCode": 200,
-        "body": json.dumps(str(search_results)),  # returns a list of tuples
+        "body": json.dumps(search_results),  # returns a list of tuples
         "headers": {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",  # Allow CORS

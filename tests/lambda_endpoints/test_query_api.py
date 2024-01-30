@@ -57,24 +57,29 @@ def setup_test_data(test_engine):
 @pytest.fixture()
 def expected_response():
     expected_response = json.dumps(
-        str(
-            [
-                {
-                    "id": 1,
-                    "file_path": "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts",
-                    "instrument": "hit",
-                    "data_level": "l0",
-                    "descriptor": "raw",
-                    "start_date": datetime.datetime(2025, 11, 7, 0, 0),
-                    "end_date": datetime.datetime(2025, 11, 8, 0, 0),
-                    "version": "v02-01",
-                    "extension": "pkts",
-                    "status_tracking_id": 1,
-                }
-            ]
-        )
+        [
+            {
+                "file_path": "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts",  # noqa: E501
+                "instrument": "hit",
+                "data_level": "l0",
+                "descriptor": "raw",
+                "start_date": "20251107",
+                "end_date": "20251108",
+                "version": "v02-01",
+                "extension": "pkts",
+            }
+        ]
     )
     return expected_response
+
+
+def test_query_result_body(setup_test_data):
+    """Tests that the query result body can be loaded"""
+    event = {"queryStringParameters": {}}
+
+    returned_query = query_api.lambda_handler(event=event, context={})
+
+    assert json.loads(returned_query["body"])
 
 
 def test_start_date_query(setup_test_data, test_engine, expected_response):
@@ -113,7 +118,7 @@ def test_start_and_end_date_query(setup_test_data, test_engine, expected_respons
 def test_empty_start_date_query(setup_test_data, test_engine):
     "Test that a start_date query with no matches returns an empty list"
     event = {"queryStringParameters": {"start_date": "20261101"}}
-    expected_response = json.dumps("[]")
+    expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
@@ -123,7 +128,7 @@ def test_empty_start_date_query(setup_test_data, test_engine):
 def test_empty_end_date_query(setup_test_data, test_engine):
     "Test that an end_date query with no matches returns an empty list"
     event = {"queryStringParameters": {"start_date": "20261101"}}
-    expected_response = json.dumps("[]")
+    expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
@@ -133,7 +138,7 @@ def test_empty_end_date_query(setup_test_data, test_engine):
 def test_empty_non_date_query(setup_test_data, test_engine):
     "Test that a non-date query with no matches returns an empty list"
     event = {"queryStringParameters": {"data_level": "l2"}}
-    expected_response = json.dumps("[]")
+    expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
 
     assert returned_query["statusCode"] == 200
