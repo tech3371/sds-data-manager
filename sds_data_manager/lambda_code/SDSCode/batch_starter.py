@@ -91,7 +91,7 @@ def append_attributes(session, downstream_dependents, start_date, end_date, vers
         # Use pointing start_time and end_time in place of start_date and end_date.
         # Add pointing number to dependent.
 
-        dependent["version"] = "v00-01"  # placeholder
+        dependent["version"] = version  # placeholder
         dependent["start_date"] = start_date
         dependent["end_date"] = end_date
 
@@ -148,7 +148,7 @@ def find_upstream_dependencies(
     for dependency in upstream_dependencies:
         # TODO: query the version table here for appropriate version
         #  of each dependency. Use downstream_dependent_version to query version table.
-        dependency["version"] = "v00-01"  # placeholder
+        dependency["version"] = downstream_dependent_version  # placeholder
 
     return upstream_dependencies
 
