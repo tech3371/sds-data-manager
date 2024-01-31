@@ -450,16 +450,24 @@ def lambda_handler(event: dict, context):
             return
 
         # Start Batch Job execution for each instrument
-        for instrument in downstream_instruments_to_process:
-            filename = instrument["filename"]
+        for downstream_data in downstream_instruments_to_process:
+            filename = downstream_data["filename"]
 
-            batch_client.submit_job(
-                jobName=filename,
+            command = downstream_data["prepared_data"]
+            logger.info(f"Submitting job with this command - {command}")
+            # NOTE: The batch job name should contain only
+            # alphanumeric characters and hyphens.
+            logger.info(f"Job name: {instrument}-{level}-job")
+            response = batch_client.submit_job(
+                jobName=f"{instrument}-{level}-job",
                 jobQueue=job_queue,
                 jobDefinition=job_definition,
                 containerOverrides={
-                    "command": [instrument["prepared_data"]],
+                    "command": [downstream_data["prepared_data"]],
                 },
             )
+            logger.info(f"Submitted job - {response}")
             # Send EventBridge event to indexer lambda
-            send_lambda_put_event(instrument)
+            logger.info("Sending EventBridge event to indexer lambda.")
+            send_lambda_put_event(command)
+            logger.info("EventBridge event sent.")
