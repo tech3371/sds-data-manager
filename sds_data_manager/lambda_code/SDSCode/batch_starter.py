@@ -294,12 +294,27 @@ def prepare_data(filename, upstream_dependencies):
 
     # Prepare the final command
     # Pre-construct parts of the string
-    instrument_part = f"--instrument {instrument}"
-    level_part = f"--level {level}"
-    file_path = f"--file_path '{s3_base_path}{filename}'"
-    dependency_part = f"--dependency {upstream_dependencies}"
-
-    prepared_data = f"{instrument_part} {level_part} {file_path} {dependency_part}"
+    # NOTE: Batch job expects command like this:
+    # "Command": [
+    #     "--instrument",
+    #     "swe",
+    #     "--level",
+    #     "l1b",
+    #     "--file_path",
+    #     "imap/swe/l1b/2023/09/imap_swe_l1b_lveng-hk_20230927_20230927_v01-00.cdf",
+    #     "--dependency",
+    #     "[{'instrument': 'swe', 'level': 'l0', 'version': 'v00-01'}]"
+    #   ]
+    prepared_data = [
+        "--instrument",
+        instrument,
+        "--level",
+        level,
+        "--file_path",
+        s3_base_path + filename,
+        "--dependency",
+        f"{upstream_dependencies}",
+    ]
 
     return prepared_data
 
@@ -359,10 +374,17 @@ def send_lambda_put_event(command_parameters):
     command_parameters : str
         IMAP cli command input parameters.
         Example of input:
-            "--instrument codice
-            --level l1a
-            --file_path '<s3-filepath>'
-            --dependency 'list of dict'"
+            [
+            "--instrument",
+            "hit",
+            "--level",
+            "l1a",
+            "--file_path",
+            ("imap/hit/l1a/2024/01/"
+            "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
+            "--dependency",
+            "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
+        ]
     Returns
     -------
     dict
@@ -371,9 +393,8 @@ def send_lambda_put_event(command_parameters):
     event_client = boto3.client("events")
 
     # Get event inputs ready
-    command = command_parameters.split("--")
-    file_path = command[3].replace("file_path '", "").replace("' ", "")
-    dependency = command[-1].replace("dependency ", "")
+    file_path = command_parameters[5]
+    dependency = command_parameters[7]
 
     # Create event["detail"] information
     detail = {
@@ -463,7 +484,7 @@ def lambda_handler(event: dict, context):
                 jobQueue=job_queue,
                 jobDefinition=job_definition,
                 containerOverrides={
-                    "command": [downstream_data["prepared_data"]],
+                    "command": downstream_data["prepared_data"],
                 },
             )
             logger.info(f"Submitted job - {response}")
