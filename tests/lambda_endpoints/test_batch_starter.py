@@ -190,7 +190,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     ]
 
     result = query_upstream_dependencies(
-        test_file_catalog_simulation, downstream_dependents, data, "bucket_name"
+        test_file_catalog_simulation, downstream_dependents, data, "bucket_name", "sci"
     )
 
     assert list(result[0].keys()) == ["filename", "prepared_data"]

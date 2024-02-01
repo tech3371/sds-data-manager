@@ -182,20 +182,20 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
             "statusReason": "some error message",
             "container": {
                 "image": (
-                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
+                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "swapi-repo:latest"
                 ),
                 "command": [
                     "--instrument",
-                    "swe",
+                    "swapi",
                     "--level",
-                    "l1b",
+                    "l1",
                     "--file_path",
                     (
                         "imap/swapi/l1/2023/01/"
                         "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
                     ),
                     "--dependency",
-                    "[{'instrument': 'swe', 'level': 'l0', 'version': 'v00-01'}]",
+                    "[{'instrument': 'swapi', 'level': 'l0', 'version': 'v02-01'}]",
                 ],
             },
         },
