@@ -77,7 +77,9 @@ class IndexerLambda(Stack):
             },
         )
 
-        # events:PutEvents
+        # Adding events and s3 permission because indexer
+        # lambda sents events and read from s3.
+        # TODO: narrow s3 permission later
         put_event_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
             actions=["events:PutEvents", "s3:*"],

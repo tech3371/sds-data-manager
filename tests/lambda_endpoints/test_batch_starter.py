@@ -236,7 +236,7 @@ def test_send_lambda_put_event(events_client):
         "--level",
         "l1a",
         "--file_path",
-        ("imap/hit/l1a/2024/01/" "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
+        ("imap/hit/l1a/2024/01/imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
         "--dependency",
         "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
     ]

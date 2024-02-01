@@ -482,9 +482,10 @@ def lambda_handler(event: dict, context):
             logger.info(f"Submitting job with this command - {command}")
             # NOTE: The batch job name should contain only
             # alphanumeric characters and hyphens.
-            logger.info(f"Job name: {instrument}-{level}-job")
+            job_name = f"{instrument}-{level}-job"
+            logger.info("Job name: %s", job_name)
             response = batch_client.submit_job(
-                jobName=f"{instrument}-{level}-job",
+                jobName=job_name,
                 jobQueue=job_queue,
                 jobDefinition=job_definition,
                 containerOverrides={
