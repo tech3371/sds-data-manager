@@ -153,7 +153,9 @@ def find_upstream_dependencies(
     return upstream_dependencies
 
 
-def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket):
+def query_upstream_dependencies(
+    session, downstream_dependents, data, s3_bucket, descriptor
+):
     """
     Finds dependency information for each instrument. This function looks for
     upstream dependency of current downstream dependent.
@@ -218,7 +220,8 @@ def query_upstream_dependencies(session, downstream_dependents, data, s3_bucket)
         if all_dependencies_available:
             # TODO: add descriptor logic. Using <sci> as placeholder.
             filename = (
-                f"imap_{instrument}_{level}_sci_{start_date}_{end_date}_{version}.cdf"
+                f"imap_{instrument}_{level}_{descriptor}"
+                f"_{start_date}_{end_date}_{version}.cdf"
             )
 
             prepared_data = prepare_data(filename, upstream_dependencies)
@@ -423,6 +426,7 @@ def lambda_handler(event: dict, context):
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
     level = components["datalevel"]
+    descriptor = components["descriptor"]
     version = components["version"]
     start_date = components["startdate"]
     end_date = components["enddate"]
@@ -462,7 +466,7 @@ def lambda_handler(event: dict, context):
 
         # decide if we have sufficient upstream dependencies
         downstream_instruments_to_process = query_upstream_dependencies(
-            session, complete_dependents, data, s3_bucket
+            session, complete_dependents, data, s3_bucket, descriptor
         )
 
         # No instruments to process
