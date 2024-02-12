@@ -111,7 +111,7 @@ class IndexerLambda(Stack):
         ]
 
         # Events that triggers Indexer Lambda:
-        # 1. Arrival of L0 data
+        # 1. Arrival of all science data
         # 2. PutEvent from Lambda that builds dependency and starts Batch Job
         # 3. Batch Job status change
 
@@ -128,7 +128,7 @@ class IndexerLambda(Stack):
                     "bucket": {"name": [data_bucket.bucket_name]},
                     "object": {
                         "key": [
-                            {"prefix": f"imap/{instrument}/l0/"}
+                            {"prefix": f"imap/{instrument}/"}
                             for instrument in instruments
                         ]
                     },
