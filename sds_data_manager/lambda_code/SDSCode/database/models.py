@@ -10,7 +10,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    ForeignKey,
     Identity,
     Integer,
     String,
@@ -105,17 +104,19 @@ class StatusTracking(Base):
     __table_args__ = (
         UniqueConstraint(
             "id",
-            "file_path_to_create",
+            "input_data_file_path",
             "status",
             name="status_tracking_uc",
         ),
     )
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
-    file_path_to_create = Column(String, nullable=False)
+    input_data_file_path = Column(String, nullable=False)
     status = Column(STATUSES, nullable=False)
     job_definition = Column(String)
-    ingestion_date = Column(DateTime)
+    job_log_stream_id = Column(String)
+    container_image = Column(String)
+    container_command = Column(String)
 
 
 class FileCatalog(Base):
@@ -144,9 +145,7 @@ class FileCatalog(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(8), nullable=False)
     extension = Column(EXTENSIONS, nullable=False)
-    status_tracking_id = Column(
-        Integer, ForeignKey("status_tracking.id"), nullable=False
-    )
+    ingestion_date = Column(DateTime)
 
 
 class PreProcessingDependency(Base):

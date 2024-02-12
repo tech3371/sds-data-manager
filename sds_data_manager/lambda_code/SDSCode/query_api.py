@@ -42,7 +42,7 @@ def lambda_handler(event, context):
     valid_parameters = [
         column.key
         for column in models.FileCatalog.__table__.columns
-        if column.key not in ["id", "status_tracking_id"]
+        if column.key not in ["id"]
     ]
     # go through each query parameter to set up sqlalchemy query conditions
     for param, value in query_params.items():
@@ -90,8 +90,8 @@ def lambda_handler(event, context):
     for result in search_results:
         result["start_date"] = result["start_date"].strftime("%Y%m%d")
         result["end_date"] = result["end_date"].strftime("%Y%m%d")
+        result["ingestion_date"] = result["ingestion_date"].strftime("%Y%m%dT%H:%M:%SZ")
         del result["id"]
-        del result["status_tracking_id"]
 
     logger.info(
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
