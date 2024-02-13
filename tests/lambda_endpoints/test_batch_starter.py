@@ -34,7 +34,9 @@ def test_file_catalog_simulation(test_engine):
         end_date=datetime(2024, 1, 2),
         version="v00-01",
         extension="cdf",
-        ingestion_date=datetime.strptime("20251107T10:13:12Z", "%Y%m%dT%H:%M:%SZ"),
+        ingestion_date=datetime.strptime(
+            "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
     )
 
     test_record_2 = FileCatalog(
@@ -46,7 +48,9 @@ def test_file_catalog_simulation(test_engine):
         end_date=datetime(2024, 1, 2),
         version="v00-01",
         extension="cdf",
-        ingestion_date=datetime.strptime("20251107T10:15:12Z", "%Y%m%dT%H:%M:%SZ"),
+        ingestion_date=datetime.strptime(
+            "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
     )
     with Session(db.get_engine()) as session:
         session.add(test_record_1)

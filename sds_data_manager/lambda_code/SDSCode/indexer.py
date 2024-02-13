@@ -269,7 +269,6 @@ def batch_event_handler(event):
         else models.Status.FAILED
     )
 
-    # TODO: post demo, revisit this and improve it
     with Session(db.get_engine()) as session:
         # Had to query this way because the select statement
         # returns a RowProxy object when it executes it,
@@ -299,6 +298,7 @@ def batch_event_handler(event):
 
         result.status = job_status
         result.job_definition = event["detail"]["jobDefinition"]
+        # TODO: get other information post discussion
         session.commit()
 
     return http_response(status_code=200, body="Success")

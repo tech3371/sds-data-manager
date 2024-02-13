@@ -115,6 +115,7 @@ class StatusTracking(Base):
     status = Column(STATUSES, nullable=False)
     # TODO:
     # Didn't make it required field yet. Revisit this
+    # post discussion
     instrument = Column(INSTRUMENTS)
     data_level = Column(DATA_LEVELS)
     job_definition = Column(String)

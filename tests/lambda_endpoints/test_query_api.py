@@ -23,7 +23,7 @@ def setup_test_data(test_engine):
         "version": "v02-01",
         "extension": "pkts",
         "ingestion_date": datetime.datetime.strptime(
-            "20251107T10:13:12Z", "%Y%m%dT%H:%M:%SZ"
+            "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
         ),
     }
 
@@ -49,7 +49,7 @@ def expected_response():
                 "end_date": "20251108",
                 "version": "v02-01",
                 "extension": "pkts",
-                "ingestion_date": "20251107T10:13:12Z",
+                "ingestion_date": "2025-11-07 10:13:12",
             }
         ]
     )

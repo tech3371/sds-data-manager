@@ -90,7 +90,9 @@ def lambda_handler(event, context):
     for result in search_results:
         result["start_date"] = result["start_date"].strftime("%Y%m%d")
         result["end_date"] = result["end_date"].strftime("%Y%m%d")
-        result["ingestion_date"] = result["ingestion_date"].strftime("%Y%m%dT%H:%M:%SZ")
+        result["ingestion_date"] = result["ingestion_date"].strftime(
+            "%Y-%m-%d %H:%M:%S%z"
+        )
         del result["id"]
 
     logger.info(
