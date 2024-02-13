@@ -261,7 +261,7 @@ def batch_event_handler(event):
     command = event["detail"]["container"]["command"]
 
     # Get filename from batch job command
-    input_data_file_path = command[5]
+    file_path_to_create = command[5]
     # Get job status
     job_status = (
         models.Status.SUCCEEDED
@@ -277,22 +277,22 @@ def batch_event_handler(event):
         # which is why it can't update table row directly.
         result = (
             session.query(models.StatusTracking)
-            .filter(models.StatusTracking.input_data_file_path == input_data_file_path)
+            .filter(models.StatusTracking.file_path_to_create == file_path_to_create)
             .first()
         )
 
         if result is None:
-            logger.info(f"No record found for {input_data_file_path}")
-            logger.info(f"Creating new record for {input_data_file_path}")
+            logger.info(f"No record found for {file_path_to_create}")
+            logger.info(f"Creating new record for {file_path_to_create}")
             status_params = {
-                "input_data_file_path": input_data_file_path,
+                "file_path_to_create": file_path_to_create,
                 "status": job_status,
             }
             update_status_table(status_params)
             result = (
                 session.query(models.StatusTracking)
                 .filter(
-                    models.StatusTracking.input_data_file_path == input_data_file_path
+                    models.StatusTracking.file_path_to_create == file_path_to_create
                 )
                 .first()
             )
@@ -318,7 +318,7 @@ def custom_event_handler(event):
         "DetailType": "Batch Job Started",
         "Source": "imap.lambda",
         "Detail": {
-          "input_data_file_path": "str",
+          "file_path_to_create": "str",
           "status": "INPRGRESS",
           "dependency": json.dumps({
               "codice": "s3-filepath",
@@ -331,8 +331,8 @@ def custom_event_handler(event):
     dict
         HTTP response
     """
-    input_data_file_path = event["detail"]["input_data_file_path"]
-    filename = os.path.basename(input_data_file_path)
+    file_path_to_create = event["detail"]["file_path_to_create"]
+    filename = os.path.basename(file_path_to_create)
     logger.info(f"Attempting to insert {filename} into database")
 
     ScienceFilepathManager(filename)
@@ -340,7 +340,7 @@ def custom_event_handler(event):
     # Write event information to status tracking table.
     logger.info(f"Inserting {filename} into database")
     status_params = {
-        "input_data_file_path": input_data_file_path,
+        "file_path_to_create": file_path_to_create,
         "status": models.Status.INPROGRESS,
         "job_definition": None,
     }

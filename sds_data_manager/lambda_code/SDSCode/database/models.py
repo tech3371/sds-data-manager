@@ -104,14 +104,14 @@ class StatusTracking(Base):
     __table_args__ = (
         UniqueConstraint(
             "id",
-            "input_data_file_path",
+            "file_path_to_create",
             "status",
             name="status_tracking_uc",
         ),
     )
 
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
-    input_data_file_path = Column(String, nullable=False)
+    file_path_to_create = Column(String, nullable=False)
     status = Column(STATUSES, nullable=False)
     # TODO:
     # Didn't make it required field yet. Revisit this

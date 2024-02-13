@@ -162,7 +162,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "input_data_file_path": (
+            "file_path_to_create": (
                 "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
@@ -226,9 +226,9 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
 
     # check that data was written to status table
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["input_data_file_path"]
+        file_path = custom_event["detail"]["file_path_to_create"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.input_data_file_path == file_path
+            models.StatusTracking.file_path_to_create == file_path
         )
 
         status_tracking = session.execute(query).first()
@@ -240,9 +240,9 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["input_data_file_path"]
+        file_path = custom_event["detail"]["file_path_to_create"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.input_data_file_path == file_path
+            models.StatusTracking.file_path_to_create == file_path
         )
 
         status_tracking = session.execute(query).first()
@@ -283,7 +283,7 @@ def test_custom_lambda_event(test_engine):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "input_data_file_path": (
+            "file_path_to_create": (
                 "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
@@ -301,7 +301,7 @@ def test_custom_lambda_event(test_engine):
         result = session.query(models.StatusTracking).all()
         assert len(result) == 1
         assert (
-            result[0].input_data_file_path
+            result[0].file_path_to_create
             == "imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
         )
         assert result[0].status == models.Status.INPROGRESS

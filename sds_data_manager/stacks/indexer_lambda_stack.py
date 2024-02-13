@@ -164,7 +164,7 @@ class IndexerLambda(Stack):
                 source=["imap.lambda"],
                 detail_type=["Job Started"],
                 detail={
-                    "input_data_file_path": [{"exists": True}],
+                    "file_path_to_create": [{"exists": True}],
                     "status": ["INPROGRESS"],
                     "dependency": [{"exists": True}],
                 },
