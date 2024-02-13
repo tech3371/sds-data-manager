@@ -214,7 +214,7 @@ def s3_event_handler(event):
     # Send event from this lambda for Batch starter
     # lambda
     send_event_from_indexer(filename)
-    logger.info("S3 event handler complete")
+    logger.debug("S3 event handler complete")
 
 
 def batch_event_handler(event):
@@ -281,8 +281,10 @@ def batch_event_handler(event):
         )
 
         if result is None:
-            logger.info(f"No record found for {file_path_to_create}")
-            logger.info(f"Creating new record for {file_path_to_create}")
+            logger.info(
+                "No existing record found, creating"
+                " new record for {file_path_to_create}"
+            )
             status_params = {
                 "file_path_to_create": file_path_to_create,
                 "status": job_status,
@@ -346,7 +348,7 @@ def custom_event_handler(event):
     }
     update_status_table(status_params)
 
-    logger.info("Wrote data to status tracking table")
+    logger.debug("Wrote data to status tracking table")
     return http_response(status_code=200, body="Success")
 
 

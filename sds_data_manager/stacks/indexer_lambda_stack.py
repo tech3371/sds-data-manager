@@ -96,42 +96,23 @@ class IndexerLambda(Stack):
         )
         rds_secret.grant_read(grantee=indexer_lambda)
 
-        # Instrument list
-        instruments = [
-            "codice",
-            "glows",
-            "hi",
-            "hit",
-            "idex",
-            "lo",
-            "mag",
-            "swapi",
-            "swe",
-            "ultra",
-        ]
-
         # Events that triggers Indexer Lambda:
         # 1. Arrival of all science data
         # 2. PutEvent from Lambda that builds dependency and starts Batch Job
         # 3. Batch Job status change
 
-        # Write l0 info to db with
+        # Write science data info to db with
         # status SUCCEEDED
-        l0_arrival_rule = events.Rule(
+        imap_data_arrival_rule = events.Rule(
             self,
-            "l0DataArrival",
-            rule_name="l0-data-arrival",
+            "ImapDataArrival",
+            rule_name="imap-data-arrival",
             event_pattern=events.EventPattern(
                 source=["aws.s3"],
                 detail_type=["Object Created"],
                 detail={
                     "bucket": {"name": [data_bucket.bucket_name]},
-                    "object": {
-                        "key": [
-                            {"prefix": f"imap/{instrument}/"}
-                            for instrument in instruments
-                        ]
-                    },
+                    "object": {"key": [{"prefix": "imap/"}]},
                 },
             ),
         )
@@ -186,6 +167,6 @@ class IndexerLambda(Stack):
         )
 
         # Add the Lambda function as the target for the rules
-        l0_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
+        imap_data_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_starter_event_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))

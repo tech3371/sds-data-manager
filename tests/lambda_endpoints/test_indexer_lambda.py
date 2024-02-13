@@ -11,6 +11,7 @@ from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.indexer import (
+    batch_event_handler,
     get_dependency,
     send_event_from_indexer,
 )
@@ -243,6 +244,20 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         file_path = custom_event["detail"]["file_path_to_create"]
         query = select(models.StatusTracking.__table__).where(
             models.StatusTracking.file_path_to_create == file_path
+        )
+
+        status_tracking = session.execute(query).first()
+        assert status_tracking.status == models.Status.SUCCEEDED
+
+    # Test for file that is not in status table
+    filename = "imap/swapi/l2/2023/01/imap_swapi_l2_sci-1m_20230724_20230724_v02-01.cdf"
+    event["detail"]["container"]["command"][5] = filename
+    result = batch_event_handler(event)
+    assert result["statusCode"] == 200
+
+    with Session(db.get_engine()) as session:
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.file_path_to_create == filename
         )
 
         status_tracking = session.execute(query).first()
