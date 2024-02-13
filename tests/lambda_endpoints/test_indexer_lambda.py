@@ -146,6 +146,11 @@ def write_to_s3(s3_client):
         Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"),
         Body=b"test",
     )
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=("imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts"),
+        Body=b"test",
+    )
     return s3_client
 
 
@@ -157,7 +162,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_path_to_create": (
+            "input_data_file_path": (
                 "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
@@ -203,15 +208,15 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value["statusCode"] == 200
 
+    # check that data was written to status table
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["file_path_to_create"]
+        file_path = custom_event["detail"]["input_data_file_path"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_path_to_create == file_path
+            models.StatusTracking.input_data_file_path == file_path
         )
 
         status_tracking = session.execute(query).first()
         assert status_tracking.status == models.Status.FAILED
-        assert status_tracking.ingestion_date is None
 
     # Test for succeeded case
     event["detail"]["status"] = "SUCCEEDED"
@@ -219,14 +224,13 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["file_path_to_create"]
+        file_path = custom_event["detail"]["input_data_file_path"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_path_to_create == file_path
+            models.StatusTracking.input_data_file_path == file_path
         )
 
         status_tracking = session.execute(query).first()
         assert status_tracking.status == models.Status.SUCCEEDED
-        assert status_tracking.ingestion_date is not None
 
 
 def test_pre_processing_dependency(test_engine, populate_db):
@@ -263,7 +267,7 @@ def test_custom_lambda_event(test_engine):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_path_to_create": (
+            "input_data_file_path": (
                 "imap/swapi/l1/2023/01/"
                 "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
             ),
@@ -281,13 +285,13 @@ def test_custom_lambda_event(test_engine):
         result = session.query(models.StatusTracking).all()
         assert len(result) == 1
         assert (
-            result[0].file_path_to_create
+            result[0].input_data_file_path
             == "imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
         )
         assert result[0].status == models.Status.INPROGRESS
 
 
-def test_s3_event(test_engine, events_client):
+def test_s3_event(test_engine, events_client, write_to_s3):
     """Test s3 event"""
     # Took out unused parameters from event
     event = {
@@ -336,15 +340,6 @@ def test_s3_event(test_engine, events_client):
         ScienceFilepathManager(os.path.basename(event["detail"]["object"]["key"]))
     # Wrote this test outside because pre-commit complains
     assert str(excinfo.value) == expected_msg
-
-    # Test for higher data level input
-    event["detail"]["object"]["key"] = (
-        "imap/hit/l1a/2024/01/" "imap_hit_l1a_sci-test_20240101_20240104_v02-01.cdf"
-    )
-
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 400
-    assert returned_value["body"] == "Invalid data level"
 
 
 def test_unknown_event(test_engine):

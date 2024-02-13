@@ -1,4 +1,3 @@
-import datetime
 import json
 import logging
 import os
@@ -36,17 +35,13 @@ def get_file_creation_date(file_path):
 
     # Retrieve the metadata of the object
     bucket_name = os.environ.get("S3_DATA_BUCKET")
-    key = file_path
-    logger.info(f"bucket_name: {bucket_name}")
-    logger.info(f"key: {key}")
+    logger.info(f"looking up ingestion date for {file_path}")
 
-    response = s3_client.head_object(Bucket=bucket_name, Key=key)
+    response = s3_client.head_object(Bucket=bucket_name, Key=file_path)
     file_creation_date = response["LastModified"]
 
-    # time looks like this:
+    # LastModified looks like this:
     # 2024-01-25 23:35:26+00:00
-    # Formats the datetime object to a string with the format "%Y%m%d".
-    # ingestion_data_str = file_creation_date.strftime("%Y%m%d")
     return file_creation_date
 
 
@@ -210,14 +205,7 @@ def s3_event_handler(event):
     metadata_params = science_file.get_file_metadata_params()
     metadata_params["file_path"] = s3_filepath
 
-    # Add data to the file catalog
-    # Event time looks like this:
-    # "time": "2024-01-16T17:35:08Z"
-    # Parses the time string from the event to a datetime object.
-    ingestion_date_str = event["time"]
-    ingestion_date_object = datetime.datetime.strptime(
-        ingestion_date_str, "%Y-%m-%dT%H:%M:%SZ"
-    )
+    ingestion_date_object = get_file_creation_date(s3_filepath)
 
     metadata_params["ingestion_date"] = ingestion_date_object
     update_file_catalog_table(metadata_params)
@@ -272,77 +260,46 @@ def batch_event_handler(event):
     """
     command = event["detail"]["container"]["command"]
 
-    # Get event inputs ready
-    file_path = command[5]
-    filename = os.path.basename(file_path)
+    # Get filename from batch job command
+    input_data_file_path = command[5]
+    # Get job status
+    job_status = (
+        models.Status.SUCCEEDED
+        if event["detail"]["status"] == "SUCCEEDED"
+        else models.Status.FAILED
+    )
 
     # TODO: post demo, revisit this and improve it
-    if event["detail"]["status"] == "SUCCEEDED":
-        # Frist write to status table and then
-        # write to file catalog with foreign key
-        # information
-        try:
-            # query and update status table record with new
-            # information from batch
-            with Session(db.get_engine()) as session:
-                # Had to query this way because the select statement
-                # returns a RowProxy object when it executes it,
-                # not the actual StatusTracking model instance,
-                # which is why it can't update table row directly.
-                result = (
-                    session.query(models.StatusTracking)
-                    .filter(models.StatusTracking.file_path_to_create == file_path)
-                    .first()
+    with Session(db.get_engine()) as session:
+        # Had to query this way because the select statement
+        # returns a RowProxy object when it executes it,
+        # not the actual StatusTracking model instance,
+        # which is why it can't update table row directly.
+        result = (
+            session.query(models.StatusTracking)
+            .filter(models.StatusTracking.input_data_file_path == input_data_file_path)
+            .first()
+        )
+
+        if result is None:
+            logger.info(f"No record found for {input_data_file_path}")
+            logger.info(f"Creating new record for {input_data_file_path}")
+            status_params = {
+                "input_data_file_path": input_data_file_path,
+                "status": job_status,
+            }
+            update_status_table(status_params)
+            result = (
+                session.query(models.StatusTracking)
+                .filter(
+                    models.StatusTracking.input_data_file_path == input_data_file_path
                 )
+                .first()
+            )
 
-                # update three fields with updated information
-                result.status = models.Status.SUCCEEDED
-                result.job_definition = event["detail"]["jobDefinition"]
-                result.ingestion_date = get_file_creation_date(file_path)
-                session.commit()
-
-                # Then write to file catalog table
-                sci_file = ScienceFilepathManager(filename)
-                metadata_params = sci_file.get_file_metadata_params()
-                metadata_params["file_path"] = file_path
-                metadata_params["status_tracking_id"] = result.id
-                update_file_catalog_table(metadata_params)
-                # Send event from this lambda for Batch starter
-                # lambda
-                response = send_event_from_indexer(filename)
-                logger.info(f"Sent event to EventBridge - {response}")
-
-        except Exception as e:
-            logger.error(str(e))
-            return http_response(status_code=400, body=str(e))
-
-    elif event["detail"]["status"] == "FAILED":
-        try:
-            # Update only status table with Failed status
-            with Session(db.get_engine()) as session:
-                # Had to query this way because the select statement
-                # returns a RowProxy object when it executes it,
-                # not the actual StatusTracking model instance,
-                # which is why it can't update table row directly.
-                result = (
-                    session.query(models.StatusTracking)
-                    .filter(models.StatusTracking.file_path_to_create == file_path)
-                    .first()
-                )
-
-                # update two fields with updated information
-                result.status = models.Status.FAILED
-                result.job_definition = event["detail"]["jobDefinition"]
-                session.commit()
-        except Exception as e:
-            logger.error(str(e))
-            return http_response(status_code=400, body=str(e))
-
-    else:
-        # Technically, we shouldn't get other job status since event
-        # bridge filters out only succeeded or failed status.
-        logger.error("Unknown batch job status")
-        return http_response(status_code=400, body="Unknown batch job status")
+        result.status = job_status
+        result.job_definition = event["detail"]["jobDefinition"]
+        session.commit()
 
     return http_response(status_code=200, body="Success")
 
@@ -361,7 +318,7 @@ def custom_event_handler(event):
         "DetailType": "Batch Job Started",
         "Source": "imap.lambda",
         "Detail": {
-          "file_path_to_create": "str",
+          "input_data_file_path": "str",
           "status": "INPRGRESS",
           "dependency": json.dumps({
               "codice": "s3-filepath",
@@ -374,29 +331,22 @@ def custom_event_handler(event):
     dict
         HTTP response
     """
-    file_path_to_create = event["detail"]["file_path_to_create"]
-    filename = os.path.basename(file_path_to_create)
+    input_data_file_path = event["detail"]["input_data_file_path"]
+    filename = os.path.basename(input_data_file_path)
     logger.info(f"Attempting to insert {filename} into database")
 
-    try:
-        _ = ScienceFilepathManager(filename)
-    except InvalidScienceFileError as e:
-        logger.error(str(e))
-        return http_response(status_code=400, body=str(e))
+    ScienceFilepathManager(filename)
 
     # Write event information to status tracking table.
     logger.info(f"Inserting {filename} into database")
     status_params = {
-        "file_path_to_create": file_path_to_create,
+        "input_data_file_path": input_data_file_path,
         "status": models.Status.INPROGRESS,
         "job_definition": None,
-        "ingestion_date": None,
     }
-    try:
-        update_status_table(status_params)
-    except Exception as e:
-        return http_response(status_code=400, body=str(e))
+    update_status_table(status_params)
 
+    logger.info("Wrote data to status tracking table")
     return http_response(status_code=200, body="Success")
 
 
@@ -418,7 +368,7 @@ def handle_event(event, handler):
         return http_response(status_code=400, body=str(e))
     except Exception as e:
         logger.error(f"Error processing event: {e!s}")
-        return http_response(status_code=500, body="Internal Server Error")
+        return http_response(status_code=500, body=f"Lambda failed with {e!s}")
 
 
 def lambda_handler(event, context):

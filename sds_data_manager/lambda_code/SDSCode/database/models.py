@@ -113,6 +113,10 @@ class StatusTracking(Base):
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     input_data_file_path = Column(String, nullable=False)
     status = Column(STATUSES, nullable=False)
+    # TODO:
+    # Didn't make it required field yet. Revisit this
+    instrument = Column(INSTRUMENTS)
+    data_level = Column(DATA_LEVELS)
     job_definition = Column(String)
     job_log_stream_id = Column(String)
     container_image = Column(String)
