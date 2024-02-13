@@ -181,10 +181,22 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         "detail-type": "Batch Job State Change",
         "source": "aws.batch",
         "detail": {
-            "jobName": "test-batch-tenzin",
-            "jobDefinition": "test-batch-job-definition",
+            "jobArn": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job/26242c7e-3d49-4e41-9387-74fcaf9630bb"
+            ),
+            "jobName": "swe-l0-job",
+            "jobId": "26242c7e-3d49-4e41-9387-74fcaf9630bb",
+            "jobQueue": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job-queue/swe-fargate-batch-job-queue"
+            ),
             "status": "FAILED",
             "statusReason": "some error message",
+            "jobDefinition": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job-definition/fargate-batch-job-definitionswe:1"
+            ),
             "container": {
                 "image": (
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "swapi-repo:latest"
@@ -202,6 +214,10 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
                     "--dependency",
                     "[{'instrument': 'swapi', 'level': 'l0', 'version': 'v02-01'}]",
                 ],
+                "logStreamName": (
+                    "fargate-batch-job-definitionswe/default/"
+                    "8a2b784c7bd342f69ea5dac3adaed26f"
+                ),
             },
         },
     }
