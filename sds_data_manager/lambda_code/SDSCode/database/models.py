@@ -10,7 +10,6 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    ForeignKey,
     Identity,
     Integer,
     String,
@@ -114,8 +113,15 @@ class StatusTracking(Base):
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     file_path_to_create = Column(String, nullable=False)
     status = Column(STATUSES, nullable=False)
+    # TODO:
+    # Didn't make it required field yet. Revisit this
+    # post discussion
+    instrument = Column(INSTRUMENTS)
+    data_level = Column(DATA_LEVELS)
     job_definition = Column(String)
-    ingestion_date = Column(DateTime)
+    job_log_stream_id = Column(String)
+    container_image = Column(String)
+    container_command = Column(String)
 
 
 class FileCatalog(Base):
@@ -144,9 +150,7 @@ class FileCatalog(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(8), nullable=False)
     extension = Column(EXTENSIONS, nullable=False)
-    status_tracking_id = Column(
-        Integer, ForeignKey("status_tracking.id"), nullable=False
-    )
+    ingestion_date = Column(DateTime)
 
 
 class PreProcessingDependency(Base):

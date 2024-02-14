@@ -3,36 +3,16 @@ import datetime
 import json
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode import query_api
-from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.database_handler import update_status_table
 
 
 @pytest.fixture()
 def setup_test_data(test_engine):
     filepath = "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts"
-    # Get status tracking object
-    status_params = {
-        "file_path_to_create": filepath,
-        "status": models.Status.SUCCEEDED,
-        "job_definition": None,
-        "ingestion_date": datetime.datetime.strptime("20251107", "%Y%m%d"),
-    }
-    # Add data to the status tracking table
-    update_status_table(status_params)
-    status_tracking = None
-    # query table
-    with Session(db.get_engine()) as session:
-        # Query to get foreign key id for catalog table
-        query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_path_to_create == filepath
-        )
 
-        status_tracking = session.execute(query).first()
     metadata_params = {
         "file_path": filepath,
         "instrument": "hit",
@@ -42,7 +22,9 @@ def setup_test_data(test_engine):
         "end_date": datetime.datetime.strptime("20251108", "%Y%m%d"),
         "version": "v02-01",
         "extension": "pkts",
-        "status_tracking_id": status_tracking.id,
+        "ingestion_date": datetime.datetime.strptime(
+            "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
     }
 
     # Add data to the file catalog
@@ -67,6 +49,7 @@ def expected_response():
                 "end_date": "20251108",
                 "version": "v02-01",
                 "extension": "pkts",
+                "ingestion_date": "2025-11-07 10:13:12",
             }
         ]
     )
@@ -171,7 +154,7 @@ def test_invalid_query(setup_test_data, test_engine):
         "size is not a valid query parameter. "
         + "Valid query parameters are: "
         + "['file_path', 'instrument', 'data_level', 'descriptor', "
-        "'start_date', 'end_date', 'version', 'extension']"
+        "'start_date', 'end_date', 'version', 'extension', 'ingestion_date']"
     )
     returned_query = query_api.lambda_handler(event=event, context={})
 

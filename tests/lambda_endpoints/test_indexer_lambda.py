@@ -11,6 +11,7 @@ from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.indexer import (
+    batch_event_handler,
     get_dependency,
     send_event_from_indexer,
 )
@@ -146,6 +147,11 @@ def write_to_s3(s3_client):
         Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"),
         Body=b"test",
     )
+    s3_client.put_object(
+        Bucket="test-data-bucket",
+        Key=("imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts"),
+        Body=b"test",
+    )
     return s3_client
 
 
@@ -176,10 +182,22 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         "detail-type": "Batch Job State Change",
         "source": "aws.batch",
         "detail": {
-            "jobName": "test-batch-tenzin",
-            "jobDefinition": "test-batch-job-definition",
+            "jobArn": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job/26242c7e-3d49-4e41-9387-74fcaf9630bb"
+            ),
+            "jobName": "swe-l0-job",
+            "jobId": "26242c7e-3d49-4e41-9387-74fcaf9630bb",
+            "jobQueue": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job-queue/swe-fargate-batch-job-queue"
+            ),
             "status": "FAILED",
             "statusReason": "some error message",
+            "jobDefinition": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job-definition/fargate-batch-job-definitionswe:1"
+            ),
             "container": {
                 "image": (
                     "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "swapi-repo:latest"
@@ -197,12 +215,17 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
                     "--dependency",
                     "[{'instrument': 'swapi', 'level': 'l0', 'version': 'v02-01'}]",
                 ],
+                "logStreamName": (
+                    "fargate-batch-job-definitionswe/default/"
+                    "8a2b784c7bd342f69ea5dac3adaed26f"
+                ),
             },
         },
     }
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value["statusCode"] == 200
 
+    # check that data was written to status table
     with Session(db.get_engine()) as session:
         file_path = custom_event["detail"]["file_path_to_create"]
         query = select(models.StatusTracking.__table__).where(
@@ -211,7 +234,6 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
 
         status_tracking = session.execute(query).first()
         assert status_tracking.status == models.Status.FAILED
-        assert status_tracking.ingestion_date is None
 
     # Test for succeeded case
     event["detail"]["status"] = "SUCCEEDED"
@@ -226,7 +248,20 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
 
         status_tracking = session.execute(query).first()
         assert status_tracking.status == models.Status.SUCCEEDED
-        assert status_tracking.ingestion_date is not None
+
+    # Test for file that is not in status table
+    filename = "imap/swapi/l2/2023/01/imap_swapi_l2_sci-1m_20230724_20230724_v02-01.cdf"
+    event["detail"]["container"]["command"][5] = filename
+    result = batch_event_handler(event)
+    assert result["statusCode"] == 200
+
+    with Session(db.get_engine()) as session:
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.file_path_to_create == filename
+        )
+
+        status_tracking = session.execute(query).first()
+        assert status_tracking.status == models.Status.SUCCEEDED
 
 
 def test_pre_processing_dependency(test_engine, populate_db):
@@ -287,7 +322,7 @@ def test_custom_lambda_event(test_engine):
         assert result[0].status == models.Status.INPROGRESS
 
 
-def test_s3_event(test_engine, events_client):
+def test_s3_event(test_engine, events_client, write_to_s3):
     """Test s3 event"""
     # Took out unused parameters from event
     event = {
@@ -336,15 +371,6 @@ def test_s3_event(test_engine, events_client):
         ScienceFilepathManager(os.path.basename(event["detail"]["object"]["key"]))
     # Wrote this test outside because pre-commit complains
     assert str(excinfo.value) == expected_msg
-
-    # Test for higher data level input
-    event["detail"]["object"]["key"] = (
-        "imap/hit/l1a/2024/01/" "imap_hit_l1a_sci-test_20240101_20240104_v02-01.cdf"
-    )
-
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 400
-    assert returned_value["body"] == "Invalid data level"
 
 
 def test_unknown_event(test_engine):
