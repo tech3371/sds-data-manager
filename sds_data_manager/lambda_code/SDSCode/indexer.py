@@ -368,9 +368,6 @@ def handle_event(event, handler):
     except InvalidScienceFileError as e:
         logger.error(str(e))
         return http_response(status_code=400, body=str(e))
-    except Exception as e:
-        logger.error(f"Error processing event: {e!s}")
-        return http_response(status_code=500, body=f"Lambda failed with {e!s}")
 
 
 def lambda_handler(event, context):
