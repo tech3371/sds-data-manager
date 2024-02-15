@@ -794,6 +794,20 @@ files = [
 ]
 
 [[package]]
+name = "imap-data-access"
+version = "0.3.1"
+description = "IMAP SDC Data Access"
+optional = false
+python-versions = "*"
+files = [
+    {file = "imap-data-access-0.3.1.tar.gz", hash = "sha256:689b634a997b2b45fd32dc028a98c6e56e5881fa5333abb900403ad3a38c29ce"},
+]
+
+[package.extras]
+dev = ["ruff"]
+test = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "importlib-metadata"
 version = "7.0.0"
 description = "Read metadata from Python packages"

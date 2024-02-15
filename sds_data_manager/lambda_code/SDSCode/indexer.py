@@ -3,6 +3,7 @@ import logging
 import os
 
 import boto3
+from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,7 +11,6 @@ from .database import database as db
 from .database import models
 from .database_handler import update_file_catalog_table, update_status_table
 from .lambda_custom_events import IMAPLambdaPutEvent
-from .path_helper import InvalidScienceFileError, ScienceFilepathManager
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -188,7 +188,7 @@ def s3_event_handler(event):
     # Check if the file is a valid science file or not
     # TODO: change these lines once filename validator
     # is implemented on sds-data-access repo and released
-    science_file = ScienceFilepathManager(filename)
+    science_file = ScienceFilePath(filename)
     # setup a dictionary of metadata parameters to unpack in the
     # file catalog table. Eg.
     # {
@@ -202,7 +202,7 @@ def s3_event_handler(event):
     #     "extension": self.extension,
     #     "ingestion_date": date_object,
     # }
-    metadata_params = science_file.get_file_metadata_params()
+    metadata_params = science_file.extract_filename_components(filename)
     metadata_params["file_path"] = s3_filepath
 
     ingestion_date_object = get_file_creation_date(s3_filepath)
@@ -337,7 +337,8 @@ def custom_event_handler(event):
     filename = os.path.basename(file_path_to_create)
     logger.info(f"Attempting to insert {filename} into database")
 
-    ScienceFilepathManager(filename)
+    # Check if the file is a valid science file or not
+    ScienceFilePath(filename)
 
     # Write event information to status tracking table.
     logger.info(f"Inserting {filename} into database")
@@ -365,7 +366,7 @@ def handle_event(event, handler):
     try:
         handler(event)
         return http_response(status_code=200, body="Success")
-    except InvalidScienceFileError as e:
+    except ScienceFilePath.InvalidScienceFileError as e:
         logger.error(str(e))
         return http_response(status_code=400, body=str(e))
 

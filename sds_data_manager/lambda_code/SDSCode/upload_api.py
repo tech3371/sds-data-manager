@@ -3,7 +3,7 @@ import logging
 import os
 
 import boto3
-from SDSCode.path_helper import InvalidScienceFileError, ScienceFilepathManager
+from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -67,11 +67,11 @@ def lambda_handler(event, context):
             ),
         }
     # TODO: Handle other filetypes other than science files
-    #      The current ScienceFilepathManager only accepts filenames, not the full path
+    #      The current ScienceFilePath only accepts filenames, not the full path
     filename = os.path.basename(path_params)
     try:
-        science_file = ScienceFilepathManager(filename)
-    except InvalidScienceFileError as e:
+        science_file = ScienceFilePath(filename)
+    except ScienceFilePath.InvalidScienceFileError as e:
         logger.error(str(e))
         return {"statusCode": 400, "body": str(e)}
 
