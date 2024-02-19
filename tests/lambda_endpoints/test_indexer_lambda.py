@@ -314,7 +314,7 @@ def test_custom_lambda_event(test_engine):
         assert len(result) == 1
         assert (
             result[0].file_path_to_create
-            == "imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
+            == "imap/swapi/l1/2023/07/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
         )
         assert result[0].status == models.Status.INPROGRESS
 
@@ -361,7 +361,7 @@ def test_s3_event(test_engine, events_client, write_to_s3):
 
     expected_msg = (
         "Invalid extension. Extension should be pkts for data level l0"
-        " and cdf for data level higher than l0"
+        " and cdf for data level higher than l0 \n"
     )
 
     with pytest.raises(ScienceFilePath.InvalidScienceFileError) as excinfo:
