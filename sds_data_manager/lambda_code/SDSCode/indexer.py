@@ -202,14 +202,11 @@ def s3_event_handler(event):
     file_params = ScienceFilePath.extract_filename_components(filename)
     # delete mission key from metadata params
     file_params.pop("mission")
-    # TODO: update these later once imap-data-access is updated.
-    # It corrects key names temporarily.
-    # convert start date and end date to datetime objects
-    file_params["data_level"] = file_params.pop("datalevel")
+    file_params["data_level"] = file_params.pop("data_level")
     file_params["start_date"] = datetime.strptime(
-        file_params.pop("startdate"), "%Y%m%d"
+        file_params.pop("start_date"), "%Y%m%d"
     )
-    file_params["end_date"] = datetime.strptime(file_params.pop("enddate"), "%Y%m%d")
+    file_params["end_date"] = datetime.strptime(file_params.pop("end_date"), "%Y%m%d")
 
     file_params["file_path"] = s3_filepath
 
