@@ -240,25 +240,49 @@ def batch_event_handler(event):
         "detail-type": "Batch Job State Change",
         "source": "aws.batch",
         "detail": {
-            "jobName": "test-batch-tenzin",
+            "jobArn": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job/26242c7e-3d49-4e41-9387-74fcaf9630bb"
+            ),
+            "jobName": "swe-l0-job",
+            "jobId": "26242c7e-3d49-4e41-9387-74fcaf9630bb",
+            "jobQueue": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job-queue/swe-fargate-batch-job-queue"
+            ),
             "status": "FAILED",
             "statusReason": "some error message",
+            "jobDefinition": (
+                "arn:aws:batch:us-west-2:012345678910:"
+                "job-definition/fargate-batch-job-definitionswe:1"
+            ),
             "container": {
                 "image": (
-                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "codice-repo:latest"
+                    "123456789012.dkr.ecr.us-west-2.amazonaws.com/" "swapi-repo:latest"
                 ),
                 "command": [
-                    "--instrument",
-                    "swe",
-                    "--level",
-                    "l1b",
-                    "--file_path",
-                    "imap/swe/l1b/2023/09/imap_swe_l1b_lveng-hk_20230927_20230927_v01-00.cdf",
-                    "--dependency",
-                    "[{'instrument': 'swe', 'level': 'l0', 'version': 'v00-01'}]"
+                    "--instrument", "swapi",
+                    "--level", "l1",
+                    "--start-date", "20230724",
+                    "--end-date", "20230724",
+                    "--version", "v02-01",
+                    "--dependency", \"""[
+                        {
+                            'instrument': 'swapi',
+                            'level': 'l0',
+                            'start_date': 20230724,
+                            'end_date': 20230724,
+                            'version': 'v02-01'
+                        }
+                    ]\""",
+                    "--use-remote",
                 ],
+                "logStreamName": (
+                    "fargate-batch-job-definitionswe/default/"
+                    "8a2b784c7bd342f69ea5dac3adaed26f"
+                ),
             },
-        },
+        }
     }
 
     Returns
@@ -268,8 +292,13 @@ def batch_event_handler(event):
     """
     command = event["detail"]["container"]["command"]
 
-    # Get filename from batch job command
-    file_path_to_create = command[5]
+    # Get params from batch job command
+    instrument = command[1]
+    data_level = command[3]
+    start_date = datetime.strptime(command[5], "%Y%m%d")
+    end_date = datetime.strptime(command[7], "%Y%m%d")
+    version = command[9]
+
     # Get job status
     job_status = (
         models.Status.SUCCEEDED
@@ -284,31 +313,45 @@ def batch_event_handler(event):
         # which is why it can't update table row directly.
         result = (
             session.query(models.StatusTracking)
-            .filter(models.StatusTracking.file_path_to_create == file_path_to_create)
+            .filter(models.StatusTracking.instrument == instrument)
+            .filter(models.StatusTracking.data_level == data_level)
+            .filter(models.StatusTracking.start_date == start_date)
+            .filter(models.StatusTracking.end_date == end_date)
+            .filter(models.StatusTracking.version == version)
             .first()
         )
 
         if result is None:
             logger.info(
                 "No existing record found, creating"
-                " new record for {file_path_to_create}"
+                f" new record for {instrument},{data_level},"
+                f"{start_date},{end_date},{version}"
             )
             status_params = {
-                "file_path_to_create": file_path_to_create,
                 "status": job_status,
+                "instrument": instrument,
+                "data_level": data_level,
+                "start_date": start_date,
+                "end_date": end_date,
+                "version": version,
             }
             update_status_table(status_params)
             result = (
                 session.query(models.StatusTracking)
-                .filter(
-                    models.StatusTracking.file_path_to_create == file_path_to_create
-                )
+                .filter(models.StatusTracking.instrument == instrument)
+                .filter(models.StatusTracking.data_level == data_level)
+                .filter(models.StatusTracking.start_date == start_date)
+                .filter(models.StatusTracking.end_date == end_date)
+                .filter(models.StatusTracking.version == version)
                 .first()
             )
 
+        logger.info(f"Query result before update: {result.__dict__}")
         result.status = job_status
         result.job_definition = event["detail"]["jobDefinition"]
-        # TODO: get other information post discussion
+        result.job_log_stream_id = event["detail"]["container"]["logStreamName"]
+        result.container_image = event["detail"]["container"]["image"]
+        result.container_command = " ".join(command)
         session.commit()
 
     return http_response(status_code=200, body="Success")
@@ -328,12 +371,19 @@ def custom_event_handler(event):
         "DetailType": "Batch Job Started",
         "Source": "imap.lambda",
         "Detail": {
-          "file_path_to_create": "str",
-          "status": "INPRGRESS",
-          "dependency": json.dumps({
-              "codice": "s3-filepath",
-              "mag": "s3-filepath"}
-          )
+          "detail": {
+            "instrument": "swapi",
+            "level": "l1",
+            "start_date": "20230724",
+            "end_date": "20230724",
+            "version": "v02-01",
+            "status": "INPROGRESS",
+            "dependency": json.dumps([
+                {
+                    "instrument": "swe",
+                    "level": "l0",
+                    "version": "v00-01"
+                }]),
         }}
 
     Returns
@@ -341,18 +391,15 @@ def custom_event_handler(event):
     dict
         HTTP response
     """
-    file_path_to_create = event["detail"]["file_path_to_create"]
-    filename = os.path.basename(file_path_to_create)
-    logger.info(f"Attempting to insert {filename} into database")
-
-    # Check if the file is a valid science file or not
-    sci_file = ScienceFilePath(filename)
-
+    event_details = event["detail"]
     # Write event information to status tracking table.
-    logger.info(f"Inserting {filename} into database")
     status_params = {
-        "file_path_to_create": str(sci_file.construct_path()),
         "status": models.Status.INPROGRESS,
+        "instrument": event_details["instrument"],
+        "data_level": event_details["level"],
+        "start_date": datetime.strptime(event_details["start_date"], "%Y%m%d"),
+        "end_date": datetime.strptime(event_details["end_date"], "%Y%m%d"),
+        "version": event_details["version"],
         "job_definition": None,
     }
     update_status_table(status_params)

@@ -160,10 +160,11 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_path_to_create": (
-                "imap/swapi/l1/2023/01/"
-                "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
-            ),
+            "instrument": "swapi",
+            "level": "l1",
+            "start_date": "20230724",
+            "end_date": "20230724",
+            "version": "v02-01",
             "status": "INPROGRESS",
             "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
         },
@@ -204,13 +205,23 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
                     "swapi",
                     "--level",
                     "l1",
-                    "--file_path",
-                    (
-                        "imap/swapi/l1/2023/01/"
-                        "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
-                    ),
+                    "--start-date",
+                    "20230724",
+                    "--end-date",
+                    "20230724",
+                    "--version",
+                    "v02-01",
                     "--dependency",
-                    "[{'instrument': 'swapi', 'level': 'l0', 'version': 'v02-01'}]",
+                    """[
+                        {
+                            'instrument': 'swapi',
+                            'level': 'l0',
+                            'start_date': 20230724,
+                            'end_date': 20230724,
+                            'version': 'v02-01'
+                        }
+                    ]""",
+                    "--use-remote",
                 ],
                 "logStreamName": (
                     "fargate-batch-job-definitionswe/default/"
@@ -224,9 +235,11 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
 
     # check that data was written to status table
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["file_path_to_create"]
+        event_details = custom_event["detail"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_path_to_create == file_path
+            models.StatusTracking.instrument == event_details["instrument"],
+            models.StatusTracking.data_level == event_details["level"],
+            models.StatusTracking.version == event_details["version"],
         )
 
         status_tracking = session.execute(query).first()
@@ -238,23 +251,24 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        file_path = custom_event["detail"]["file_path_to_create"]
+        event_details = custom_event["detail"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_path_to_create == file_path
+            models.StatusTracking.instrument == event_details["instrument"],
+            models.StatusTracking.data_level == event_details["level"],
+            models.StatusTracking.version == event_details["version"],
         )
 
         status_tracking = session.execute(query).first()
         assert status_tracking.status == models.Status.SUCCEEDED
 
     # Test for file that is not in status table
-    filename = "imap/swapi/l2/2023/01/imap_swapi_l2_sci-1m_20230724_20230724_v02-01.cdf"
-    event["detail"]["container"]["command"][5] = filename
+    event["detail"]["container"]["command"][1] = "swe"
     result = batch_event_handler(event)
     assert result["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.file_path_to_create == filename
+            models.StatusTracking.instrument == "swe"
         )
 
         status_tracking = session.execute(query).first()
@@ -295,10 +309,11 @@ def test_custom_lambda_event(test_engine):
         "detail-type": "Job Started",
         "source": "imap.lambda",
         "detail": {
-            "file_path_to_create": (
-                "imap/swapi/l1/2023/01/"
-                "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
-            ),
+            "instrument": "swapi",
+            "level": "l1",
+            "start_date": "20230724",
+            "end_date": "20230724",
+            "version": "v02-01",
             "status": "INPROGRESS",
             "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
         },
@@ -312,10 +327,9 @@ def test_custom_lambda_event(test_engine):
     with Session(db.get_engine()) as session:
         result = session.query(models.StatusTracking).all()
         assert len(result) == 1
-        assert (
-            result[0].file_path_to_create
-            == "imap/swapi/l1/2023/07/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
-        )
+        assert result[0].instrument == "swapi"
+        assert result[0].data_level == "l1"
+        assert result[0].version == "v02-01"
         assert result[0].status == models.Status.INPROGRESS
 
 
