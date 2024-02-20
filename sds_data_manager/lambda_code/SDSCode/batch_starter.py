@@ -405,6 +405,7 @@ def send_lambda_put_event(command_parameters):
     event = IMAPLambdaPutEvent(detail_type="Job Started", detail=detail)
     event_data = event.to_event()
 
+    logger.info(f"Sending event to EventBridge - {event_data}")
     # Send event to EventBridge
     response = event_client.put_events(Entries=[event_data])
     return response

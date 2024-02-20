@@ -393,7 +393,7 @@ def custom_event_handler(event):
     status_params = {
         "status": models.Status.INPROGRESS,
         "instrument": event_details["instrument"],
-        "data_level": event_details["level"],
+        "data_level": event_details["data_level"],
         "start_date": datetime.strptime(event_details["start_date"], "%Y%m%d"),
         "end_date": datetime.strptime(event_details["end_date"], "%Y%m%d"),
         "version": event_details["version"],

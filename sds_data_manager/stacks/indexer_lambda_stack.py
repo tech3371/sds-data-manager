@@ -145,6 +145,11 @@ class IndexerLambda(Stack):
                 source=["imap.lambda"],
                 detail_type=["Job Started"],
                 detail={
+                    "instrument": [{"exists": True}],
+                    "data_level": [{"exists": True}],
+                    "start_date": [{"exists": True}],
+                    "end_date": [{"exists": True}],
+                    "version": [{"exists": True}],
                     "status": ["INPROGRESS"],
                     "dependency": [{"exists": True}],
                 },
