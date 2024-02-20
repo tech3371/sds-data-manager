@@ -161,7 +161,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         "source": "imap.lambda",
         "detail": {
             "instrument": "swapi",
-            "level": "l1",
+            "data_level": "l1",
             "start_date": "20230724",
             "end_date": "20230724",
             "version": "v02-01",
@@ -238,7 +238,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         event_details = custom_event["detail"]
         query = select(models.StatusTracking.__table__).where(
             models.StatusTracking.instrument == event_details["instrument"],
-            models.StatusTracking.data_level == event_details["level"],
+            models.StatusTracking.data_level == event_details["data_level"],
             models.StatusTracking.version == event_details["version"],
         )
 
@@ -254,7 +254,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
         event_details = custom_event["detail"]
         query = select(models.StatusTracking.__table__).where(
             models.StatusTracking.instrument == event_details["instrument"],
-            models.StatusTracking.data_level == event_details["level"],
+            models.StatusTracking.data_level == event_details["data_level"],
             models.StatusTracking.version == event_details["version"],
         )
 
@@ -310,7 +310,7 @@ def test_custom_lambda_event(test_engine):
         "source": "imap.lambda",
         "detail": {
             "instrument": "swapi",
-            "level": "l1",
+            "data_level": "l1",
             "start_date": "20230724",
             "end_date": "20230724",
             "version": "v02-01",
