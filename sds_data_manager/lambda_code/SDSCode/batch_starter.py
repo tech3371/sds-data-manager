@@ -1,11 +1,11 @@
 import json
 import logging
 import os
-import re
 from datetime import datetime
 from pathlib import Path
 
 import boto3
+from imap_data_access import ScienceFilePath
 from sqlalchemy.orm import Session
 
 from .database import database as db
@@ -329,39 +329,6 @@ def prepare_data(
     return prepared_data
 
 
-def extract_components(filename: str):
-    """
-    Extracts components from filename.
-
-    Parameters
-    ----------
-    filename : str
-        Path of dependency data.
-
-    Returns
-    -------
-    components : dict
-        Dictionary containing components.
-
-    """
-    pattern = (
-        r"^imap_"
-        r"(?P<instrument>[^_]*)_"
-        r"(?P<data_level>[^_]*)_"
-        r"(?P<descriptor>[^_]*)_"
-        r"(?P<start_date>\d{8})_"
-        r"(?P<end_date>\d{8})_"
-        r"(?P<version>v\d{2}-\d{2})"
-        r"\.(cdf|pkts)$"
-    )
-    match = re.match(pattern, filename)
-    if match is None:
-        logger.info(f"doesn't match pattern - {filename}")
-        return
-    components = match.groupdict()
-    return components
-
-
 def send_lambda_put_event(command_parameters):
     """Sends custom PutEvent to EventBridge
 
@@ -450,7 +417,7 @@ def lambda_handler(event: dict, context):
 
     # Event details:
     filename = event["detail"]["object"]["key"]
-    components = extract_components(filename)
+    components = ScienceFilePath.extract_filename_components(filename)
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
     level = components["data_level"]

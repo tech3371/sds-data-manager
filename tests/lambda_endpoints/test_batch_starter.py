@@ -3,12 +3,12 @@ from pathlib import Path
 
 import boto3
 import pytest
+from imap_data_access import ScienceFilePath
 from moto import mock_batch, mock_sts
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     append_attributes,
-    extract_components,
     find_upstream_dependencies,
     lambda_handler,
     load_data,
@@ -70,23 +70,6 @@ def batch_client(_aws_credentials):
 def sts_client(_aws_credentials):
     with mock_sts():
         yield boto3.client("sts", region_name="us-west-2")
-
-
-def test_extract_components():
-    "Tests extract_components function."
-    filename = "imap_ultra-45_l2_science_20240101_20240102_v00-01.cdf"
-    components = extract_components(filename)
-
-    expected_components = {
-        "instrument": "ultra-45",
-        "data_level": "l2",
-        "descriptor": "science",
-        "start_date": "20240101",
-        "end_date": "20240102",
-        "version": "v00-01",
-    }
-
-    assert components == expected_components
 
 
 def test_query_instrument(test_file_catalog_simulation):
@@ -214,7 +197,7 @@ def test_prepare_data():
     ]
 
     filename = "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"
-    file_params = extract_components(filename)
+    file_params = ScienceFilePath.extract_filename_components(filename)
     prepared_data = prepare_data(
         instrument=file_params["instrument"],
         level=file_params["data_level"],
