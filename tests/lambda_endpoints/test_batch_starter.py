@@ -75,7 +75,11 @@ def sts_client(_aws_credentials):
 def test_query_instrument(test_file_catalog_simulation):
     "Tests query_instrument function."
 
-    upstream_dependency = {"instrument": "ultra-45", "level": "l2", "version": "v00-01"}
+    upstream_dependency = {
+        "instrument": "ultra-45",
+        "data_level": "l2",
+        "version": "v00-01",
+    }
 
     "Tests query_instrument function."
     record = query_instrument(
@@ -91,7 +95,7 @@ def test_query_instrument(test_file_catalog_simulation):
 
 def test_append_attributes(test_file_catalog_simulation):
     "Tests append_attributes function."
-    downstream_dependents = [{"instrument": "codice", "level": "l3b"}]
+    downstream_dependents = [{"instrument": "codice", "data_level": "l3b"}]
 
     complete_dependents = append_attributes(
         test_file_catalog_simulation,
@@ -103,7 +107,7 @@ def test_append_attributes(test_file_catalog_simulation):
 
     expected_complete_dependent = {
         "instrument": "codice",
-        "level": "l3b",
+        "data_level": "l3b",
         "version": "v00-01",
         "start_date": "20240101",
         "end_date": "20240102",
@@ -122,7 +126,7 @@ def test_load_data():
 
     data = load_data(filepath)
 
-    assert data["codice"]["l0"][0]["level"] == "l1a"
+    assert data["codice"]["l0"][0]["data_level"] == "l1a"
 
 
 def test_find_upstream_dependencies():
@@ -138,9 +142,9 @@ def test_find_upstream_dependencies():
     upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
 
     expected_result = [
-        {"instrument": "codice", "level": "l2", "version": "v00-01"},
-        {"instrument": "codice", "level": "l3a", "version": "v00-01"},
-        {"instrument": "mag", "level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l3a", "version": "v00-01"},
+        {"instrument": "mag", "data_level": "l2", "version": "v00-01"},
     ]
 
     assert upstream_dependencies == expected_result
@@ -162,14 +166,14 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     downstream_dependents = [
         {
             "instrument": "hit",
-            "level": "l1a",
+            "data_level": "l1a",
             "version": "v00-01",
             "start_date": "20240101",
             "end_date": "20240102",
         },
         {
             "instrument": "hit",
-            "level": "l3",
+            "data_level": "l3",
             "version": "v00-01",
             "start_date": "20240101",
             "end_date": "20240102",
@@ -189,7 +193,7 @@ def test_prepare_data():
     upstream_dependencies = [
         {
             "instrument": "hit",
-            "level": "l0",
+            "data_level": "l0",
             "start_date": "20240101",
             "end_date": "20240102",
             "version": "v00-01",
@@ -239,7 +243,7 @@ def test_send_lambda_put_event(events_client):
     input_command = [
         "--instrument",
         "mag",
-        "--level",
+        "--data_level",
         "l1a",
         "--start-date",
         "20231212",

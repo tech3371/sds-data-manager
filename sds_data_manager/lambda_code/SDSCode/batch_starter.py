@@ -40,14 +40,14 @@ def query_instrument(session, upstream_dependency, start_date, end_date):
 
     """
     instrument = upstream_dependency["instrument"]
-    level = upstream_dependency["level"]
+    data_level = upstream_dependency["data_level"]
     version = upstream_dependency["version"]
 
     record = (
         session.query(models.FileCatalog)
         .filter(
             models.FileCatalog.instrument == instrument,
-            models.FileCatalog.data_level == level,
+            models.FileCatalog.data_level == data_level,
             models.FileCatalog.version == version,
             models.FileCatalog.start_date >= datetime.strptime(start_date, "%Y%m%d"),
             models.FileCatalog.end_date <= datetime.strptime(end_date, "%Y%m%d"),
@@ -128,22 +128,24 @@ def find_upstream_dependencies(
     upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
 
     expected_result = [
-        {"instrument": "codice", "level": "l2", "version": "v00-01"},
-        {"instrument": "codice", "level": "l3a", "version": "v00-01"},
-        {"instrument": "mag", "level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l3a", "version": "v00-01"},
+        {"instrument": "mag", "data_level": "l2", "version": "v00-01"},
     ]
 
     """
     upstream_dependencies = []
 
-    for instr, levels in data.items():
-        for level, deps in levels.items():
+    for instr, data_levels in data.items():
+        for data_level, deps in data_levels.items():
             if any(
                 dep["instrument"] == downstream_dependent_instrument
-                and dep["level"] == downstream_dependent_inst_level
+                and dep["data_level"] == downstream_dependent_inst_level
                 for dep in deps
             ):
-                upstream_dependencies.append({"instrument": instr, "level": level})
+                upstream_dependencies.append(
+                    {"instrument": instr, "data_level": data_level}
+                )
 
     for dependency in upstream_dependencies:
         # TODO: query the version table here for appropriate version
@@ -183,14 +185,14 @@ def query_upstream_dependencies(
     # Iterate over each downstream dependent
     for dependent in downstream_dependents:
         instrument = dependent["instrument"]
-        level = dependent["level"]
+        data_level = dependent["data_level"]
         version = dependent["version"]
         start_date = dependent["start_date"]
         end_date = dependent["end_date"]
 
         # For each downstream dependent, find its upstream dependencies
         upstream_dependencies = find_upstream_dependencies(
-            instrument, level, version, data
+            instrument, data_level, version, data
         )
 
         all_dependencies_available = True  # Initialize the flag
@@ -205,14 +207,14 @@ def query_upstream_dependencies(
                 )
                 logger.info(
                     f"Missing dependency: {upstream_dependency['instrument']}, "
-                    f"{upstream_dependency['level']}, "
+                    f"{upstream_dependency['data_level']}, "
                     f"{upstream_dependency['version']}"
                 )
                 break  # Exit the loop early as we already found a missing dependency
             else:
                 logger.info(
                     f"Dependency found: {upstream_dependency['instrument']}, "
-                    f"{upstream_dependency['level']}, "
+                    f"{upstream_dependency['data_level']}, "
                     f"{upstream_dependency['version']}"
                 )
 
@@ -220,7 +222,7 @@ def query_upstream_dependencies(
         if all_dependencies_available:
             prepared_data = prepare_data(
                 instrument=instrument,
-                data_level=level,
+                data_level=data_level,
                 start_date=start_date,
                 end_date=end_date,
                 version=version,
@@ -421,7 +423,7 @@ def lambda_handler(event: dict, context):
     components = ScienceFilePath.extract_filename_components(filename)
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
-    level = components["data_level"]
+    data_level = components["data_level"]
     descriptor = components["descriptor"]
     version = components["version"]
     start_date = components["start_date"]
@@ -435,7 +437,7 @@ def lambda_handler(event: dict, context):
     data = load_data(dependency_path)
     logger.info(f"loaded dependent data - {data}")
     # Downstream dependents that are candidates for the batch job.
-    downstream_dependents = data[instrument][level]
+    downstream_dependents = data[instrument][data_level]
 
     # Get information for the batch job.
     region = os.environ.get("REGION")
