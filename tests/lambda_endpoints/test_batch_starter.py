@@ -77,7 +77,6 @@ def sts_client(_aws_credentials):
 
 def test_query_instrument(test_file_catalog_simulation):
     """Test query_instrument function."""
-
     upstream_dependency = {
         "instrument": "ultra-45",
         "data_level": "l2",
@@ -192,7 +191,6 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
 
 def test_prepare_data():
     """Test prepare_data function."""
-
     upstream_dependencies = [
         {
             "instrument": "hit",

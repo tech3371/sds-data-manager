@@ -258,8 +258,7 @@ def load_data(filepath: Path):
 def prepare_data(
     instrument, data_level, start_date, end_date, version, upstream_dependencies
 ):
-    """
-    Prepare data for batch job.
+    """Prepare data for batch job.
 
     Parameters
     ----------
@@ -330,7 +329,7 @@ def prepare_data(
 
 
 def send_lambda_put_event(command_parameters):
-    """Send custom PutEvent to EventBridge.
+    r"""Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
     event = {

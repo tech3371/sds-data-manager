@@ -231,7 +231,7 @@ def s3_event_handler(event):
 
 
 def batch_event_handler(event):
-    """Batch event handler.
+    r"""Batch event handler.
 
     Parameters
     ----------
