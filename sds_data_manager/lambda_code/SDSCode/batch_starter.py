@@ -3,11 +3,11 @@
 import json
 import logging
 import os
-import re
 from datetime import datetime
 from pathlib import Path
 
 import boto3
+from imap_data_access import ScienceFilePath
 from sqlalchemy.orm import Session
 
 from .database import database as db
@@ -41,14 +41,14 @@ def query_instrument(session, upstream_dependency, start_date, end_date):
 
     """
     instrument = upstream_dependency["instrument"]
-    level = upstream_dependency["level"]
+    data_level = upstream_dependency["data_level"]
     version = upstream_dependency["version"]
 
     record = (
         session.query(models.FileCatalog)
         .filter(
             models.FileCatalog.instrument == instrument,
-            models.FileCatalog.data_level == level,
+            models.FileCatalog.data_level == data_level,
             models.FileCatalog.version == version,
             models.FileCatalog.start_date >= datetime.strptime(start_date, "%Y%m%d"),
             models.FileCatalog.end_date <= datetime.strptime(end_date, "%Y%m%d"),
@@ -126,22 +126,24 @@ def find_upstream_dependencies(
     upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
 
     expected_result = [
-        {"instrument": "codice", "level": "l2", "version": "v00-01"},
-        {"instrument": "codice", "level": "l3a", "version": "v00-01"},
-        {"instrument": "mag", "level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l3a", "version": "v00-01"},
+        {"instrument": "mag", "data_level": "l2", "version": "v00-01"},
     ]
 
     """
     upstream_dependencies = []
 
-    for instr, levels in data.items():
-        for level, deps in levels.items():
+    for instr, data_levels in data.items():
+        for data_level, deps in data_levels.items():
             if any(
                 dep["instrument"] == downstream_dependent_instrument
-                and dep["level"] == downstream_dependent_inst_level
+                and dep["data_level"] == downstream_dependent_inst_level
                 for dep in deps
             ):
-                upstream_dependencies.append({"instrument": instr, "level": level})
+                upstream_dependencies.append(
+                    {"instrument": instr, "data_level": data_level}
+                )
 
     for dependency in upstream_dependencies:
         # TODO: query the version table here for appropriate version
@@ -182,14 +184,14 @@ def query_upstream_dependencies(
     # Iterate over each downstream dependent
     for dependent in downstream_dependents:
         instrument = dependent["instrument"]
-        level = dependent["level"]
+        data_level = dependent["data_level"]
         version = dependent["version"]
         start_date = dependent["start_date"]
         end_date = dependent["end_date"]
 
         # For each downstream dependent, find its upstream dependencies
         upstream_dependencies = find_upstream_dependencies(
-            instrument, level, version, data
+            instrument, data_level, version, data
         )
 
         all_dependencies_available = True  # Initialize the flag
@@ -204,29 +206,28 @@ def query_upstream_dependencies(
                 )
                 logger.info(
                     f"Missing dependency: {upstream_dependency['instrument']}, "
-                    f"{upstream_dependency['level']}, "
+                    f"{upstream_dependency['data_level']}, "
                     f"{upstream_dependency['version']}"
                 )
                 break  # Exit the loop early as we already found a missing dependency
             else:
                 logger.info(
                     f"Dependency found: {upstream_dependency['instrument']}, "
-                    f"{upstream_dependency['level']}, "
+                    f"{upstream_dependency['data_level']}, "
                     f"{upstream_dependency['version']}"
                 )
 
         # If all dependencies are available, prepare the data for batch job
         if all_dependencies_available:
-            # TODO: add descriptor logic. Using <sci> as placeholder.
-            filename = (
-                f"imap_{instrument}_{level}_{descriptor}"
-                f"_{start_date}_{end_date}_{version}.cdf"
+            prepared_data = prepare_data(
+                instrument=instrument,
+                data_level=data_level,
+                start_date=start_date,
+                end_date=end_date,
+                version=version,
+                upstream_dependencies=upstream_dependencies,
             )
-
-            prepared_data = prepare_data(filename, upstream_dependencies)
-            instruments_to_process.append(
-                {"filename": filename, "prepared_data": prepared_data}
-            )
+            instruments_to_process.append({"command": prepared_data})
             logger.info(f"All dependencies for {instrument} present.")
         else:
             logger.info(f"Some dependencies for {instrument} are missing.")
@@ -254,19 +255,24 @@ def load_data(filepath: Path):
     return data
 
 
-def prepare_data(filename, upstream_dependencies):
-    """Prepare data for batch job.
+def prepare_data(
+    instrument, data_level, start_date, end_date, version, upstream_dependencies
+):
+    """
+    Prepare data for batch job.
 
     Parameters
     ----------
     instrument : str
         Instrument.
-    level : str
+    data_level : str
         Data level.
     start_date : str
         Data start date.
-    filename : str
-        filename.
+    end_date : str
+        Data start date.
+    version : str
+        version.
     upstream_dependencies : list of dict
         A list of dictionaries containing dependency instrument,
         data level, and version.
@@ -277,78 +283,50 @@ def prepare_data(filename, upstream_dependencies):
         Data to submit to batch job.
 
     """
-    components = extract_components(filename)
-
-    instrument = components["instrument"]
-    level = components["datalevel"]
-    start_date = components["startdate"]
-
-    format_start_date = datetime.strptime(start_date, "%Y%m%d")
-
-    # Format year and month from the datetime object
-    year = format_start_date.strftime("%Y")
-    month = format_start_date.strftime("%m")
-
-    # Base S3 path
-    s3_base_path = f"imap/{instrument}/{level}/{year}/{month}/"
-
-    # Prepare the final command
-    # Pre-construct parts of the string
+    # Prepare batch job command
     # NOTE: Batch job expects command like this:
     # "Command": [
-    #     "--instrument",
-    #     "swe",
-    #     "--level",
-    #     "l1b",
-    #     "--file_path",
-    #     "imap/swe/l1b/2023/09/imap_swe_l1b_lveng-hk_20230927_20230927_v01-00.cdf",
-    #     "--dependency",
-    #     "[{'instrument': 'swe', 'level': 'l0', 'version': 'v00-01'}]"
-    #   ]
+    #     "--instrument", "mag",
+    #     "--data_level", "l1a",
+    #     "--start-date", "20231212",
+    #     "--end-date", "20231212",
+    #     "--version", "v00-01",
+    #     "--dependency", """[
+    #         {
+    #             'instrument': 'swe',
+    #             'data_level': 'l0',
+    #             'descriptor': 'lveng-hk',
+    #             'start_date': '20231212',
+    #             'end_date': '20231212',
+    #             'version': 'v01-00',
+    #         },
+    #         {
+    #             'instrument': 'mag',
+    #             'data_level': 'l0',
+    #             'descriptor': 'lveng-hk',
+    #             'start_date': '20231212',
+    #             'end_date': '20231212',
+    #             'version': 'v00-01',
+    #         }]""",
+    #     "--use-remote"
+    # ]
     prepared_data = [
         "--instrument",
         instrument,
-        "--level",
-        level,
-        "--file_path",
-        s3_base_path + filename,
+        "--data_level",
+        data_level,
+        "--start-date",
+        start_date,
+        "--end-date",
+        end_date,
+        "--version",
+        version,
         "--dependency",
         f"{upstream_dependencies}",
+        "--use-remote",
     ]
 
     return prepared_data
-
-
-def extract_components(filename: str):
-    """Extract components from filename.
-
-    Parameters
-    ----------
-    filename : str
-        Path of dependency data.
-
-    Returns
-    -------
-    components : dict
-        Dictionary containing components.
-
-    """
-    pattern = (
-        r"^imap_"
-        r"(?P<instrument>[^_]*)_"
-        r"(?P<datalevel>[^_]*)_"
-        r"(?P<descriptor>[^_]*)_"
-        r"(?P<startdate>\d{8})_"
-        r"(?P<enddate>\d{8})_"
-        r"(?P<version>v\d{2}-\d{2})"
-        r"\.(cdf|pkts)$"
-    )
-    match = re.match(pattern, filename)
-    if match is None:
-        logger.info(f"doesn't match pattern - {filename}")
-        return
-    components = match.groupdict()
-    return components
 
 
 def send_lambda_put_event(command_parameters):
@@ -359,7 +337,6 @@ def send_lambda_put_event(command_parameters):
         "Source": "imap.lambda",
         "DetailType": "Job Started",
         "Detail": {
-            "file_path_to_create": "<file_path>",
             "status": "INPROGRESS",
             "dependency": "[{
                 "codice": "s3-test",
@@ -373,16 +350,30 @@ def send_lambda_put_event(command_parameters):
     command_parameters : str
         IMAP cli command input parameters.
         Example of input:
-            [
-            "--instrument",
-            "hit",
-            "--level",
-            "l1a",
-            "--file_path",
-            ("imap/hit/l1a/2024/01/"
-            "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
-            "--dependency",
-            "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
+            "Command": [
+            "--instrument", "mag",
+            "--data_level", "l1a",
+            "--start-date", "20231212",
+            "--end-date", "20231212",
+            "--version", "v00-01",
+            "--dependency", \"""[
+                {
+                    'instrument': 'swe',
+                    'data_level': 'l0',
+                    'descriptor': 'lveng-hk',
+                    'start_date': '20231212',
+                    'end_date': '20231212',
+                    'version': 'v01-00',
+                },
+                {
+                    'instrument': 'mag',
+                    'data_level': 'l0',
+                    'descriptor': 'lveng-hk',
+                    'start_date': '20231212',
+                    'end_date': '20231212',
+                    'version': 'v00-01',
+                }]\""",
+            "--use-remote"
         ]
 
     Returns
@@ -394,13 +385,21 @@ def send_lambda_put_event(command_parameters):
     event_client = boto3.client("events")
 
     # Get event inputs ready
-    file_path = command_parameters[5]
-    dependency = command_parameters[7]
+    instrument = command_parameters[1]
+    data_level = command_parameters[3]
+    start_date = command_parameters[5]
+    end_date = command_parameters[7]
+    version = command_parameters[9]
+    dependency = command_parameters[11]
 
     # Create event["detail"] information
     detail = {
-        "file_path_to_create": file_path,
         "status": models.Status.INPROGRESS.value,
+        "instrument": instrument,
+        "data_level": data_level,
+        "start_date": start_date,
+        "end_date": end_date,
+        "version": version,
         "dependency": dependency,
     }
 
@@ -408,6 +407,7 @@ def send_lambda_put_event(command_parameters):
     event = IMAPLambdaPutEvent(detail_type="Job Started", detail=detail)
     event_data = event.to_event()
 
+    logger.info(f"Sending event to EventBridge - {event_data}")
     # Send event to EventBridge
     response = event_client.put_events(Entries=[event_data])
     return response
@@ -420,14 +420,14 @@ def lambda_handler(event: dict, context):
 
     # Event details:
     filename = event["detail"]["object"]["key"]
-    components = extract_components(filename)
+    components = ScienceFilePath.extract_filename_components(filename)
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
-    level = components["datalevel"]
+    data_level = components["data_level"]
     descriptor = components["descriptor"]
     version = components["version"]
-    start_date = components["startdate"]
-    end_date = components["enddate"]
+    start_date = components["start_date"]
+    end_date = components["end_date"]
 
     # S3 Bucket name.
     s3_bucket = os.environ.get("S3_BUCKET")
@@ -437,7 +437,7 @@ def lambda_handler(event: dict, context):
     data = load_data(dependency_path)
     logger.info(f"loaded dependent data - {data}")
     # Downstream dependents that are candidates for the batch job.
-    downstream_dependents = data[instrument][level]
+    downstream_dependents = data[instrument][data_level]
 
     # Get information for the batch job.
     region = os.environ.get("REGION")
@@ -474,20 +474,20 @@ def lambda_handler(event: dict, context):
 
         # Start Batch Job execution for each instrument
         for downstream_data in downstream_instruments_to_process:
-            filename = downstream_data["filename"]
-
-            command = downstream_data["prepared_data"]
+            command = downstream_data["command"]
             logger.info(f"Submitting job with this command - {command}")
             # NOTE: The batch job name should contain only
             # alphanumeric characters and hyphens.
-            job_name = f"{instrument}-{level}-job"
+            level_to_process = command[3]
+            # Eg. "codice-l1a-job"
+            job_name = f"{instrument}-{level_to_process}-job"
             logger.info("Job name: %s", job_name)
             response = batch_client.submit_job(
                 jobName=job_name,
                 jobQueue=job_queue,
                 jobDefinition=job_definition,
                 containerOverrides={
-                    "command": downstream_data["prepared_data"],
+                    "command": command,
                 },
             )
             logger.info(f"Submitted job - {response}")

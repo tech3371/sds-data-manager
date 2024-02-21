@@ -6,6 +6,7 @@ import os
 
 import boto3
 from imap_data_access import ScienceFilePath
+from imap_data_access import config as imap_data_access_config
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -82,20 +83,25 @@ def lambda_handler(event, context):
         logger.error(str(e))
         return {"statusCode": 400, "body": str(e)}
 
-    s3_key_path = science_file.construct_upload_path()
+    s3_key_path = science_file.construct_path()
+    # Strip off the data directory to get the upload path + name
+    # Must be posix style for the URL
+    s3_key_path_str = str(
+        s3_key_path.relative_to(imap_data_access_config["DATA_DIR"]).as_posix()
+    )
 
     # Check for already existing file in the database
     with Session(db.get_engine()) as session:
         # query and check for a matching file path
         query = select(models.FileCatalog.__table__).where(
-            models.FileCatalog.file_path == s3_key_path
+            models.FileCatalog.file_path == s3_key_path_str
         )
         result = session.execute(query).first()
         # return a 409 response if an existing file is found
         if result:
             response = {
                 "statusCode": 409,
-                "body": json.dumps(f"{s3_key_path} already exists."),
+                "body": json.dumps(f"{s3_key_path_str} already exists."),
                 "headers": {
                     "Content-Type": "application/json",
                     "Access-Control-Allow-Origin": "*",
@@ -103,7 +109,7 @@ def lambda_handler(event, context):
             }
             return response
 
-    url = _generate_signed_upload_url(s3_key_path)
+    url = _generate_signed_upload_url(s3_key_path_str)
 
     if url is None:
         return {
