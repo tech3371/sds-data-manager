@@ -224,7 +224,7 @@ def test_prepare_data():
         "v00-01",
         "--dependency",
         f"{upstream_dependencies}",
-        "--use-remote",
+        "--upload-to-sdc",
     ]
     assert prepared_data == expected_prepared_data
 
