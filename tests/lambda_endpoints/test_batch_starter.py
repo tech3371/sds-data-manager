@@ -3,12 +3,12 @@ from pathlib import Path
 
 import boto3
 import pytest
+from imap_data_access import ScienceFilePath
 from moto import mock_batch, mock_sts
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     append_attributes,
-    extract_components,
     find_upstream_dependencies,
     lambda_handler,
     load_data,
@@ -72,27 +72,14 @@ def sts_client(_aws_credentials):
         yield boto3.client("sts", region_name="us-west-2")
 
 
-def test_extract_components():
-    "Tests extract_components function."
-    filename = "imap_ultra-45_l2_science_20240101_20240102_v00-01.cdf"
-    components = extract_components(filename)
-
-    expected_components = {
-        "instrument": "ultra-45",
-        "datalevel": "l2",
-        "descriptor": "science",
-        "startdate": "20240101",
-        "enddate": "20240102",
-        "version": "v00-01",
-    }
-
-    assert components == expected_components
-
-
 def test_query_instrument(test_file_catalog_simulation):
     "Tests query_instrument function."
 
-    upstream_dependency = {"instrument": "ultra-45", "level": "l2", "version": "v00-01"}
+    upstream_dependency = {
+        "instrument": "ultra-45",
+        "data_level": "l2",
+        "version": "v00-01",
+    }
 
     "Tests query_instrument function."
     record = query_instrument(
@@ -108,7 +95,7 @@ def test_query_instrument(test_file_catalog_simulation):
 
 def test_append_attributes(test_file_catalog_simulation):
     "Tests append_attributes function."
-    downstream_dependents = [{"instrument": "codice", "level": "l3b"}]
+    downstream_dependents = [{"instrument": "codice", "data_level": "l3b"}]
 
     complete_dependents = append_attributes(
         test_file_catalog_simulation,
@@ -120,7 +107,7 @@ def test_append_attributes(test_file_catalog_simulation):
 
     expected_complete_dependent = {
         "instrument": "codice",
-        "level": "l3b",
+        "data_level": "l3b",
         "version": "v00-01",
         "start_date": "20240101",
         "end_date": "20240102",
@@ -139,7 +126,7 @@ def test_load_data():
 
     data = load_data(filepath)
 
-    assert data["codice"]["l0"][0]["level"] == "l1a"
+    assert data["codice"]["l0"][0]["data_level"] == "l1a"
 
 
 def test_find_upstream_dependencies():
@@ -155,9 +142,9 @@ def test_find_upstream_dependencies():
     upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
 
     expected_result = [
-        {"instrument": "codice", "level": "l2", "version": "v00-01"},
-        {"instrument": "codice", "level": "l3a", "version": "v00-01"},
-        {"instrument": "mag", "level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l2", "version": "v00-01"},
+        {"instrument": "codice", "data_level": "l3a", "version": "v00-01"},
+        {"instrument": "mag", "data_level": "l2", "version": "v00-01"},
     ]
 
     assert upstream_dependencies == expected_result
@@ -179,14 +166,14 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     downstream_dependents = [
         {
             "instrument": "hit",
-            "level": "l1a",
+            "data_level": "l1a",
             "version": "v00-01",
             "start_date": "20240101",
             "end_date": "20240102",
         },
         {
             "instrument": "hit",
-            "level": "l3",
+            "data_level": "l3",
             "version": "v00-01",
             "start_date": "20240101",
             "end_date": "20240102",
@@ -197,28 +184,47 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
         test_file_catalog_simulation, downstream_dependents, data, "bucket_name", "sci"
     )
 
-    assert list(result[0].keys()) == ["filename", "prepared_data"]
+    assert list(result[0].keys()) == ["command"]
 
 
 def test_prepare_data():
     "Tests prepare_data function."
 
-    upstream_dependencies = [{"instrument": "hit", "level": "l0", "version": "v00-01"}]
+    upstream_dependencies = [
+        {
+            "instrument": "hit",
+            "data_level": "l0",
+            "start_date": "20240101",
+            "end_date": "20240102",
+            "version": "v00-01",
+        }
+    ]
 
+    filename = "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"
+    file_params = ScienceFilePath.extract_filename_components(filename)
     prepared_data = prepare_data(
-        "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf",
-        upstream_dependencies,
+        instrument=file_params["instrument"],
+        data_level=file_params["data_level"],
+        start_date=file_params["start_date"],
+        end_date=file_params["end_date"],
+        version=file_params["version"],
+        upstream_dependencies=upstream_dependencies,
     )
 
     expected_prepared_data = [
         "--instrument",
         "hit",
-        "--level",
+        "--data_level",
         "l1a",
-        "--file_path",
-        ("imap/hit/l1a/2024/01/" "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
+        "--start-date",
+        "20240101",
+        "--end-date",
+        "20240102",
+        "--version",
+        "v00-01",
         "--dependency",
-        "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
+        f"{upstream_dependencies}",
+        "--use-remote",
     ]
     assert prepared_data == expected_prepared_data
 
@@ -236,13 +242,34 @@ def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
 def test_send_lambda_put_event(events_client):
     input_command = [
         "--instrument",
-        "hit",
-        "--level",
+        "mag",
+        "--data_level",
         "l1a",
-        "--file_path",
-        ("imap/hit/l1a/2024/01/imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"),
+        "--start-date",
+        "20231212",
+        "--end-date",
+        "20231212",
+        "--version",
+        "v00-01",
         "--dependency",
-        "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
+        """[
+            {
+                'instrument': 'swe',
+                'data_level': 'l0',
+                'descriptor': 'lveng-hk',
+                'start_date': '20231212',
+                'end_date': '20231212',
+                'version': 'v01-00',
+            },
+            {
+                'instrument': 'mag',
+                'data_level': 'l0',
+                'descriptor': 'lveng-hk',
+                'start_date': '20231212',
+                'end_date': '20231212',
+                'version': 'v00-01',
+            }]""",
+        "--use-remote",
     ]
 
     result = send_lambda_put_event(input_command)
