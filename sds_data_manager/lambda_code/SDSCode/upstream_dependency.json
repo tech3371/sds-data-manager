@@ -1,0 +1,122 @@
+[
+    {
+        "primary_instrument": "swe",
+        "primary_data_level": "l1a",
+        "primary_descriptor": "all",
+        "dependent_instrument": "swe",
+        "dependent_data_level": "l0",
+        "dependent_descriptor": "raw",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "swe",
+        "primary_data_level": "l1b",
+        "primary_descriptor": "sci",
+        "dependent_instrument": "swe",
+        "dependent_data_level": "l1a",
+        "dependent_descriptor": "sci",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "swe",
+        "primary_data_level": "l1b",
+        "primary_descriptor": "lveng-hk",
+        "dependent_instrument": "swe",
+        "dependent_data_level": "l1a",
+        "dependent_descriptor": "lveng-hk",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1a",
+        "primary_descriptor": "all",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l0",
+        "dependent_descriptor": "raw",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1b",
+        "primary_descriptor": "normal-mago",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1a",
+        "dependent_descriptor": "normal-mago",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1b",
+        "primary_descriptor": "normal-magi",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1a",
+        "dependent_descriptor": "normal-magi",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1b",
+        "primary_descriptor": "burst-mago",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1a",
+        "dependent_descriptor": "burst-mago",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1b",
+        "primary_descriptor": "burst-magi",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1a",
+        "dependent_descriptor": "burst-magi",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1c",
+        "primary_descriptor": "normal-mago",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1b",
+        "dependent_descriptor": "normal-mago",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1c",
+        "primary_descriptor": "normal-magi",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1b",
+        "dependent_descriptor": "normal-magi",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1c",
+        "primary_descriptor": "burst-mago",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1b",
+        "dependent_descriptor": "burst-mago",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    },
+    {
+        "primary_instrument": "mag",
+        "primary_data_level": "l1c",
+        "primary_descriptor": "burst-magi",
+        "dependent_instrument": "mag",
+        "dependent_data_level": "l1b",
+        "dependent_descriptor": "burst-magi",
+        "relationship": "HARD",
+        "direction": "UPSTREAM"
+    }
+]
