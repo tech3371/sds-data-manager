@@ -269,7 +269,7 @@ def test_send_lambda_put_event(events_client):
                 'end_date': '20231212',
                 'version': 'v00-01',
             }]""",
-        "--use-remote",
+        "--upload-to-sdc",
     ]
 
     result = send_lambda_put_event(input_command)

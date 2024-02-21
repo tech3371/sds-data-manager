@@ -310,7 +310,7 @@ def prepare_data(
     #             'end_date': '20231212',
     #             'version': 'v00-01',
     #         }]""",
-    #     "--use-remote"
+    #     "--upload-to-sdc"
     # ]
     prepared_data = [
         "--instrument",
@@ -325,7 +325,7 @@ def prepare_data(
         version,
         "--dependency",
         f"{upstream_dependencies}",
-        "--use-remote",
+        "--upload-to-sdc",
     ]
 
     return prepared_data
@@ -375,7 +375,7 @@ def send_lambda_put_event(command_parameters):
                     'end_date': '20231212',
                     'version': 'v00-01',
                 }]\""",
-            "--use-remote"
+            "--upload-to-sdc"
         ]
     Returns
     -------
