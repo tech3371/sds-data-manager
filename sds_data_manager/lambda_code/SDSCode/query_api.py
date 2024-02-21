@@ -1,4 +1,4 @@
-"""Contains the lambda handler for the 'query' data access API"""
+"""Contains the lambda handler for the 'query' data access API."""
 
 import datetime
 import json
@@ -16,7 +16,7 @@ logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    """Handler function for making queries.
+    """Entry point to the query API lambda.
 
     Parameters
     ----------
@@ -27,6 +27,7 @@ def lambda_handler(event, context):
         This object provides methods and properties that provide
         information about the invocation, function,
         and runtime environment.
+
     """
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")

@@ -1,3 +1,5 @@
+"""Functions for supporting the indexer component of the architecture."""
+
 import json
 import logging
 import os
@@ -30,6 +32,7 @@ def get_file_creation_date(file_path):
 
     creation_date: datetime.datetime
         Last modified data of s3 file.
+
     """
     # Create an S3 client
     s3_client = boto3.client("s3")
@@ -66,10 +69,12 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
     relationship: str
         Whether it's HARD or SOFT dependency.
         HARD means it's required and SOFT means it's nice to have.
+
     Returns
     -------
     dependency : list
         List of dictionary containing the dependency information.
+
     """
     dependency = []
     # Send EventBridge event for downstream dependency
@@ -88,7 +93,7 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
 
 
 def http_response(headers=None, status_code=200, body="Success"):
-    """Customizes HTTP response for the lambda function.
+    """Customize HTTP response for the lambda function.
 
     Parameters
     ----------
@@ -104,6 +109,7 @@ def http_response(headers=None, status_code=200, body="Success"):
     dict
         A dictionary containing headers, status code, and body, designed to be returned
         by a Lambda function as an API response.
+
     """
     if headers is None:
         headers = (
@@ -119,8 +125,7 @@ def http_response(headers=None, status_code=200, body="Success"):
 
 
 def send_event_from_indexer(filename):
-    """Sends custom PutEvent to EventBridge.
-
+    """Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
     event = {
@@ -136,11 +141,13 @@ def send_event_from_indexer(filename):
     Parameters
     ----------
     filename : str
+        The filename to use in the PutEvent
 
     Returns
     -------
     dict
         EventBridge response
+
     """
     logger.info("in send event function")
     event_client = boto3.client("events")
@@ -162,7 +169,7 @@ def send_event_from_indexer(filename):
 
 
 def s3_event_handler(event):
-    """Handler function for S3 events.
+    """S3 events handler.
 
     S3 event handler takes s3 event and then writes information to
     file catalog table. It also sends event to the batch starter
@@ -178,6 +185,7 @@ def s3_event_handler(event):
     -------
     dict
         HTTP response
+
     """
     # Retrieve the Object name
     s3_filepath = event["detail"]["object"]["key"]
@@ -226,7 +234,7 @@ def s3_event_handler(event):
 
 
 def batch_event_handler(event):
-    """Handler for Batch event
+    """Batch event handler.
 
     Parameters
     ----------
@@ -265,6 +273,7 @@ def batch_event_handler(event):
     -------
     dict
         HTTP response
+
     """
     command = event["detail"]["container"]["command"]
 
@@ -315,7 +324,7 @@ def batch_event_handler(event):
 
 
 def custom_event_handler(event):
-    """_summary_
+    """Event handling logic.
 
     Parameters
     ----------
@@ -340,6 +349,7 @@ def custom_event_handler(event):
     -------
     dict
         HTTP response
+
     """
     file_path_to_create = event["detail"]["file_path_to_create"]
     filename = os.path.basename(file_path_to_create)
@@ -370,7 +380,7 @@ event_handlers = {
 
 
 def handle_event(event, handler):
-    """Common event handling logic."""
+    """Event handling logic."""
     try:
         handler(event)
         return http_response(status_code=200, body="Success")
@@ -380,7 +390,7 @@ def handle_event(event, handler):
 
 
 def lambda_handler(event, context):
-    """Handler function for creating metadata, adding it to the database.
+    """Create metadata and add it to the database.
 
     This function is an event handler for multiple event sources.
     List of event sources are aws.s3, aws.batch and imap.lambda.
@@ -395,6 +405,7 @@ def lambda_handler(event, context):
         This object provides methods and properties that provide
         information about the invocation, function,
         and runtime environment.
+
     """
     logger.info("Received event: " + json.dumps(event, indent=2))
     source = event.get("source")

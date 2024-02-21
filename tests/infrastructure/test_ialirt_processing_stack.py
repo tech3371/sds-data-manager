@@ -1,6 +1,4 @@
-"""
-Verify the successful deployment and operation in an
-ECR and EC2 setup.
+"""Verify the successful deployment and operation in an ECR and EC2 setup.
 
 # TODO: this is not ideal, but it works until we setup ECS.
 Steps for setting up test:
@@ -33,7 +31,6 @@ EC2_IP = os.getenv("EC2_IP_ADDRESS")
 
 def test_flask_app_response():
     """Test the Flask application response."""
-
     if EC2_IP is not None:  # pragma: no cover
         url = f"http://{EC2_IP}:8080/"
         requests.get(url, timeout=10)

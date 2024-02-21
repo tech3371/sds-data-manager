@@ -17,7 +17,7 @@ from sds_data_manager.stacks.database_stack import SdpDatabase
 
 
 class BatchStarterLambda(Stack):
-    """Generic Construct with customizable runtime code"""
+    """Generic Construct with customizable runtime code."""
 
     def __init__(
         self,
@@ -31,8 +31,7 @@ class BatchStarterLambda(Stack):
         vpc: ec2.Vpc,
         **kwargs,
     ):
-        """
-        BatchStarterLambda Constructor.
+        """BatchStarterLambda Constructor.
 
         Parameters
         ----------
@@ -52,8 +51,10 @@ class BatchStarterLambda(Stack):
             RDS subnet selection.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
-        """
+        kwargs : dict
+            Keyword arguments
 
+        """
         super().__init__(scope, construct_id, **kwargs)
 
         # Define Lambda Environment Variables

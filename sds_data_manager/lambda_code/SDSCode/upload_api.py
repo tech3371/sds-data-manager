@@ -1,3 +1,5 @@
+"""Define lambda to support the upload API."""
+
 import json
 import logging
 import os
@@ -17,8 +19,7 @@ s3 = boto3.client("s3")
 
 
 def _generate_signed_upload_url(key_path, tags=None):
-    """
-    Create a presigned url for a file in the SDS storage bucket.
+    """Create a presigned url for a file in the SDS storage bucket.
 
     :param key_path: Required.  A string representing the name of the object to upload.
     :param tags: Optional.  A dictionary that will be stored in the S3 object metadata.
@@ -40,19 +41,25 @@ def _generate_signed_upload_url(key_path, tags=None):
 
 
 def lambda_handler(event, context):
-    """
-    The entry point to the upload API lambda.
+    """Entry point to the upload API lambda.
 
     This function returns an S3 signed-URL based on the input filename,
     which the user can then use to upload a file into the SDS.
 
-    :param event: Dictionary
+    Parameters
+    ----------
+    event : dict
         Specifically only requires event['queryStringParameters']['filename']
         User-specified key:value pairs can also exist in the 'queryStringParameters',
         storing these pairs as object metadata.
-    :param context: Unused
+    context : None
+        Currently not used
 
-    :return: A pre-signed url where users can upload a data file to the SDS.
+    Returns
+    -------
+    dict
+        A pre-signed url where users can upload a data file to the SDS.
+
     """
     path_params = event.get("pathParameters", {}).get("proxy", None)
     logger.debug("Parsing path parameters=[%s] from event=" "[%s]", path_params, event)

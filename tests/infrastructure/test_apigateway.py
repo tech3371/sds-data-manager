@@ -1,3 +1,5 @@
+"""Test the API gateway stack."""
+
 from pathlib import Path
 
 import aws_cdk as cdk
@@ -11,6 +13,7 @@ from sds_data_manager.stacks.networking_stack import NetworkingStack
 
 @pytest.fixture(scope="module")
 def template(app):
+    """Return a template for the API gateway stack."""
     stack = Stack(app, "test-stack")
     test_func = aws_lambda.Function(
         stack,
@@ -32,6 +35,7 @@ def template(app):
 
 @pytest.fixture()
 def lambda_template():
+    """Return a template for the API lambda stack."""
     app = cdk.App()
     lambda_code_directory = (
         Path(__file__).parent.parent.parent / "sds_data_manager/lambda_code"
@@ -46,7 +50,7 @@ def lambda_template():
         lambda_handler="lambda_handler",
         timeout=Duration.seconds(60),
         rds_security_group=vpc.rds_security_group,
-        db_secret_name="test-creds",
+        db_secret_name="test-creds",  # noqa
         vpc=vpc.vpc,
     )
 
@@ -55,6 +59,7 @@ def lambda_template():
 
 
 def test_apigw_routes(template):
+    """Ensure that the template has the appropriate routes."""
     template.resource_count_is("AWS::ApiGateway::RestApi", 1)
     # One path resource
     template.resource_count_is("AWS::ApiGateway::Resource", 1)
@@ -72,6 +77,7 @@ def test_apigw_routes(template):
 
 
 def test_cloudwatch_alarm(template):
+    """Ensure that the template has a CloudWatch alarm configured."""
     template.resource_count_is("AWS::CloudWatch::Alarm", 1)
     template.has_resource_properties(
         "AWS::CloudWatch::Alarm",
@@ -93,6 +99,7 @@ def test_cloudwatch_alarm(template):
 
 
 def test_api_lambda(lambda_template):
+    """Ensure that the lambda template is configured properly."""
     lambda_template.resource_count_is("AWS::Lambda::Function", 1)
     lambda_template.resource_count_is("AWS::IAM::Role", 1)
     lambda_template.resource_count_is("AWS::IAM::Policy", 1)

@@ -1,3 +1,5 @@
+"""Read from EFS."""
+
 import logging
 from pathlib import Path
 
@@ -21,8 +23,8 @@ def spice_handler():
     -------
     dict
         Status and message
-    """
 
+    """
     # Check if the old symlink exists
     if Path(attitude_symlink_path).is_symlink():
         # Path.resolve() returns the absolute path of the symlink

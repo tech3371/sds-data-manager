@@ -1,11 +1,11 @@
-"""API Gateway Stack
+"""Configure the API Gateway Stack.
 
-Sets up api gateway, creates routes, and creates methods that
-are linked to the lambda function.
+Sets up api gateway, creates routes, and creates methods that are linked to the
+lambda function.
 
-An example of the format of the url:
-https://api.prod.imap-mission.com/query
+An example of the format of the url: https://api.prod.imap-mission.com/query
 """
+
 from pathlib import Path
 from typing import Optional
 
@@ -25,6 +25,8 @@ from sds_data_manager.stacks.domain_stack import DomainStack
 
 
 class ApiGateway(Stack):
+    """Stack for creating an API Gateway."""
+
     def __init__(
         self,
         scope: Construct,
@@ -32,7 +34,7 @@ class ApiGateway(Stack):
         domain_stack: DomainStack = None,
         **kwargs,
     ) -> None:
-        """API Gateway Stack
+        """Construct the API Gateway Stack.
 
         Parameters
         ----------
@@ -42,6 +44,9 @@ class ApiGateway(Stack):
             A unique string identifier for this construct.
         domain_stack : DomainStack, Optional
             Custom domain, hosted zone, and certificate
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, **kwargs)
 
@@ -93,6 +98,7 @@ class ApiGateway(Stack):
         ----------
         sns_topic : aws_sns.Topic
             SNS Topic to send any API alerts to.
+
         """
         # Define the metric the alarm is based on
         # List of Metric options for API Gateway:
@@ -146,6 +152,7 @@ class ApiGateway(Stack):
         use_path_params : bool, optional
             Whether or not to use path parameters, by default False
             This allows for ``/download/{filename}`` style routes.
+
         """
         # Define the API Gateway Resources
         resource = self.api.root.add_resource(route)
@@ -174,8 +181,7 @@ class APILambda(Stack):
         environment: Optional[dict] = None,
         **kwargs,
     ):
-        """
-        Lambda Constructor.
+        """Lambda Constructor.
 
         Parameters
         ----------
@@ -199,8 +205,10 @@ class APILambda(Stack):
             VPC into which to put the resources that require networking.
         environment: dict
             Lambda's environment variables.
-        """
+        kwargs : dict
+            Keyword arguments
 
+        """
         super().__init__(scope, construct_id, **kwargs)
 
         self.lambda_function = lambda_alpha_.PythonFunction(

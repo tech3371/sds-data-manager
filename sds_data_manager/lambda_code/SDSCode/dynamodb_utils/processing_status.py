@@ -1,10 +1,9 @@
+"""Configure an Enum for processing status."""
 from enum import Enum
 
 
 class ProcessingStatus(Enum):
-    """
-    Enum for the processing status.
-    """
+    """Enum for the processing status."""
 
     PENDING = 0
     IN_PROGRESS = 1

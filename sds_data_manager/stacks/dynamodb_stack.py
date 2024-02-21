@@ -1,4 +1,5 @@
-# Create stack for DynamoDB
+"""Configure the Dynamo DB stack."""
+
 from typing import Optional
 
 from aws_cdk import RemovalPolicy, Stack
@@ -7,6 +8,8 @@ from constructs import Construct
 
 
 class DynamoDB(Stack):
+    """Construct the DynamoDB resources."""
+
     def __init__(
         self,
         scope: Construct,
@@ -19,7 +22,8 @@ class DynamoDB(Stack):
         write_capacity: Optional[int] = None,
         **kwargs,
     ):
-        """
+        """DynamoDB constructor.
+
         Parameters
         ----------
         scope : Construct
@@ -61,6 +65,9 @@ class DynamoDB(Stack):
         write_capacity : int
             Write capacity for provisioned DynamoDB table.
             Default value is 1.
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, **kwargs)
         self.table_name = table_name

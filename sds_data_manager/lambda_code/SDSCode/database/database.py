@@ -1,4 +1,4 @@
-"""Create database URI that will be used to create engine or make query"""
+"""Create database URI that will be used to create engine or make query."""
 
 import json
 import os
@@ -11,8 +11,9 @@ def get_engine():
     """Create engine from DB URI.
 
     Returns
-    --------
+    -------
         sqlalchemy.engine.Engine : Engine
+
     """
     secret_name = os.environ["SECRET_NAME"]
     session = boto3.session.Session()

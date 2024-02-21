@@ -1,3 +1,5 @@
+"""Functions for supporting the batch starter component of the architecture."""
+
 import json
 import logging
 import os
@@ -18,8 +20,7 @@ logger.setLevel(logging.INFO)
 
 
 def query_instrument(session, upstream_dependency, start_date, end_date):
-    """
-    Appends start_time, end_time and version information to downstream dependents.
+    """Append start_time, end_time and version information to downstream dependents.
 
     Parameters
     ----------
@@ -59,8 +60,7 @@ def query_instrument(session, upstream_dependency, start_date, end_date):
 
 
 def append_attributes(session, downstream_dependents, start_date, end_date, version):
-    """
-    Appends start_time, end_time and version information to downstream dependents.
+    """Append start_time, end_time and version information to downstream dependents.
 
     Parameters
     ----------
@@ -81,7 +81,6 @@ def append_attributes(session, downstream_dependents, start_date, end_date, vers
         Dictionary containing components with dates and versions appended.
 
     """
-
     for dependent in downstream_dependents:
         # TODO: query the version table here for appropriate version
         #  of each downstream_dependent.
@@ -104,8 +103,7 @@ def find_upstream_dependencies(
     downstream_dependent_version,
     data,
 ):
-    """
-    Finds dependency information for each instrument.
+    """Find dependency information for each instrument.
 
     Parameters
     ----------
@@ -156,9 +154,9 @@ def find_upstream_dependencies(
 def query_upstream_dependencies(
     session, downstream_dependents, data, s3_bucket, descriptor
 ):
-    """
-    Finds dependency information for each instrument. This function looks for
-    upstream dependency of current downstream dependent.
+    """Find dependency information for each instrument.
+
+    This function looks for upstream dependency of current downstream dependent.
 
     Parameters
     ----------
@@ -170,6 +168,8 @@ def query_upstream_dependencies(
         Dictionary containing dependency data.
     s3_bucket : str
         S3 bucket name.
+    descriptor : str
+        The filename descriptor
 
     Returns
     -------
@@ -177,7 +177,6 @@ def query_upstream_dependencies(
         A list of dictionaries containing the filename and prepared data.
 
     """
-
     instruments_to_process = []
 
     # Iterate over each downstream dependent
@@ -236,8 +235,7 @@ def query_upstream_dependencies(
 
 
 def load_data(filepath: Path):
-    """
-    Loads dependency data.
+    """Load dependency data.
 
     Parameters
     ----------
@@ -257,8 +255,7 @@ def load_data(filepath: Path):
 
 
 def prepare_data(filename, upstream_dependencies):
-    """
-    Prepares data for batch job.
+    """Prepare data for batch job.
 
     Parameters
     ----------
@@ -323,8 +320,7 @@ def prepare_data(filename, upstream_dependencies):
 
 
 def extract_components(filename: str):
-    """
-    Extracts components from filename.
+    """Extract components from filename.
 
     Parameters
     ----------
@@ -356,7 +352,7 @@ def extract_components(filename: str):
 
 
 def send_lambda_put_event(command_parameters):
-    """Sends custom PutEvent to EventBridge
+    """Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
     event = {
@@ -388,10 +384,12 @@ def send_lambda_put_event(command_parameters):
             "--dependency",
             "[{'instrument': 'hit', 'level': 'l0', 'version': 'v00-01'}]",
         ]
+
     Returns
     -------
     dict
         EventBridge response
+
     """
     event_client = boto3.client("events")
 
@@ -416,7 +414,7 @@ def send_lambda_put_event(command_parameters):
 
 
 def lambda_handler(event: dict, context):
-    """Handler function"""
+    """Entry point to the batch starter lambda."""
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
 

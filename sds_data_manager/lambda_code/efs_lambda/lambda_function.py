@@ -1,3 +1,5 @@
+"""Functions for EFS lambdas."""
+
 import logging
 import os
 from pathlib import Path
@@ -15,7 +17,7 @@ ephemeris_symlink_path = mount_path / "latest_ephemeris_kernel.bsp"
 
 
 def create_symlink(source_path: Path, destination_path: Path) -> None:
-    """Create a symlink from source_path to destination_path
+    """Create a symlink from source_path to destination_path.
 
     Parameters
     ----------
@@ -23,8 +25,8 @@ def create_symlink(source_path: Path, destination_path: Path) -> None:
         Source path of the symlink
     destination_path : str
         Destination path of the symlink
-    """
 
+    """
     # Remove the old symlink
     destination_path.unlink(missing_ok=True)
 
@@ -33,13 +35,15 @@ def create_symlink(source_path: Path, destination_path: Path) -> None:
 
 
 def write_data_to_efs(s3_key: str, s3_bucket: str):
-    """Write data to EFS and create/update symlink
+    """Write data to EFS and create/update symlink.
 
     Parameters
     ----------
     s3_key : str
         S3 object key
     s3_bucket : str
+        The S3 bucket
+
     """
     filename = os.path.basename(s3_key)
 
@@ -92,7 +96,7 @@ def write_data_to_efs(s3_key: str, s3_bucket: str):
 
 
 def lambda_handler(event, context):
-    """This lambda  is trigger by eventbridge.
+    """Lambda  is triggered by eventbridge.
 
     Input looks like this:
     {
@@ -137,6 +141,7 @@ def lambda_handler(event, context):
     -------
     dict
         Response message
+
     """
     # Retrieve the S3 bucket and key from the event
     s3_bucket = event["detail"]["bucket"]["name"]

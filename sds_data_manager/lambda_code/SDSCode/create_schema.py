@@ -1,4 +1,4 @@
-"""Creates RDS PostgreSQL database schema"""
+"""Creates RDS PostgreSQL database schema."""
 
 import json
 import logging
@@ -13,18 +13,21 @@ logger.setLevel(logging.INFO)
 
 
 def send_response(event, context, response_status):
-    """Construct a response to indicate the status of the custom
-    resource lambda "SUCCESS" or "FAILED"
+    """Send the response.
+
+    Constructs a response to indicate the status of the custom resource lambda
+    "SUCCESS" or "FAILED"
 
     Parameters
-    -------
+    ----------
     event: dict
         JSON-formatted document that contains data for a Lambda function to process.
     context: Context
         provides methods and properties that provide information about the invocation,
         function, and execution environment.
-    reponse_status: str
+    response_status: str
         "SUCCESS" or "FAILED" status depending on query status.
+
     """
     response_url = event["ResponseURL"]
     response_body = {
@@ -41,11 +44,16 @@ def send_response(event, context, response_status):
 
     headers = {"content-type": "", "content-length": str(len(json_response_body))}
 
-    response = requests.put(response_url, data=json_response_body, headers=headers)
+    response = requests.put(
+        response_url,
+        data=json_response_body,
+        headers=headers,
+        timeout=60)
     response.raise_for_status()
 
 
 def lambda_handler(event, context):
+    """Entry point to the create schema lambda."""
     logger.info("Creating RDS tables")
     logger.info(event)
     try:

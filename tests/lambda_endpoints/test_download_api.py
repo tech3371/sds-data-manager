@@ -1,3 +1,5 @@
+"""Tests for the Download API."""
+
 from pathlib import Path
 
 import pytest
@@ -10,9 +12,9 @@ TEST_FILE = "science_block_20221116_163611Z_idle.bin"
 
 @pytest.fixture(autouse=True)
 def setup_s3(s3_client, monkeypatch):
-    """Populate the mocked s3 client with a bucket and a file
+    """Populate the mocked s3 client with a bucket and a file.
 
-    Each test below will use this fixture by default
+    Each test below will use this fixture by default.
     """
     s3_client.create_bucket(
         Bucket=BUCKET_NAME,
@@ -32,7 +34,7 @@ def setup_s3(s3_client, monkeypatch):
 
 
 def test_object_exists_with_s3_uri():
-    """Test that this object exists within s3"""
+    """Test that this object exists within s3."""
     event = {
         "version": "2.0",
         "routeKey": "$default",
@@ -46,7 +48,7 @@ def test_object_exists_with_s3_uri():
 
 
 def test_object_exists_with_s3_uri_fails():
-    """Test that objects exist in s3 fails"""
+    """Test that objects exist in s3 fails."""
     event = {
         "version": "2.0",
         "routeKey": "$default",
@@ -59,7 +61,7 @@ def test_object_exists_with_s3_uri_fails():
 
 
 def test_input_parameters_missing():
-    """Test that required input parameters exist"""
+    """Test that required input parameters exist."""
     empty_para_event = {
         "version": "2.0",
         "routeKey": "$default",

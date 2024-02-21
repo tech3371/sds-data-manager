@@ -1,11 +1,13 @@
+"""Configure the AWS Batch resources.
+
+This module provides the FargateBatchResources class which sets up AWS Batch
+resources utilizing Fargate as the compute environment. The resources include:
+  - IAM roles.
+  - Compute environment for AWS Batch.
+  - ECR repository for container images.
+  - Batch job queue and job definition.
 """
-This module provides the FargateBatchResources class which sets up AWS Batch resources
-utilizing Fargate as the compute environment. The resources include:
-- IAM roles.
-- Compute environment for AWS Batch.
-- ECR repository for container images.
-- Batch job queue and job definition.
-"""
+
 from aws_cdk import Fn, Stack
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
@@ -19,7 +21,7 @@ from sds_data_manager.stacks.efs_stack import EFSStack
 
 
 class FargateBatchResources(Stack):
-    """Fargate Batch compute environment with named Job Queue, and Job Definition."""
+    """Fargate Batch compute env with named Job Queue, and Job Definition."""
 
     def __init__(
         self,
@@ -37,7 +39,7 @@ class FargateBatchResources(Stack):
         job_memory=512,
         **kwargs,
     ):
-        """Constructor
+        """Construct the fargate batch resources.
 
         Parameters
         ----------
@@ -55,13 +57,6 @@ class FargateBatchResources(Stack):
             Container repo
         db_secret_name : str
             RDS secret name for secret manager access
-        batch_max_vcpus : int, Optional
-            Maximum number of virtual CPUs per compute instance.
-        job_vcpus : int, Optional
-            Number of virtual CPUs required per Batch job.
-            Dependent on Docker image contents.
-        job_memory : int: Optional
-            Memory required per Batch job in MB. Dependent on Docker image contents.
         efs_instance: efs.Filesystem
             EFS stack object
         account_name: str
@@ -69,6 +64,16 @@ class FargateBatchResources(Stack):
             account_name is used as ECR's tag.
             This value can be overwritten by command line input and can
             be accessed from the cdk.json file.
+        batch_max_vcpus : int, Optional
+            Maximum number of virtual CPUs per compute instance.
+        job_vcpus : int, Optional
+            Number of virtual CPUs required per Batch job.
+            Dependent on Docker image contents.
+        job_memory : int: Optional
+            Memory required per Batch job in MB. Dependent on Docker image contents.
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, **kwargs)
 

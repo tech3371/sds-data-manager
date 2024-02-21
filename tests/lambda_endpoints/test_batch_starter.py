@@ -1,3 +1,5 @@
+"""Tests the batch starter."""
+
 from datetime import datetime
 from pathlib import Path
 
@@ -23,8 +25,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalog
 
 @pytest.fixture()
 def test_file_catalog_simulation(test_engine):
-    # Setup: Add records to the database
-
+    """Adds tests records to the database."""
     test_record_1 = FileCatalog(
         file_path="/path/to/file",
         instrument="ultra-45",
@@ -62,18 +63,20 @@ def test_file_catalog_simulation(test_engine):
 
 @pytest.fixture()
 def batch_client(_aws_credentials):
+    """Return a batch client to test with."""
     with mock_batch():
         yield boto3.client("batch", region_name="us-west-2")
 
 
 @pytest.fixture()
 def sts_client(_aws_credentials):
+    """Return a mock sts client to test with."""
     with mock_sts():
         yield boto3.client("sts", region_name="us-west-2")
 
 
 def test_extract_components():
-    "Tests extract_components function."
+    """Tests extract_components function."""
     filename = "imap_ultra-45_l2_science_20240101_20240102_v00-01.cdf"
     components = extract_components(filename)
 
@@ -90,8 +93,7 @@ def test_extract_components():
 
 
 def test_query_instrument(test_file_catalog_simulation):
-    "Tests query_instrument function."
-
+    """Tests query_instrument function."""
     upstream_dependency = {"instrument": "ultra-45", "level": "l2", "version": "v00-01"}
 
     "Tests query_instrument function."
@@ -107,7 +109,7 @@ def test_query_instrument(test_file_catalog_simulation):
 
 
 def test_append_attributes(test_file_catalog_simulation):
-    "Tests append_attributes function."
+    """Tests append_attributes function."""
     downstream_dependents = [{"instrument": "codice", "level": "l3b"}]
 
     complete_dependents = append_attributes(
@@ -130,7 +132,7 @@ def test_append_attributes(test_file_catalog_simulation):
 
 
 def test_load_data():
-    "Tests load_data function."
+    """Tests load_data function."""
     base_directory = Path(__file__).resolve()
     base_path = (
         base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
@@ -143,7 +145,7 @@ def test_load_data():
 
 
 def test_find_upstream_dependencies():
-    "Tests find_upstream_dependencies function."
+    """Tests find_upstream_dependencies function."""
     base_directory = Path(__file__).resolve()
     base_path = (
         base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
@@ -164,7 +166,7 @@ def test_find_upstream_dependencies():
 
 
 def test_query_upstream_dependencies(test_file_catalog_simulation):
-    "Tests query_upstream_dependencies function."
+    """Tests query_upstream_dependencies function."""
     base_directory = Path(__file__).resolve()
     filepath = (
         base_directory.parents[2]
@@ -201,8 +203,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
 
 
 def test_prepare_data():
-    "Tests prepare_data function."
-
+    """Tests prepare_data function."""
     upstream_dependencies = [{"instrument": "hit", "level": "l0", "version": "v00-01"}]
 
     prepared_data = prepare_data(
@@ -224,7 +225,7 @@ def test_prepare_data():
 
 
 def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
-    # Tests lambda_handler function.
+    """Tests lambda_handler function."""
     event = {
         "detail": {"object": {"key": "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"}}
     }
@@ -234,6 +235,7 @@ def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
 
 
 def test_send_lambda_put_event(events_client):
+    """Tests the lambda PUT event."""
     input_command = [
         "--instrument",
         "hit",

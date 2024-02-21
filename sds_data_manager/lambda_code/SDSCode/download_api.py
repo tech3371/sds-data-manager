@@ -1,19 +1,18 @@
-# Standard
+"""Define lambda to support the download API."""
+
 import json
 import logging
 import os
 
-# Installed
 import boto3
 import botocore
 
-# Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 def http_response(headers=None, status_code=200, body="Success"):
-    """Customizes HTTP response for the lambda function.
+    """Customize HTTP response for the lambda function.
 
     Parameters
     ----------
@@ -29,6 +28,7 @@ def http_response(headers=None, status_code=200, body="Success"):
     dict
         A dictionary containing headers, status code, and body, designed to be returned
         by a Lambda function as an API response.
+
     """
     headers = headers or {"Content-Type": "text/html"}
     return {
@@ -39,9 +39,11 @@ def http_response(headers=None, status_code=200, body="Success"):
 
 
 def lambda_handler(event, context):
-    """This lambda handler checks if this file exists or not. If file doesn't exist, it
-    gives back an error. Otherwise, it returns pre-signed s3 url that user can use to
-    download data from s3.
+    """Entry point to the download API lambda.
+
+    Check if this file exists or not. If file doesn't exist, it gives back an
+    error. Otherwise, it returns pre-signed s3 url that user can use to download
+    data from s3.
 
     Parameters
     ----------
@@ -58,6 +60,7 @@ def lambda_handler(event, context):
         The response from the function which could either be a pre-signed
         S3 URL in case of successful operation or an error message with
         corresponding status code in case of failure.
+
     """
     one_day = 86400
     url_life = os.environ.get("URL_EXPIRE", one_day)
