@@ -200,7 +200,7 @@ def test_prepare_data():
     file_params = ScienceFilePath.extract_filename_components(filename)
     prepared_data = prepare_data(
         instrument=file_params["instrument"],
-        level=file_params["data_level"],
+        data_level=file_params["data_level"],
         start_date=file_params["start_date"],
         end_date=file_params["end_date"],
         version=file_params["version"],
@@ -210,7 +210,7 @@ def test_prepare_data():
     expected_prepared_data = [
         "--instrument",
         "hit",
-        "--level",
+        "--data_level",
         "l1a",
         "--start-date",
         "20240101",

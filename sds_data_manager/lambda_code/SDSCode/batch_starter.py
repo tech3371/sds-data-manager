@@ -220,7 +220,7 @@ def query_upstream_dependencies(
         if all_dependencies_available:
             prepared_data = prepare_data(
                 instrument=instrument,
-                level=level,
+                data_level=level,
                 start_date=start_date,
                 end_date=end_date,
                 version=version,
@@ -256,7 +256,7 @@ def load_data(filepath: Path):
 
 
 def prepare_data(
-    instrument, level, start_date, end_date, version, upstream_dependencies
+    instrument, data_level, start_date, end_date, version, upstream_dependencies
 ):
     """
     Prepares data for batch job.
@@ -265,7 +265,7 @@ def prepare_data(
     ----------
     instrument : str
         Instrument.
-    level : str
+    data_level : str
         Data level.
     start_date : str
         Data start date.
@@ -287,7 +287,7 @@ def prepare_data(
     # NOTE: Batch job expects command like this:
     # "Command": [
     #     "--instrument", "mag",
-    #     "--level", "l1a",
+    #     "--data_level", "l1a",
     #     "--start-date", "20231212",
     #     "--end-date", "20231212",
     #     "--version", "v00-01",
@@ -313,8 +313,8 @@ def prepare_data(
     prepared_data = [
         "--instrument",
         instrument,
-        "--level",
-        level,
+        "--data_level",
+        data_level,
         "--start-date",
         start_date,
         "--end-date",
@@ -352,7 +352,7 @@ def send_lambda_put_event(command_parameters):
         Example of input:
             "Command": [
             "--instrument", "mag",
-            "--level", "l1a",
+            "--data_level", "l1a",
             "--start-date", "20231212",
             "--end-date", "20231212",
             "--version", "v00-01",
