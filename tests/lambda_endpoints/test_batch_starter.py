@@ -214,7 +214,7 @@ def test_prepare_data():
     expected_prepared_data = [
         "--instrument",
         "hit",
-        "--data_level",
+        "--data-level",
         "l1a",
         "--start-date",
         "20240101",
@@ -243,7 +243,7 @@ def test_send_lambda_put_event(events_client):
     input_command = [
         "--instrument",
         "mag",
-        "--data_level",
+        "--data-level",
         "l1a",
         "--start-date",
         "20231212",

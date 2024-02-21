@@ -289,7 +289,7 @@ def prepare_data(
     # NOTE: Batch job expects command like this:
     # "Command": [
     #     "--instrument", "mag",
-    #     "--data_level", "l1a",
+    #     "--data-level", "l1a",
     #     "--start-date", "20231212",
     #     "--end-date", "20231212",
     #     "--version", "v00-01",
@@ -315,7 +315,7 @@ def prepare_data(
     prepared_data = [
         "--instrument",
         instrument,
-        "--data_level",
+        "--data-level",
         data_level,
         "--start-date",
         start_date,
@@ -354,7 +354,7 @@ def send_lambda_put_event(command_parameters):
         Example of input:
             "Command": [
             "--instrument", "mag",
-            "--data_level", "l1a",
+            "--data-level", "l1a",
             "--start-date", "20231212",
             "--end-date", "20231212",
             "--version", "v00-01",
