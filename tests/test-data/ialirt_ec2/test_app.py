@@ -11,6 +11,7 @@ from flask import Flask
 # Create a Flask application
 app = Flask(__name__)
 
+
 # Decorator that tells Flask what URL
 # should trigger the function that follows.
 @app.route("/")

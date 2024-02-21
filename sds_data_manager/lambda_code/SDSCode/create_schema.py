@@ -45,10 +45,8 @@ def send_response(event, context, response_status):
     headers = {"content-type": "", "content-length": str(len(json_response_body))}
 
     response = requests.put(
-        response_url,
-        data=json_response_body,
-        headers=headers,
-        timeout=60)
+        response_url, data=json_response_body, headers=headers, timeout=60
+    )
     response.raise_for_status()
 
 

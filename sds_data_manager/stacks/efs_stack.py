@@ -1,7 +1,7 @@
 """Configure the EFS stack."""
 
 from aws_cdk import (
-CfnOutput,
+    CfnOutput,
     Duration,
     Fn,
     Stack,

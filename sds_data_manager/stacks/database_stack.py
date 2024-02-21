@@ -23,7 +23,7 @@ class SdpDatabase(Stack):
         username: str,
         secret_name: str,
         database_name: str,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Database construct.
 
