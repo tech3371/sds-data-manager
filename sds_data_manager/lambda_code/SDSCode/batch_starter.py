@@ -289,7 +289,7 @@ def prepare_data(
     # NOTE: Batch job expects command like this:
     # "Command": [
     #     "--instrument", "mag",
-    #     "--data_level", "l1a",
+    #     "--data-level", "l1a",
     #     "--start-date", "20231212",
     #     "--end-date", "20231212",
     #     "--version", "v00-01",
@@ -310,12 +310,12 @@ def prepare_data(
     #             'end_date': '20231212',
     #             'version': 'v00-01',
     #         }]""",
-    #     "--use-remote"
+    #     "--upload-to-sdc"
     # ]
     prepared_data = [
         "--instrument",
         instrument,
-        "--data_level",
+        "--data-level",
         data_level,
         "--start-date",
         start_date,
@@ -325,7 +325,7 @@ def prepare_data(
         version,
         "--dependency",
         f"{upstream_dependencies}",
-        "--use-remote",
+        "--upload-to-sdc",
     ]
 
     return prepared_data
@@ -354,7 +354,7 @@ def send_lambda_put_event(command_parameters):
         Example of input:
             "Command": [
             "--instrument", "mag",
-            "--data_level", "l1a",
+            "--data-level", "l1a",
             "--start-date", "20231212",
             "--end-date", "20231212",
             "--version", "v00-01",
@@ -375,7 +375,7 @@ def send_lambda_put_event(command_parameters):
                     'end_date': '20231212',
                     'version': 'v00-01',
                 }]\""",
-            "--use-remote"
+            "--upload-to-sdc"
         ]
     Returns
     -------
