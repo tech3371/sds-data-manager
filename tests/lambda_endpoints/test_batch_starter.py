@@ -13,10 +13,10 @@ from sds_data_manager.lambda_code.SDSCode import (
     upstream_dependency_config,
 )
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
-    append_attributes,
     get_dependency,
     lambda_handler,
     prepare_data,
+    query_downstream_dependencies,
     query_instrument,
     query_upstream_dependencies,
     send_lambda_put_event,
@@ -172,21 +172,19 @@ def test_query_instrument(test_file_catalog_simulation):
     assert record.end_date == datetime(2024, 1, 2)
 
 
-def test_append_attributes(test_file_catalog_simulation):
-    "Tests append_attributes function."
-    downstream_dependents = [{"instrument": "codice", "data_level": "l3b"}]
+def test_query_downstream_dependencies(test_file_catalog_simulation):
+    "Tests query_downstream_dependencies function."
 
-    complete_dependents = append_attributes(
-        test_file_catalog_simulation,
-        downstream_dependents,
-        "20240101",
-        "20240102",
-        "v00-01",
+    filename = "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"
+    file_params = ScienceFilePath.extract_filename_components(filename)
+    complete_dependents = query_downstream_dependencies(
+        test_file_catalog_simulation, file_params
     )
 
     expected_complete_dependent = {
-        "instrument": "codice",
-        "data_level": "l3b",
+        "instrument": "hit",
+        "data_level": "l1b",
+        "descriptor": "sci",
         "version": "v00-01",
         "start_date": "20240101",
         "end_date": "20240102",

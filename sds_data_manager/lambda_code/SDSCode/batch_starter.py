@@ -101,22 +101,16 @@ def query_instrument(session, upstream_dependency, start_date, end_date, version
     return record
 
 
-def append_attributes(session, downstream_dependents, start_date, end_date, version):
+def query_downstream_dependencies(session, filename_components):
     """
-    Appends start_time, end_time and version information to downstream dependents.
+    Get information of downstream dependents.
 
     Parameters
     ----------
     session : orm session
         Database session.
-    downstream_dependents : list of dict
-        A list of dictionaries where each dictionary corresponds to a record
-    start_date : str
-        Start date of the event data.
-    end_date : str
-        End date of the event data.
-    version : str
-        Version of the event data.
+    filename_components : dict
+        Dictionary containing components of the filename.
 
     Returns
     -------
@@ -124,19 +118,26 @@ def append_attributes(session, downstream_dependents, start_date, end_date, vers
         Dictionary containing components with dates and versions appended.
 
     """
+    # Get downstream dependency data
+    downstream_dependents = get_dependency(
+        instrument=filename_components["instrument"],
+        data_level=filename_components["data_level"],
+        descriptor=filename_components["descriptor"],
+        direction="DOWNSTREAM",
+        relationship="HARD",
+    )
 
     for dependent in downstream_dependents:
         # TODO: query the version table here for appropriate version
         #  of each downstream_dependent.
+        dependent["version"] = filename_components["version"]  # placeholder
 
         # TODO: add repointing table query if dependent is ENA or GLOWS
         #  Use start_date and end_date to query repointing table.
         # Use pointing start_time and end_time in place of start_date and end_date.
         # Add pointing number to dependent.
-
-        dependent["version"] = version  # placeholder
-        dependent["start_date"] = start_date
-        dependent["end_date"] = end_date
+        dependent["start_date"] = filename_components["start_date"]
+        dependent["end_date"] = filename_components["end_date"]
 
     return downstream_dependents
 
@@ -144,7 +145,7 @@ def append_attributes(session, downstream_dependents, start_date, end_date, vers
 def query_upstream_dependencies(session, downstream_dependents, descriptor):
     """
     Finds dependency information for each instrument. This function looks for
-    upstream dependency of current downstream dependent.
+    upstream dependency of current downstream dependents.
 
     Parameters
     ----------
@@ -182,7 +183,6 @@ def query_upstream_dependencies(session, downstream_dependents, descriptor):
         all_dependencies_available = True  # Initialize the flag
         for upstream_dependency in upstream_dependencies:
             # Check to see if each upstream dependency is available
-            # TODO: Add way to get version before this query.
             record = query_instrument(
                 session, upstream_dependency, start_date, end_date, version
             )
@@ -403,20 +403,7 @@ def lambda_handler(event: dict, context):
     components = ScienceFilePath.extract_filename_components(filename)
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
-    data_level = components["data_level"]
     descriptor = components["descriptor"]
-    version = components["version"]
-    start_date = components["start_date"]
-    end_date = components["end_date"]
-
-    # Get downstream dependency data
-    downstream_dependents = get_dependency(
-        instrument=instrument,
-        data_level=data_level,
-        descriptor=descriptor,
-        direction="DOWNSTREAM",
-        relationship="HARD",
-    )
 
     # Get information for the batch job.
     region = os.environ.get("REGION")
@@ -437,14 +424,15 @@ def lambda_handler(event: dict, context):
     engine = db.get_engine()
 
     with Session(engine) as session:
-        # TODO: leave this here for now.
-        complete_dependents = append_attributes(
-            session, downstream_dependents, start_date, end_date, version
-        )
+        # Downstream dependents are the instruments that
+        # depend on the current instrument.
+        downstream_dependents = query_downstream_dependencies(session, components)
 
-        # decide if we have sufficient upstream dependencies
+        # Check if every downstream dependents
+        # have all upstream dependencies. This helps to determine if
+        # we can start the batch job.
         downstream_instruments_to_process = query_upstream_dependencies(
-            session, complete_dependents, descriptor
+            session, downstream_dependents, descriptor
         )
 
         # No instruments to process
@@ -452,7 +440,7 @@ def lambda_handler(event: dict, context):
             logger.info("No instruments_to_process. Skipping further processing.")
             return
 
-        # Start Batch Job execution for each instrument
+        # Start Batch Job execution for those that has all dependencies
         for downstream_data in downstream_instruments_to_process:
             command = downstream_data["command"]
             logger.info(f"Submitting job with this command - {command}")
