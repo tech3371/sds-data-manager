@@ -1,24 +1,70 @@
 from datetime import datetime
-from pathlib import Path
+from unittest.mock import patch
 
 import boto3
 import pytest
 from imap_data_access import ScienceFilePath
 from moto import mock_batch, mock_sts
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from sds_data_manager.lambda_code.SDSCode import (
+    downstream_dependency_config,
+    upstream_dependency_config,
+)
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     append_attributes,
-    find_upstream_dependencies,
+    get_dependency,
     lambda_handler,
-    load_data,
     prepare_data,
     query_instrument,
     query_upstream_dependencies,
     send_lambda_put_event,
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
-from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalog
+from sds_data_manager.lambda_code.SDSCode.database.models import (
+    Base,
+    FileCatalog,
+)
+
+
+@pytest.fixture(scope="module")
+def test_engine():
+    """Create an in-memory SQLite database engine"""
+    with patch.object(db, "get_engine") as mock_engine:
+        engine = create_engine("sqlite:///:memory:")
+        mock_engine.return_value = engine
+        Base.metadata.create_all(engine)
+        # When we use yield, it waits until session is complete
+        # and waits for to be called whereas return exits fast.
+        yield engine
+
+
+@pytest.fixture()
+def populate_db(test_engine):
+    all_dependents = (
+        downstream_dependency_config.downstream_dependents
+        + upstream_dependency_config.upstream_dependents
+    )
+    # test_data = [
+    #     PreProcessingDependency(
+    #     primary_instrument="mag",
+    #     primary_data_level="l1a",
+    #     primary_descriptor="all",
+    #     dependent_instrument="mag",
+    #     dependent_data_level="l0",
+    #     dependent_descriptor="raw",
+    #     relationship="HARD",
+    #     direction="UPSTREAM",
+    # ),
+    # ]
+    # Setup: Add records to the database
+    with Session(db.get_engine()) as session:
+        session.add_all(all_dependents)
+        session.commit()
+        yield session
+        session.rollback()
+        session.close()
 
 
 @pytest.fixture()
@@ -43,7 +89,7 @@ def test_file_catalog_simulation(test_engine):
         file_path="/path/to/file",
         instrument="hit",
         data_level="l0",
-        descriptor="science",
+        descriptor="sci",
         start_date=datetime(2024, 1, 1),
         end_date=datetime(2024, 1, 2),
         version="v00-01",
@@ -72,6 +118,35 @@ def sts_client(_aws_credentials):
         yield boto3.client("sts", region_name="us-west-2")
 
 
+def test_pre_processing_dependency(test_engine, populate_db):
+    """Test pre-processing dependency"""
+    # upstream dependency
+    upstream_dependency = get_dependency(
+        instrument="mag",
+        data_level="l1a",
+        descriptor="all",
+        relationship="HARD",
+        direction="UPSTREAM",
+    )
+
+    assert upstream_dependency[0]["instrument"] == "mag"
+    assert upstream_dependency[0]["data_level"] == "l0"
+    assert upstream_dependency[0]["descriptor"] == "raw"
+
+    # downstream dependency
+    downstream_dependency = get_dependency(
+        instrument="mag",
+        data_level="l1b",
+        descriptor="normal-mago",
+        relationship="HARD",
+        direction="DOWNSTREAM",
+    )
+
+    assert downstream_dependency[0]["instrument"] == "mag"
+    assert downstream_dependency[0]["data_level"] == "l1c"
+    assert downstream_dependency[0]["descriptor"] == "normal-mago"
+
+
 def test_query_instrument(test_file_catalog_simulation):
     "Tests query_instrument function."
 
@@ -83,7 +158,11 @@ def test_query_instrument(test_file_catalog_simulation):
 
     "Tests query_instrument function."
     record = query_instrument(
-        test_file_catalog_simulation, upstream_dependency, "20240101", "20240102"
+        test_file_catalog_simulation,
+        upstream_dependency,
+        "20240101",
+        "20240102",
+        "v00-01",
     )
 
     assert record.instrument == "ultra-45"
@@ -116,52 +195,8 @@ def test_append_attributes(test_file_catalog_simulation):
     assert complete_dependents[0] == expected_complete_dependent
 
 
-def test_load_data():
-    "Tests load_data function."
-    base_directory = Path(__file__).resolve()
-    base_path = (
-        base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
-    )
-    filepath = base_path / "downstream_dependents.json"
-
-    data = load_data(filepath)
-
-    assert data["codice"]["l0"][0]["data_level"] == "l1a"
-
-
-def test_find_upstream_dependencies():
-    "Tests find_upstream_dependencies function."
-    base_directory = Path(__file__).resolve()
-    base_path = (
-        base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
-    )
-    filepath = base_path / "downstream_dependents.json"
-
-    data = load_data(filepath)
-
-    upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
-
-    expected_result = [
-        {"instrument": "codice", "data_level": "l2", "version": "v00-01"},
-        {"instrument": "codice", "data_level": "l3a", "version": "v00-01"},
-        {"instrument": "mag", "data_level": "l2", "version": "v00-01"},
-    ]
-
-    assert upstream_dependencies == expected_result
-
-
 def test_query_upstream_dependencies(test_file_catalog_simulation):
     "Tests query_upstream_dependencies function."
-    base_directory = Path(__file__).resolve()
-    filepath = (
-        base_directory.parents[2]
-        / "sds_data_manager"
-        / "lambda_code"
-        / "SDSCode"
-        / "downstream_dependents.json"
-    )
-
-    data = load_data(filepath)
 
     downstream_dependents = [
         {
@@ -181,7 +216,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     ]
 
     result = query_upstream_dependencies(
-        test_file_catalog_simulation, downstream_dependents, data, "bucket_name", "sci"
+        test_file_catalog_simulation, downstream_dependents, "sci"
     )
 
     assert list(result[0].keys()) == ["command"]
