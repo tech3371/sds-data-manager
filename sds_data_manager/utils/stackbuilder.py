@@ -120,7 +120,8 @@ def build_sds(
     # create EFS
     efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
-    instrument_list = ["CodiceHi"]  # etc
+    # TODO: import this from imap-data-access
+    instrument_list = ["codice", "swe", "mag"]  # etc
 
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
@@ -132,18 +133,6 @@ def build_sds(
             env=env,
             instrument_name=f"{instrument}",
         )
-        # lambda_code_directory is used to set lambda's code
-        # asset base path. Then it requires to have folder
-        # called "instruments" in lambda_code_directory and
-        # python code with f"l1a_{instrument}.py" and f"l1b_{instrument}.py"
-        # This is how it was used on lambda definition:
-        # lambda_alpha_.PythonFunction(
-        #     ...
-        #     entry=str(code_path),
-        #     index=f"instruments/{instrument_target.lower()}.py",
-        #     handler="lambda_handler",
-        #     ...
-        # )
 
         batch_compute_resources.FargateBatchResources(
             scope,
