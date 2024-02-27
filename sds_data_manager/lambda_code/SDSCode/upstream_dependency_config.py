@@ -1,3 +1,13 @@
+"""Stores the upstream dependency configuration of the instruments.
+This is used to populate pre-processing dependency table in the database.
+
+NOTE: This setup assumes that we get one data file everyday with all
+the data of multiple apid. This is why we have only one file for each
+l0 and descriptor is raw. And l1a that depends on l0 has 'all' as
+descriptor with assumption that l1a could produce multiple files
+with different descriptor. Those different descriptor are handle in its own
+code in imap_processing repo.
+"""
 from .database.models import PreProcessingDependency
 
 upstream_dependents = [

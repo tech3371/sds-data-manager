@@ -142,7 +142,7 @@ def query_downstream_dependencies(session, filename_components):
     return downstream_dependents
 
 
-def query_upstream_dependencies(session, downstream_dependents, descriptor):
+def query_upstream_dependencies(session, downstream_dependents):
     """
     Finds dependency information for each instrument. This function looks for
     upstream dependency of current downstream dependents.
@@ -170,6 +170,7 @@ def query_upstream_dependencies(session, downstream_dependents, descriptor):
         version = dependent["version"]
         start_date = dependent["start_date"]
         end_date = dependent["end_date"]
+        descriptor = dependent["descriptor"]
 
         # For each downstream dependent, find its upstream dependencies
         upstream_dependencies = get_dependency(
@@ -195,6 +196,8 @@ def query_upstream_dependencies(session, downstream_dependents, descriptor):
                     f"{upstream_dependency['data_level']}, "
                     f"{version}"
                 )
+                logger.debug(f"Downstream dependent: {dependent}")
+                logger.debug(f"Upstream dependencies: {upstream_dependencies}")
                 break  # Exit the loop early as we already found a missing dependency
             else:
                 logger.info(
@@ -403,7 +406,6 @@ def lambda_handler(event: dict, context):
     components = ScienceFilePath.extract_filename_components(filename)
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
-    descriptor = components["descriptor"]
 
     # Get information for the batch job.
     region = os.environ.get("REGION")
@@ -432,7 +434,7 @@ def lambda_handler(event: dict, context):
         # have all upstream dependencies. This helps to determine if
         # we can start the batch job.
         downstream_instruments_to_process = query_upstream_dependencies(
-            session, downstream_dependents, descriptor
+            session, downstream_dependents
         )
 
         # No instruments to process

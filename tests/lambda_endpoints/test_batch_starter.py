@@ -28,6 +28,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
 )
 
 
+# TODO: figure out why scope of test_engine is not working properly
 @pytest.fixture(scope="module")
 def test_engine():
     """Create an in-memory SQLite database engine"""
@@ -40,24 +41,14 @@ def test_engine():
         yield engine
 
 
+# TODO: may be move this to confest.py if scope works properly
 @pytest.fixture()
 def populate_db(test_engine):
     all_dependents = (
         downstream_dependency_config.downstream_dependents
         + upstream_dependency_config.upstream_dependents
     )
-    # test_data = [
-    #     PreProcessingDependency(
-    #     primary_instrument="mag",
-    #     primary_data_level="l1a",
-    #     primary_descriptor="all",
-    #     dependent_instrument="mag",
-    #     dependent_data_level="l0",
-    #     dependent_descriptor="raw",
-    #     relationship="HARD",
-    #     direction="UPSTREAM",
-    # ),
-    # ]
+
     # Setup: Add records to the database
     with Session(db.get_engine()) as session:
         session.add_all(all_dependents)
@@ -70,37 +61,62 @@ def populate_db(test_engine):
 @pytest.fixture()
 def test_file_catalog_simulation(test_engine):
     # Setup: Add records to the database
-
-    test_record_1 = FileCatalog(
-        file_path="/path/to/file",
-        instrument="ultra-45",
-        data_level="l2",
-        descriptor="science",
-        start_date=datetime(2024, 1, 1),
-        end_date=datetime(2024, 1, 2),
-        version="v00-01",
-        extension="cdf",
-        ingestion_date=datetime.strptime(
-            "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+    test_record = [
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="ultra-45",
+            data_level="l2",
+            descriptor="science",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
         ),
-    )
-
-    test_record_2 = FileCatalog(
-        file_path="/path/to/file",
-        instrument="hit",
-        data_level="l0",
-        descriptor="sci",
-        start_date=datetime(2024, 1, 1),
-        end_date=datetime(2024, 1, 2),
-        version="v00-01",
-        extension="cdf",
-        ingestion_date=datetime.strptime(
-            "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="hit",
+            data_level="l0",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
         ),
-    )
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="swe",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
     with Session(db.get_engine()) as session:
-        session.add(test_record_1)
-        session.add(test_record_2)
+        session.add_all(test_record)
         session.commit()
 
     return session
@@ -201,6 +217,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
             "instrument": "hit",
             "data_level": "l1a",
             "version": "v00-01",
+            "descriptor": "sci",
             "start_date": "20240101",
             "end_date": "20240102",
         },
@@ -208,16 +225,79 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
             "instrument": "hit",
             "data_level": "l3",
             "version": "v00-01",
+            "descriptor": "sci",
             "start_date": "20240101",
             "end_date": "20240102",
         },
     ]
 
     result = query_upstream_dependencies(
-        test_file_catalog_simulation, downstream_dependents, "sci"
+        test_file_catalog_simulation, downstream_dependents
     )
 
     assert list(result[0].keys()) == ["command"]
+    assert result[0]["command"][1] == "hit"
+    assert result[0]["command"][3] == "l1a"
+    assert result[0]["command"][9] == "v00-01"
+    expected_upstream_dependents = (
+        "[{'instrument': 'hit', 'data_level': 'l0', "
+        "'descriptor': 'sci', 'start_date': '20240101',"
+        " 'end_date': '20240102', 'version': 'v00-01'}]"
+    )
+    assert result[0]["command"][11] == expected_upstream_dependents
+
+    # find swe upstream dependencies
+    downstream_dependents = [
+        {
+            "instrument": "swe",
+            "data_level": "l1a",
+            "version": "v00-01",
+            "descriptor": "all",
+            "start_date": "20240101",
+            "end_date": "20240102",
+        }
+    ]
+
+    result = query_upstream_dependencies(
+        test_file_catalog_simulation, downstream_dependents
+    )
+
+    assert len(result) == 1
+    assert result[0]["command"][1] == "swe"
+    assert result[0]["command"][3] == "l1a"
+    assert result[0]["command"][9] == "v00-01"
+    expected_upstream_dependents = (
+        "[{'instrument': 'swe', 'data_level': 'l0', "
+        "'descriptor': 'raw', 'start_date': '20240101',"
+        " 'end_date': '20240102', 'version': 'v00-01'}]"
+    )
+    assert result[0]["command"][11] == expected_upstream_dependents
+
+    downstream_dependents = [
+        {
+            "instrument": "swe",
+            "data_level": "l1b",
+            "version": "v00-01",
+            "descriptor": "sci",
+            "start_date": "20240101",
+            "end_date": "20240102",
+        }
+    ]
+
+    result = query_upstream_dependencies(
+        test_file_catalog_simulation, downstream_dependents
+    )
+
+    assert len(result) == 1
+    assert result[0]["command"][1] == "swe"
+    assert result[0]["command"][3] == "l1b"
+    assert result[0]["command"][9] == "v00-01"
+    expected_upstream_dependents = (
+        "[{'instrument': 'swe', 'data_level': 'l1a', "
+        "'descriptor': 'sci', 'start_date': '20240101',"
+        " 'end_date': '20240102', 'version': 'v00-01'}]"
+    )
+    assert result[0]["command"][11] == expected_upstream_dependents
 
 
 def test_prepare_data():
