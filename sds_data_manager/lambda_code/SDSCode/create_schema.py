@@ -6,8 +6,7 @@ import logging
 import requests
 from SDSCode.database import database as db
 from SDSCode.database.models import Base
-from SDSCode.downstream_dependency_config import downstream_dependents
-from SDSCode.upstream_dependency_config import upstream_dependents
+from SDSCode.dependency_config import downstream_dependents, upstream_dependents
 from sqlalchemy.orm import Session
 
 # Logger setup
@@ -56,9 +55,9 @@ def lambda_handler(event, context):
         engine = db.get_engine()
         Base.metadata.create_all(engine)
         # Write dependencies to pre-processing dependency table
-        all_dependents = downstream_dependents + upstream_dependents
+        downstream_dependents.extend(upstream_dependents)
         with Session(engine) as session:
-            session.add_all(all_dependents)
+            session.add_all(downstream_dependents)
             session.commit()
         send_response(event, context, "SUCCESS")
     except Exception as e:

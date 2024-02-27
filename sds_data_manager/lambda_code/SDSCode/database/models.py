@@ -24,16 +24,16 @@ from sqlalchemy.orm import DeclarativeBase
 INSTRUMENTS = SqlEnum(
     "codice",
     "glows",
-    "hi-45",
-    "hi-90",
+    "hi45",
+    "hi90",
     "hit",
     "idex",
     "lo",
     "mag",
     "swapi",
     "swe",
-    "ultra-45",
-    "ultra-90",
+    "ultra45",
+    "ultra90",
     name="instrument",
 )
 

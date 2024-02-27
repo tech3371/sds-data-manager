@@ -9,8 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode import (
-    downstream_dependency_config,
-    upstream_dependency_config,
+    dependency_config,
 )
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     get_dependency,
@@ -44,14 +43,17 @@ def test_engine():
 # TODO: may be move this to confest.py if scope works properly
 @pytest.fixture()
 def populate_db(test_engine):
-    all_dependents = (
-        downstream_dependency_config.downstream_dependents
-        + upstream_dependency_config.upstream_dependents
+    # all_dependents = (
+    #     dependency_config.downstream_dependents
+    #     + dependency_config.upstream_dependents
+    # )
+    dependency_config.downstream_dependents.extend(
+        dependency_config.upstream_dependents
     )
 
     # Setup: Add records to the database
     with Session(db.get_engine()) as session:
-        session.add_all(all_dependents)
+        session.add_all(dependency_config.downstream_dependents)
         session.commit()
         yield session
         session.rollback()
@@ -64,7 +66,7 @@ def test_file_catalog_simulation(test_engine):
     test_record = [
         FileCatalog(
             file_path="/path/to/file",
-            instrument="ultra-45",
+            instrument="ultra45",
             data_level="l2",
             descriptor="science",
             start_date=datetime(2024, 1, 1),
@@ -167,7 +169,7 @@ def test_query_instrument(test_file_catalog_simulation):
     "Tests query_instrument function."
 
     upstream_dependency = {
-        "instrument": "ultra-45",
+        "instrument": "ultra45",
         "data_level": "l2",
         "version": "v00-01",
     }
@@ -181,7 +183,7 @@ def test_query_instrument(test_file_catalog_simulation):
         "v00-01",
     )
 
-    assert record.instrument == "ultra-45"
+    assert record.instrument == "ultra45"
     assert record.data_level == "l2"
     assert record.version == "v00-01"
     assert record.start_date == datetime(2024, 1, 1)
