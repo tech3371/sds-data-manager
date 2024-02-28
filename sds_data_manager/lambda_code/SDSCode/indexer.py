@@ -7,7 +7,6 @@ from datetime import datetime
 
 import boto3
 from imap_data_access import ScienceFilePath
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import database as db
@@ -47,49 +46,6 @@ def get_file_creation_date(file_path):
     # LastModified looks like this:
     # 2024-01-25 23:35:26+00:00
     return file_creation_date
-
-
-def get_dependency(instrument, data_level, descriptor, direction, relationship):
-    """Make query to dependency table to get dependency.
-
-    TODO: Move this function to batch starter after February demo or keep it here
-    based on discussion during that time. This is just to setup and test
-    cababilities to make queries to pre-processing dependency table.
-
-    Parameters
-    ----------
-    instrument : str
-        Primary instrument that we are looking for its dependency.
-    data_level : str
-        Primary data level.
-    descriptor : str
-        Primary data descriptor.
-    direction: str
-        Whether it's UPSTREAM or DOWNSTREAM dependency.
-    relationship: str
-        Whether it's HARD or SOFT dependency.
-        HARD means it's required and SOFT means it's nice to have.
-
-    Returns
-    -------
-    dependency : list
-        List of dictionary containing the dependency information.
-
-    """
-    dependency = []
-    # Send EventBridge event for downstream dependency
-    with Session(db.get_engine()) as session:
-        query = select(models.PreProcessingDependency.__table__).where(
-            models.PreProcessingDependency.primary_instrument == instrument,
-            models.PreProcessingDependency.primary_data_level == data_level,
-            models.PreProcessingDependency.primary_descriptor == descriptor,
-            models.PreProcessingDependency.direction == direction,
-            models.PreProcessingDependency.relationship == relationship,
-        )
-        results = session.execute(query).all()
-        for result in results:
-            dependency.append(result)
-    return dependency
 
 
 def http_response(headers=None, status_code=200, body="Success"):

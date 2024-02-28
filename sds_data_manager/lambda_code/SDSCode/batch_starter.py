@@ -1,13 +1,12 @@
 """Functions for supporting the batch starter component of the architecture."""
 
-import json
 import logging
 import os
 from datetime import datetime
-from pathlib import Path
 
 import boto3
 from imap_data_access import ScienceFilePath
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import database as db
@@ -19,8 +18,53 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def query_instrument(session, upstream_dependency, start_date, end_date):
-    """Append start_time, end_time and version information to downstream dependents.
+def get_dependency(instrument, data_level, descriptor, direction, relationship):
+    """Make query to dependency table to get dependency.
+
+    Parameters
+    ----------
+    instrument : str
+        Primary instrument that we are looking for its dependency.
+    data_level : str
+        Primary data level.
+    descriptor : str
+        Primary data descriptor.
+    direction: str
+        Whether it's UPSTREAM or DOWNSTREAM dependency.
+    relationship: str
+        Whether it's HARD or SOFT dependency.
+        HARD means it's required and SOFT means it's nice to have.
+        
+    Returns
+    -------
+    dependency : list
+        List of dictionary containing the dependency information.
+    """
+    dependency = []
+
+    with Session(db.get_engine()) as session:
+        query = select(models.PreProcessingDependency.__table__).where(
+            models.PreProcessingDependency.primary_instrument == instrument,
+            models.PreProcessingDependency.primary_data_level == data_level,
+            models.PreProcessingDependency.primary_descriptor == descriptor,
+            models.PreProcessingDependency.direction == direction,
+            models.PreProcessingDependency.relationship == relationship,
+        )
+        results = session.execute(query).all()
+        for result in results:
+            dependency.append(
+                {
+                    "instrument": result.dependent_instrument,
+                    "data_level": result.dependent_data_level,
+                    "descriptor": result.dependent_descriptor,
+                }
+            )
+    return dependency
+
+
+def query_instrument(session, upstream_dependency, start_date, end_date, version):
+    """
+    Appends start_time, end_time and version information to downstream dependents.
 
     Parameters
     ----------
@@ -32,17 +76,17 @@ def query_instrument(session, upstream_dependency, start_date, end_date):
         Start date of the event data.
     end_date : str
         End date of the event data.
+    version : str
+        Version of the event data.
 
     Returns
     -------
     record : models.FileCatalog or None
         The first FileCatalog record matching the query criteria.
         None is returned if no record matches the criteria.
-
     """
     instrument = upstream_dependency["instrument"]
     data_level = upstream_dependency["data_level"]
-    version = upstream_dependency["version"]
 
     record = (
         session.query(models.FileCatalog)
@@ -59,106 +103,50 @@ def query_instrument(session, upstream_dependency, start_date, end_date):
     return record
 
 
-def append_attributes(session, downstream_dependents, start_date, end_date, version):
-    """Append start_time, end_time and version information to downstream dependents.
+def query_downstream_dependencies(session, filename_components):
+    """
+    Get information of downstream dependents.
 
     Parameters
     ----------
     session : orm session
         Database session.
-    downstream_dependents : list of dict
-        A list of dictionaries where each dictionary corresponds to a record
-    start_date : str
-        Start date of the event data.
-    end_date : str
-        End date of the event data.
-    version : str
-        Version of the event data.
+    filename_components : dict
+        Dictionary containing components of the filename.
 
     Returns
     -------
     downstream_dependents : list of dict
         Dictionary containing components with dates and versions appended.
-
     """
+    # Get downstream dependency data
+    downstream_dependents = get_dependency(
+        instrument=filename_components["instrument"],
+        data_level=filename_components["data_level"],
+        descriptor=filename_components["descriptor"],
+        direction="DOWNSTREAM",
+        relationship="HARD",
+    )
+
     for dependent in downstream_dependents:
         # TODO: query the version table here for appropriate version
         #  of each downstream_dependent.
+        dependent["version"] = filename_components["version"]  # placeholder
 
         # TODO: add repointing table query if dependent is ENA or GLOWS
         #  Use start_date and end_date to query repointing table.
         # Use pointing start_time and end_time in place of start_date and end_date.
         # Add pointing number to dependent.
-
-        dependent["version"] = version  # placeholder
-        dependent["start_date"] = start_date
-        dependent["end_date"] = end_date
+        dependent["start_date"] = filename_components["start_date"]
+        dependent["end_date"] = filename_components["end_date"]
 
     return downstream_dependents
 
 
-def find_upstream_dependencies(
-    downstream_dependent_instrument,
-    downstream_dependent_inst_level,
-    downstream_dependent_version,
-    data,
-):
-    """Find dependency information for each instrument.
-
-    Parameters
-    ----------
-    downstream_dependent_instrument : str
-        Downstream dependent instrument.
-    downstream_dependent_inst_level : str
-        Downstream dependent data level.
-    downstream_dependent_version : str
-        Downstream dependent version.
-    data : dict
-        Dictionary containing dependency data.
-
-    Returns
-    -------
-    upstream_dependencies : list of dict
-        A list of dictionaries containing dependency instrument,
-        data level, and version.
-
-    Example:
-    upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
-
-    expected_result = [
-        {"instrument": "codice", "data_level": "l2", "version": "v00-01"},
-        {"instrument": "codice", "data_level": "l3a", "version": "v00-01"},
-        {"instrument": "mag", "data_level": "l2", "version": "v00-01"},
-    ]
-
+def query_upstream_dependencies(session, downstream_dependents):
     """
-    upstream_dependencies = []
-
-    for instr, data_levels in data.items():
-        for data_level, deps in data_levels.items():
-            if any(
-                dep["instrument"] == downstream_dependent_instrument
-                and dep["data_level"] == downstream_dependent_inst_level
-                for dep in deps
-            ):
-                upstream_dependencies.append(
-                    {"instrument": instr, "data_level": data_level}
-                )
-
-    for dependency in upstream_dependencies:
-        # TODO: query the version table here for appropriate version
-        #  of each dependency. Use downstream_dependent_version to query version table.
-        dependency["version"] = downstream_dependent_version  # placeholder
-
-    return upstream_dependencies
-
-
-def query_upstream_dependencies(
-    session, downstream_dependents, data, s3_bucket, descriptor
-):
-    """Find dependency information for each instrument.
-
-    This function looks for upstream dependency of current downstream dependent.
+    Finds dependency information for each instrument. This function looks for
+    upstream dependency of current downstream dependents.
 
     Parameters
     ----------
@@ -166,19 +154,13 @@ def query_upstream_dependencies(
         Database session.
     downstream_dependents : list of dict
         Dictionary containing components with dates and versions appended.
-    data : dict
-        Dictionary containing dependency data.
-    s3_bucket : str
-        S3 bucket name.
-    descriptor : str
-        The filename descriptor
 
     Returns
     -------
     instruments_to_process : list of dict
-        A list of dictionaries containing the filename and prepared data.
-
+        A list of dictionaries containing the prepared command.
     """
+
     instruments_to_process = []
 
     # Iterate over each downstream dependent
@@ -188,17 +170,22 @@ def query_upstream_dependencies(
         version = dependent["version"]
         start_date = dependent["start_date"]
         end_date = dependent["end_date"]
+        descriptor = dependent["descriptor"]
 
         # For each downstream dependent, find its upstream dependencies
-        upstream_dependencies = find_upstream_dependencies(
-            instrument, data_level, version, data
+        upstream_dependencies = get_dependency(
+            instrument=instrument,
+            data_level=data_level,
+            descriptor=descriptor,
+            direction="UPSTREAM",
+            relationship="HARD",
         )
 
         all_dependencies_available = True  # Initialize the flag
         for upstream_dependency in upstream_dependencies:
             # Check to see if each upstream dependency is available
             record = query_instrument(
-                session, upstream_dependency, start_date, end_date
+                session, upstream_dependency, start_date, end_date, version
             )
             if record is None:
                 all_dependencies_available = (
@@ -207,18 +194,36 @@ def query_upstream_dependencies(
                 logger.info(
                     f"Missing dependency: {upstream_dependency['instrument']}, "
                     f"{upstream_dependency['data_level']}, "
-                    f"{upstream_dependency['version']}"
+                    f"{version}"
                 )
+                logger.debug(f"Downstream dependent: {dependent}")
+                logger.debug(f"Upstream dependencies: {upstream_dependencies}")
                 break  # Exit the loop early as we already found a missing dependency
             else:
                 logger.info(
                     f"Dependency found: {upstream_dependency['instrument']}, "
                     f"{upstream_dependency['data_level']}, "
-                    f"{upstream_dependency['version']}"
+                    f"{version}"
                 )
+                # Add additional information to the upstream dependency
+                additional_info = {
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "version": version,
+                }
+                upstream_dependency.update(additional_info)
 
         # If all dependencies are available, prepare the data for batch job
         if all_dependencies_available:
+            # These are the keys the upstream_dependencies should contain:
+            # {
+            #     'instrument': 'swe',
+            #     'data_level': 'l0',
+            #     'descriptor': 'lveng-hk',
+            #     'start_date': '20231212',
+            #     'end_date': '20231212',
+            #     'version': 'v01-00',
+            # },
             prepared_data = prepare_data(
                 instrument=instrument,
                 data_level=data_level,
@@ -235,30 +240,11 @@ def query_upstream_dependencies(
     return instruments_to_process
 
 
-def load_data(filepath: Path):
-    """Load dependency data.
-
-    Parameters
-    ----------
-    filepath : Path
-        Path of dependency data.
-
-    Returns
-    -------
-    data : dict
-        Dictionary containing dependency data.
-
-    """
-    with filepath.open() as file:
-        data = json.load(file)
-
-    return data
-
-
 def prepare_data(
     instrument, data_level, start_date, end_date, version, upstream_dependencies
 ):
-    """Prepare data for batch job.
+    """
+    Prepares data for batch job.
 
     Parameters
     ----------
@@ -280,13 +266,12 @@ def prepare_data(
     -------
     prepared_data : str
         Data to submit to batch job.
-
     """
     # Prepare batch job command
     # NOTE: Batch job expects command like this:
     # "Command": [
     #     "--instrument", "mag",
-    #     "--data_level", "l1a",
+    #     "--data-level", "l1a",
     #     "--start-date", "20231212",
     #     "--end-date", "20231212",
     #     "--version", "v00-01",
@@ -307,12 +292,12 @@ def prepare_data(
     #             'end_date': '20231212',
     #             'version': 'v00-01',
     #         }]""",
-    #     "--use-remote"
+    #     "--upload-to-sdc"
     # ]
     prepared_data = [
         "--instrument",
         instrument,
-        "--data_level",
+        "--data-level",
         data_level,
         "--start-date",
         start_date,
@@ -322,14 +307,14 @@ def prepare_data(
         version,
         "--dependency",
         f"{upstream_dependencies}",
-        "--use-remote",
+        "--upload-to-sdc",
     ]
 
     return prepared_data
 
 
 def send_lambda_put_event(command_parameters):
-    r"""Send custom PutEvent to EventBridge.
+    """Sends custom PutEvent to EventBridge
 
     Example of what PutEvent looks like:
     event = {
@@ -351,7 +336,7 @@ def send_lambda_put_event(command_parameters):
         Example of input:
             "Command": [
             "--instrument", "mag",
-            "--data_level", "l1a",
+            "--data-level", "l1a",
             "--start-date", "20231212",
             "--end-date", "20231212",
             "--version", "v00-01",
@@ -372,14 +357,12 @@ def send_lambda_put_event(command_parameters):
                     'end_date': '20231212',
                     'version': 'v00-01',
                 }]\""",
-            "--use-remote"
+            "--upload-to-sdc"
         ]
-
     Returns
     -------
     dict
         EventBridge response
-
     """
     event_client = boto3.client("events")
 
@@ -413,7 +396,7 @@ def send_lambda_put_event(command_parameters):
 
 
 def lambda_handler(event: dict, context):
-    """Entry point to the batch starter lambda."""
+    """Handler function"""
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
 
@@ -422,21 +405,6 @@ def lambda_handler(event: dict, context):
     components = ScienceFilePath.extract_filename_components(filename)
     logger.info(f"Parsed filename - {components}")
     instrument = components["instrument"]
-    data_level = components["data_level"]
-    descriptor = components["descriptor"]
-    version = components["version"]
-    start_date = components["start_date"]
-    end_date = components["end_date"]
-
-    # S3 Bucket name.
-    s3_bucket = os.environ.get("S3_BUCKET")
-
-    # Retrieve dependency data.
-    dependency_path = Path(__file__).resolve().parent / "downstream_dependents.json"
-    data = load_data(dependency_path)
-    logger.info(f"loaded dependent data - {data}")
-    # Downstream dependents that are candidates for the batch job.
-    downstream_dependents = data[instrument][data_level]
 
     # Get information for the batch job.
     region = os.environ.get("REGION")
@@ -457,13 +425,15 @@ def lambda_handler(event: dict, context):
     engine = db.get_engine()
 
     with Session(engine) as session:
-        complete_dependents = append_attributes(
-            session, downstream_dependents, start_date, end_date, version
-        )
+        # Downstream dependents are the instruments that
+        # depend on the current instrument.
+        downstream_dependents = query_downstream_dependencies(session, components)
 
-        # decide if we have sufficient upstream dependencies
+        # Check if every downstream dependents
+        # have all upstream dependencies. This helps to determine if
+        # we can start the batch job.
         downstream_instruments_to_process = query_upstream_dependencies(
-            session, complete_dependents, data, s3_bucket, descriptor
+            session, downstream_dependents
         )
 
         # No instruments to process
@@ -471,7 +441,7 @@ def lambda_handler(event: dict, context):
             logger.info("No instruments_to_process. Skipping further processing.")
             return
 
-        # Start Batch Job execution for each instrument
+        # Start Batch Job execution for those that has all dependencies
         for downstream_data in downstream_instruments_to_process:
             command = downstream_data["command"]
             logger.info(f"Submitting job with this command - {command}")

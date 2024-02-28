@@ -1,61 +1,126 @@
 """Tests the batch starter."""
 
 from datetime import datetime
-from pathlib import Path
+from unittest.mock import patch
 
 import boto3
 import pytest
 from imap_data_access import ScienceFilePath
 from moto import mock_batch, mock_sts
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from sds_data_manager.lambda_code.SDSCode import (
+    dependency_config,
+)
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
-    append_attributes,
-    find_upstream_dependencies,
+    get_dependency,
     lambda_handler,
-    load_data,
     prepare_data,
+    query_downstream_dependencies,
     query_instrument,
     query_upstream_dependencies,
     send_lambda_put_event,
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
-from sds_data_manager.lambda_code.SDSCode.database.models import FileCatalog
+from sds_data_manager.lambda_code.SDSCode.database.models import (
+    Base,
+    FileCatalog,
+)
+
+
+# TODO: figure out why scope of test_engine is not working properly
+@pytest.fixture(scope="module")
+def test_engine():
+    """Create an in-memory SQLite database engine"""
+    with patch.object(db, "get_engine") as mock_engine:
+        engine = create_engine("sqlite:///:memory:")
+        mock_engine.return_value = engine
+        Base.metadata.create_all(engine)
+        # When we use yield, it waits until session is complete
+        # and waits for to be called whereas return exits fast.
+        yield engine
+
+
+# TODO: may be move this to confest.py if scope works properly
+@pytest.fixture()
+def populate_db(test_engine):
+    # all_dependents = (
+    #     dependency_config.downstream_dependents
+    #     + dependency_config.upstream_dependents
+    # )
+    dependency_config.downstream_dependents.extend(
+        dependency_config.upstream_dependents
+    )
+
+    # Setup: Add records to the database
+    with Session(db.get_engine()) as session:
+        session.add_all(dependency_config.downstream_dependents)
+        session.commit()
+        yield session
+        session.rollback()
+        session.close()
 
 
 @pytest.fixture()
 def test_file_catalog_simulation(test_engine):
-    """Adds tests records to the database."""
-    test_record_1 = FileCatalog(
-        file_path="/path/to/file",
-        instrument="ultra-45",
-        data_level="l2",
-        descriptor="science",
-        start_date=datetime(2024, 1, 1),
-        end_date=datetime(2024, 1, 2),
-        version="v00-01",
-        extension="cdf",
-        ingestion_date=datetime.strptime(
-            "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+    # Setup: Add records to the database
+    test_record = [
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="ultra45",
+            data_level="l2",
+            descriptor="science",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
         ),
-    )
-
-    test_record_2 = FileCatalog(
-        file_path="/path/to/file",
-        instrument="hit",
-        data_level="l0",
-        descriptor="science",
-        start_date=datetime(2024, 1, 1),
-        end_date=datetime(2024, 1, 2),
-        version="v00-01",
-        extension="cdf",
-        ingestion_date=datetime.strptime(
-            "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="hit",
+            data_level="l0",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
         ),
-    )
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="swe",
+            data_level="l0",
+            descriptor="raw",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="swe",
+            data_level="l1a",
+            descriptor="sci",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 2),
+            version="v00-01",
+            extension="pkts",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+    ]
     with Session(db.get_engine()) as session:
-        session.add(test_record_1)
-        session.add(test_record_2)
+        session.add_all(test_record)
         session.commit()
 
     return session
@@ -63,53 +128,83 @@ def test_file_catalog_simulation(test_engine):
 
 @pytest.fixture()
 def batch_client(_aws_credentials):
-    """Return a batch client to test with."""
     with mock_batch():
         yield boto3.client("batch", region_name="us-west-2")
 
 
 @pytest.fixture()
 def sts_client(_aws_credentials):
-    """Return a mock sts client to test with."""
     with mock_sts():
         yield boto3.client("sts", region_name="us-west-2")
 
 
+def test_pre_processing_dependency(test_engine, populate_db):
+    """Test pre-processing dependency"""
+    # upstream dependency
+    upstream_dependency = get_dependency(
+        instrument="mag",
+        data_level="l1a",
+        descriptor="all",
+        relationship="HARD",
+        direction="UPSTREAM",
+    )
+
+    assert upstream_dependency[0]["instrument"] == "mag"
+    assert upstream_dependency[0]["data_level"] == "l0"
+    assert upstream_dependency[0]["descriptor"] == "raw"
+
+    # downstream dependency
+    downstream_dependency = get_dependency(
+        instrument="mag",
+        data_level="l1b",
+        descriptor="normal-mago",
+        relationship="HARD",
+        direction="DOWNSTREAM",
+    )
+
+    assert downstream_dependency[0]["instrument"] == "mag"
+    assert downstream_dependency[0]["data_level"] == "l1c"
+    assert downstream_dependency[0]["descriptor"] == "normal-mago"
+
+
 def test_query_instrument(test_file_catalog_simulation):
-    """Test query_instrument function."""
+    "Tests query_instrument function."
+
     upstream_dependency = {
-        "instrument": "ultra-45",
+        "instrument": "ultra45",
         "data_level": "l2",
         "version": "v00-01",
     }
 
     "Tests query_instrument function."
     record = query_instrument(
-        test_file_catalog_simulation, upstream_dependency, "20240101", "20240102"
+        test_file_catalog_simulation,
+        upstream_dependency,
+        "20240101",
+        "20240102",
+        "v00-01",
     )
 
-    assert record.instrument == "ultra-45"
+    assert record.instrument == "ultra45"
     assert record.data_level == "l2"
     assert record.version == "v00-01"
     assert record.start_date == datetime(2024, 1, 1)
     assert record.end_date == datetime(2024, 1, 2)
 
 
-def test_append_attributes(test_file_catalog_simulation):
-    """Test append_attributes function."""
-    downstream_dependents = [{"instrument": "codice", "data_level": "l3b"}]
+def test_query_downstream_dependencies(test_file_catalog_simulation):
+    "Tests query_downstream_dependencies function."
 
-    complete_dependents = append_attributes(
-        test_file_catalog_simulation,
-        downstream_dependents,
-        "20240101",
-        "20240102",
-        "v00-01",
+    filename = "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"
+    file_params = ScienceFilePath.extract_filename_components(filename)
+    complete_dependents = query_downstream_dependencies(
+        test_file_catalog_simulation, file_params
     )
 
     expected_complete_dependent = {
-        "instrument": "codice",
-        "data_level": "l3b",
+        "instrument": "hit",
+        "data_level": "l1b",
+        "descriptor": "sci",
         "version": "v00-01",
         "start_date": "20240101",
         "end_date": "20240102",
@@ -118,58 +213,15 @@ def test_append_attributes(test_file_catalog_simulation):
     assert complete_dependents[0] == expected_complete_dependent
 
 
-def test_load_data():
-    """Test load_data function."""
-    base_directory = Path(__file__).resolve()
-    base_path = (
-        base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
-    )
-    filepath = base_path / "downstream_dependents.json"
-
-    data = load_data(filepath)
-
-    assert data["codice"]["l0"][0]["data_level"] == "l1a"
-
-
-def test_find_upstream_dependencies():
-    """Test find_upstream_dependencies function."""
-    base_directory = Path(__file__).resolve()
-    base_path = (
-        base_directory.parents[2] / "sds_data_manager" / "lambda_code" / "SDSCode"
-    )
-    filepath = base_path / "downstream_dependents.json"
-
-    data = load_data(filepath)
-
-    upstream_dependencies = find_upstream_dependencies("codice", "l3b", "v00-01", data)
-
-    expected_result = [
-        {"instrument": "codice", "data_level": "l2", "version": "v00-01"},
-        {"instrument": "codice", "data_level": "l3a", "version": "v00-01"},
-        {"instrument": "mag", "data_level": "l2", "version": "v00-01"},
-    ]
-
-    assert upstream_dependencies == expected_result
-
-
 def test_query_upstream_dependencies(test_file_catalog_simulation):
-    """Test query_upstream_dependencies function."""
-    base_directory = Path(__file__).resolve()
-    filepath = (
-        base_directory.parents[2]
-        / "sds_data_manager"
-        / "lambda_code"
-        / "SDSCode"
-        / "downstream_dependents.json"
-    )
-
-    data = load_data(filepath)
+    "Tests query_upstream_dependencies function."
 
     downstream_dependents = [
         {
             "instrument": "hit",
             "data_level": "l1a",
             "version": "v00-01",
+            "descriptor": "sci",
             "start_date": "20240101",
             "end_date": "20240102",
         },
@@ -177,20 +229,84 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
             "instrument": "hit",
             "data_level": "l3",
             "version": "v00-01",
+            "descriptor": "sci",
             "start_date": "20240101",
             "end_date": "20240102",
         },
     ]
 
     result = query_upstream_dependencies(
-        test_file_catalog_simulation, downstream_dependents, data, "bucket_name", "sci"
+        test_file_catalog_simulation, downstream_dependents
     )
 
     assert list(result[0].keys()) == ["command"]
+    assert result[0]["command"][1] == "hit"
+    assert result[0]["command"][3] == "l1a"
+    assert result[0]["command"][9] == "v00-01"
+    expected_upstream_dependents = (
+        "[{'instrument': 'hit', 'data_level': 'l0', "
+        "'descriptor': 'sci', 'start_date': '20240101',"
+        " 'end_date': '20240102', 'version': 'v00-01'}]"
+    )
+    assert result[0]["command"][11] == expected_upstream_dependents
+
+    # find swe upstream dependencies
+    downstream_dependents = [
+        {
+            "instrument": "swe",
+            "data_level": "l1a",
+            "version": "v00-01",
+            "descriptor": "all",
+            "start_date": "20240101",
+            "end_date": "20240102",
+        }
+    ]
+
+    result = query_upstream_dependencies(
+        test_file_catalog_simulation, downstream_dependents
+    )
+
+    assert len(result) == 1
+    assert result[0]["command"][1] == "swe"
+    assert result[0]["command"][3] == "l1a"
+    assert result[0]["command"][9] == "v00-01"
+    expected_upstream_dependents = (
+        "[{'instrument': 'swe', 'data_level': 'l0', "
+        "'descriptor': 'raw', 'start_date': '20240101',"
+        " 'end_date': '20240102', 'version': 'v00-01'}]"
+    )
+    assert result[0]["command"][11] == expected_upstream_dependents
+
+    downstream_dependents = [
+        {
+            "instrument": "swe",
+            "data_level": "l1b",
+            "version": "v00-01",
+            "descriptor": "sci",
+            "start_date": "20240101",
+            "end_date": "20240102",
+        }
+    ]
+
+    result = query_upstream_dependencies(
+        test_file_catalog_simulation, downstream_dependents
+    )
+
+    assert len(result) == 1
+    assert result[0]["command"][1] == "swe"
+    assert result[0]["command"][3] == "l1b"
+    assert result[0]["command"][9] == "v00-01"
+    expected_upstream_dependents = (
+        "[{'instrument': 'swe', 'data_level': 'l1a', "
+        "'descriptor': 'sci', 'start_date': '20240101',"
+        " 'end_date': '20240102', 'version': 'v00-01'}]"
+    )
+    assert result[0]["command"][11] == expected_upstream_dependents
 
 
 def test_prepare_data():
-    """Test prepare_data function."""
+    "Tests prepare_data function."
+
     upstream_dependencies = [
         {
             "instrument": "hit",
@@ -215,7 +331,7 @@ def test_prepare_data():
     expected_prepared_data = [
         "--instrument",
         "hit",
-        "--data_level",
+        "--data-level",
         "l1a",
         "--start-date",
         "20240101",
@@ -225,13 +341,13 @@ def test_prepare_data():
         "v00-01",
         "--dependency",
         f"{upstream_dependencies}",
-        "--use-remote",
+        "--upload-to-sdc",
     ]
     assert prepared_data == expected_prepared_data
 
 
 def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
-    """Test lambda_handler function."""
+    # Tests lambda_handler function.
     event = {
         "detail": {"object": {"key": "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"}}
     }
@@ -241,11 +357,10 @@ def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
 
 
 def test_send_lambda_put_event(events_client):
-    """Test send_lambda_put_event function."""
     input_command = [
         "--instrument",
         "mag",
-        "--data_level",
+        "--data-level",
         "l1a",
         "--start-date",
         "20231212",
@@ -271,7 +386,7 @@ def test_send_lambda_put_event(events_client):
                 'end_date': '20231212',
                 'version': 'v00-01',
             }]""",
-        "--use-remote",
+        "--upload-to-sdc",
     ]
 
     result = send_lambda_put_event(input_command)
