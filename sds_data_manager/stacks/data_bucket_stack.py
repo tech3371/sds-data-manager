@@ -1,3 +1,5 @@
+"""Configure the data bucket stack."""
+
 import aws_cdk as cdk
 from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_iam as iam
@@ -15,7 +17,7 @@ class DataBucketStack(Stack):
         env: cdk.Environment,
         **kwargs,
     ) -> None:
-        """Create data bucket
+        """Create data bucket.
 
         Parameters
         ----------
@@ -23,6 +25,11 @@ class DataBucketStack(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        env : obj
+            The environment
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
         # Get the current account number so we can use it in the bucket names

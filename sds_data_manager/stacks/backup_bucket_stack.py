@@ -1,22 +1,17 @@
-from aws_cdk import (
-    RemovalPolicy,
-    Stack,
-)
-from aws_cdk import (
-    aws_iam as iam,
-)
-from aws_cdk import (
-    aws_s3 as s3,
-)
+"""Configure the backup bucket."""
+
+from aws_cdk import RemovalPolicy, Stack
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 
 class BackupBucket(Stack):
-    """
-    This stack creates the destination bucket for data backups. It can be run in
-    the same account as SdsDataManager, or in a separate account.
-    The source_account is a required parameter. This source account should be the
-    AWS account for the source bucket.
+    """Creates the destination bucket for data backups.
+
+    It can be run in the same account as SdsDataManager, or in a separate
+    account. The source_account is a required parameter. This source account
+    should be the AWS account for the source bucket.
 
     For replication to work, you also need to deploy SdsDataManager and create
     the source bucket and replication role. Then, you need to manually update
@@ -26,8 +21,8 @@ class BackupBucket(Stack):
     To do this, go to the source bucket and click the "Management" tab.
     Under the "Replication Rules" section, create a replication rule. Specify
     your bucket, select the IAM Role "BackupRole" created in SdsDataManager, and
-    save the rule. This rule can be set up after both source and destination stacks
-    are deployed.
+    save the rule. This rule can be set up after both source and destination
+    stacks are deployed.
     """
 
     def __init__(
@@ -37,8 +32,7 @@ class BackupBucket(Stack):
         source_account: str,
         **kwargs,
     ) -> None:
-        """
-        BackupBucketStack
+        """BackupBucketStack.
 
         Parameters
         ----------
@@ -48,6 +42,9 @@ class BackupBucket(Stack):
             A unique string identifier for this construct.
         source_account : str
             Account number for the source S3 bucket
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, **kwargs)
 

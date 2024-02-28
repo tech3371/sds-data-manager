@@ -1,4 +1,5 @@
 """Stores the downstream dependency configuration of the instruments.
+
 This is used to populate pre-processing dependency table in the database.
 
 NOTE: This setup assumes that we get one data file everyday with all

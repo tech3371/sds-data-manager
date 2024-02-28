@@ -1,4 +1,4 @@
-"""Module with helper functions for creating standard sets of stacks"""
+"""Module with helper functions for creating standard sets of stacks."""
 
 from pathlib import Path
 
@@ -29,9 +29,8 @@ def build_sds(
     scope: App,
     env: Environment,
     account_config: dict,
-    use_custom_domain: bool = False,
 ):
-    """Builds the entire SDS
+    """Build the entire SDS.
 
     Parameters
     ----------
@@ -41,6 +40,7 @@ def build_sds(
         Account and region
     account_config : dict
         Account configuration (domain_name and other account specific configurations)
+
     """
     data_bucket = data_bucket_stack.DataBucketStack(
         scope=scope, construct_id="DataBucket", env=env
@@ -78,7 +78,7 @@ def build_sds(
     rds_size = account_config.get("rds_size", "SMALL")
     rds_class = account_config.get("rds_class", "BURSTABLE3")
     rds_storage = account_config.get("rds_stack", 200)
-    db_secret_name = "sdp-database-cred"
+    db_secret_name = "sdp-database-cred"  # noqa
     rds_stack = database_stack.SdpDatabase(
         scope,
         "RDS",
@@ -213,7 +213,7 @@ def build_sds(
 
 
 def build_backup(scope: App, env: Environment, source_account: str):
-    """Builds backup bucket with permissions for replication from source_account.
+    """Build backup bucket with permissions for replication from source_account.
 
     Parameters
     ----------
@@ -223,6 +223,7 @@ def build_backup(scope: App, env: Environment, source_account: str):
         Account and region
     source_account : str
         Account number for source bucket for replication
+
     """
     # This is the S3 bucket used by upload_api_lambda
     backup_bucket_stack.BackupBucket(

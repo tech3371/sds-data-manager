@@ -1,23 +1,13 @@
-# Standard
+"""Configure the SDS API Manager stack."""
+
 import pathlib
 
-# Installed
 import aws_cdk as cdk
-from aws_cdk import (
-    Stack,
-)
-from aws_cdk import (
-    aws_iam as iam,
-)
-from aws_cdk import (
-    aws_lambda as lambda_,
-)
-from aws_cdk import (
-    aws_lambda_python_alpha as lambda_alpha_,
-)
-from aws_cdk import (
-    aws_secretsmanager as secrets,
-)
+from aws_cdk import Stack
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
+from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
 from .api_gateway_stack import ApiGateway
@@ -38,14 +28,29 @@ class SdsApiManager(Stack):
         db_secret_name: str,
         **kwargs,
     ) -> None:
-        """SdsApiManagerStack
+        """Initialize the SdsApiManagerStack.
 
         Parameters
         ----------
-        scope : Construct
-            Parent construct.
+        scope : obj
+            Parent construct
         construct_id : str
-            A unique string identifier for this construct.
+            A unique string identifier for this construct
+        api : obj
+            The APIGateway stack
+        env : obj
+            The CDK environment
+        data_bucket : obj
+            The data bucket
+        vpc : obj
+            The VPC
+        rds_security_group : obj
+            The RDS security group
+        db_secret_name : str
+            The DB secret name
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
         # Get the current region

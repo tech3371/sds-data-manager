@@ -1,4 +1,4 @@
-"""Monitoring stack
+"""Configure the monitoring stack.
 
 Currently sets up an integration with Slack to send notifications to a channel.
 This is done through an SNS Topic and AWS Chatbot.
@@ -16,6 +16,8 @@ from constructs import Construct
 
 
 class MonitoringStack(Stack):
+    """Define the monitoring stack components."""
+
     def __init__(
         self,
         scope: Construct,
@@ -30,12 +32,15 @@ class MonitoringStack(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        kwargs : dict
+            Keyword arguments
 
         Attributes
         ----------
         sns_topic_notifications : aws_sns.Topic
             SNS Topic for sending notifications to that external
             resources can subscribe to for alerts.
+
         """
         super().__init__(scope, construct_id, **kwargs)
         self.sns_topic_notifications = aws_sns.Topic(

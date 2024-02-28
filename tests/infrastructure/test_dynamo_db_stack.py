@@ -1,3 +1,5 @@
+"""Test the dynamo DB stack."""
+
 import aws_cdk as cdk
 import pytest
 from aws_cdk.assertions import Match, Template
@@ -7,6 +9,7 @@ from sds_data_manager.stacks.dynamodb_stack import DynamoDB
 
 @pytest.fixture()
 def on_demand_dynamodb():
+    """Return a template for the on-demand DynamoDB stack."""
     app = cdk.App()
 
     stack_name = "on-demand-stack"
@@ -24,6 +27,7 @@ def on_demand_dynamodb():
 
 @pytest.fixture()
 def provisioned_dynamodb():
+    """Return a template for the provisioned DynamoDB stack."""
     app = cdk.App()
 
     stack_name = "provisioned-stack"
@@ -43,11 +47,13 @@ def provisioned_dynamodb():
 
 
 def test_table_count(on_demand_dynamodb, provisioned_dynamodb):
+    """Ensure the templates have the appropriate tables."""
     on_demand_dynamodb.resource_count_is("AWS::DynamoDB::Table", 1)
     provisioned_dynamodb.resource_count_is("AWS::DynamoDB::Table", 1)
 
 
 def test_billing_mode(on_demand_dynamodb, provisioned_dynamodb):
+    """Ensure the templates have the appropriate billing settings."""
     on_demand_dynamodb.has_resource_properties(
         "AWS::DynamoDB::Table", {"BillingMode": "PAY_PER_REQUEST"}
     )
@@ -66,6 +72,7 @@ def test_billing_mode(on_demand_dynamodb, provisioned_dynamodb):
 
 
 def test_point_in_time_recovery(on_demand_dynamodb, provisioned_dynamodb):
+    """Ensure the templates have point-in-time recovery enabled."""
     on_demand_dynamodb.has_resource_properties(
         "AWS::DynamoDB::Table",
         {"PointInTimeRecoverySpecification": {"PointInTimeRecoveryEnabled": True}},
@@ -77,6 +84,7 @@ def test_point_in_time_recovery(on_demand_dynamodb, provisioned_dynamodb):
 
 
 def test_delete_table_policy(on_demand_dynamodb, provisioned_dynamodb):
+    """Ensure the templates have the appropriate deletion policy."""
     on_demand_dynamodb.has_resource(
         "AWS::DynamoDB::Table",
         {

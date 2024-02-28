@@ -1,3 +1,5 @@
+"""Functions for supporting the batch starter component of the architecture."""
+
 import logging
 import os
 from datetime import datetime
@@ -32,6 +34,7 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
     relationship: str
         Whether it's HARD or SOFT dependency.
         HARD means it's required and SOFT means it's nice to have.
+
     Returns
     -------
     dependency : list
@@ -60,8 +63,7 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
 
 
 def query_instrument(session, upstream_dependency, start_date, end_date, version):
-    """
-    Appends start_time, end_time and version information to downstream dependents.
+    """Append information to downstream dependents.
 
     Parameters
     ----------
@@ -81,7 +83,6 @@ def query_instrument(session, upstream_dependency, start_date, end_date, version
     record : models.FileCatalog or None
         The first FileCatalog record matching the query criteria.
         None is returned if no record matches the criteria.
-
     """
     instrument = upstream_dependency["instrument"]
     data_level = upstream_dependency["data_level"]
@@ -102,8 +103,7 @@ def query_instrument(session, upstream_dependency, start_date, end_date, version
 
 
 def query_downstream_dependencies(session, filename_components):
-    """
-    Get information of downstream dependents.
+    """Get information of downstream dependents.
 
     Parameters
     ----------
@@ -116,7 +116,6 @@ def query_downstream_dependencies(session, filename_components):
     -------
     downstream_dependents : list of dict
         Dictionary containing components with dates and versions appended.
-
     """
     # Get downstream dependency data
     downstream_dependents = get_dependency(
@@ -143,9 +142,10 @@ def query_downstream_dependencies(session, filename_components):
 
 
 def query_upstream_dependencies(session, downstream_dependents):
-    """
-    Finds dependency information for each instrument. This function looks for
-    upstream dependency of current downstream dependents.
+    """Find dependency information for each instrument.
+
+    This function looks for upstream dependency of current downstream
+    dependents.
 
     Parameters
     ----------
@@ -158,9 +158,7 @@ def query_upstream_dependencies(session, downstream_dependents):
     -------
     instruments_to_process : list of dict
         A list of dictionaries containing the prepared command.
-
     """
-
     instruments_to_process = []
 
     # Iterate over each downstream dependent
@@ -243,8 +241,7 @@ def query_upstream_dependencies(session, downstream_dependents):
 def prepare_data(
     instrument, data_level, start_date, end_date, version, upstream_dependencies
 ):
-    """
-    Prepares data for batch job.
+    """Prepare data for batch job.
 
     Parameters
     ----------
@@ -266,7 +263,6 @@ def prepare_data(
     -------
     prepared_data : str
         Data to submit to batch job.
-
     """
     # Prepare batch job command
     # NOTE: Batch job expects command like this:
@@ -315,7 +311,7 @@ def prepare_data(
 
 
 def send_lambda_put_event(command_parameters):
-    """Sends custom PutEvent to EventBridge
+    r"""Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
     event = {
@@ -360,6 +356,7 @@ def send_lambda_put_event(command_parameters):
                 }]\""",
             "--upload-to-sdc"
         ]
+
     Returns
     -------
     dict
@@ -397,7 +394,7 @@ def send_lambda_put_event(command_parameters):
 
 
 def lambda_handler(event: dict, context):
-    """Handler function"""
+    """Lambda handler."""
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
 

@@ -1,5 +1,5 @@
-"""NetworkingStack Stack"""
-# Installed
+"""Configure the networking stack."""
+
 from aws_cdk import Stack
 from aws_cdk import aws_ec2 as ec2
 from constructs import Construct
@@ -7,7 +7,7 @@ from constructs import Construct
 
 # TODO: May not need everything here, but left it for now
 class NetworkingStack(Stack):
-    """General purpose networking components"""
+    """General purpose networking components."""
 
     def __init__(
         self,
@@ -15,7 +15,7 @@ class NetworkingStack(Stack):
         construct_id: str,
         **kwargs,
     ) -> None:
-        """NetworkingStack constructor
+        """NetworkingStack constructor.
 
         Parameters
         ----------
@@ -23,6 +23,9 @@ class NetworkingStack(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, **kwargs)
         self.vpc = ec2.Vpc(

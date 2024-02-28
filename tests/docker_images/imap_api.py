@@ -1,5 +1,4 @@
-"""Module for testing API utilities.
-"""
+"""Module for testing API utilities."""
 import argparse
 import json
 import logging
@@ -18,8 +17,8 @@ def _parse_args():
     -------
     args : argparse.Namespace
         An object containing the parsed arguments and their values
-    """
 
+    """
     description = (
         "This command line program downloads"
         "a file from the s3_uri, modifies it, and uploads"
@@ -58,8 +57,7 @@ def _parse_args():
 
 
 def download(s3_uri, api_endpoint="https://api.dev.imap-mission.com"):
-    """
-    Download a file from a given S3 URI via the specified API endpoint.
+    """Download a file from a given S3 URI via the specified API endpoint.
 
     Parameters
     ----------
@@ -72,11 +70,12 @@ def download(s3_uri, api_endpoint="https://api.dev.imap-mission.com"):
     -------
     file_name_and_path : str
         The file path where the downloaded file is saved.
+
     """
     logger.info(f"Starting download from S3 URI: {s3_uri}")
 
     url_with_parameters = f"{api_endpoint}/download?{s3_uri}"
-    response = requests.get(url_with_parameters)
+    response = requests.get(url_with_parameters, timeout=60)
 
     # Set the base directory
     base_directory = Path("/mnt/data")
@@ -99,8 +98,7 @@ def download(s3_uri, api_endpoint="https://api.dev.imap-mission.com"):
 
 
 def upload(local_file_location, api_endpoint="https://api.dev.imap-mission.com"):
-    """
-    Upload a local file to a remote server using the specified API endpoint.
+    """Upload a local file to a remote server using the specified API endpoint.
 
     Parameters
     ----------
@@ -108,6 +106,7 @@ def upload(local_file_location, api_endpoint="https://api.dev.imap-mission.com")
         The file path of the file to be uploaded.
     api_endpoint : str, optional
         The API endpoint to use for uploading the file.
+
     """
     logger.info(f"Starting upload for file: {local_file_location}")
 
@@ -120,15 +119,15 @@ def upload(local_file_location, api_endpoint="https://api.dev.imap-mission.com")
     )
     # Upload the file
     url_with_parameters = f"{api_endpoint}/upload?filename={modified_file_name}"
-    get_response = requests.get(url_with_parameters)
+    get_response = requests.get(url_with_parameters, timeout=60)
     upload_url = get_response.json()
-    requests.put(upload_url)
+    requests.put(upload_url, timeout=60)
 
     logger.info(f"File uploaded: {modified_file_name}")
 
 
 def main():
-    """Main function for the IMAP API utilities."""
+    """Parse args and perform an upload via the API."""
     args = _parse_args()
 
     endpoint = (

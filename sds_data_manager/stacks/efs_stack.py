@@ -1,3 +1,5 @@
+"""Configure the EFS stack."""
+
 from aws_cdk import (
     CfnOutput,
     Duration,
@@ -6,27 +8,16 @@ from aws_cdk import (
     aws_iam,
     aws_lambda,
 )
-from aws_cdk import (
-    aws_ec2 as ec2,
-)
-from aws_cdk import (
-    aws_efs as efs,
-)
-from aws_cdk import (
-    aws_events as events,
-)
-from aws_cdk import (
-    aws_events_targets as targets,
-)
-from aws_cdk import (
-    aws_s3 as s3,
-)
+from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_efs as efs
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 
 class EFSStack(Stack):
-    """
-    Elastic File System for storing various software and data.
+    """Elastic File System for storing various software and data.
 
     This file system can be mounted by multiple resources. It
     will be attached to AWS resources that run the
@@ -51,6 +42,20 @@ class EFSStack(Stack):
         vpc: ec2.Vpc,
         **kwargs,
     ) -> None:
+        """Construct the EFS stack.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        vpc : ec2.Vpc
+            VPC into which to put the resources that require networking.
+        kwargs : dict
+            Keyword arguments
+
+        """
         super().__init__(scope, construct_id, **kwargs)
 
         # Initialize EFS related information that other resources
@@ -126,9 +131,7 @@ class EFSStack(Stack):
 
 
 class EFSWriteLambda(Stack):
-    """
-    Creates some Lambdas that write to the EFS file system.
-    """
+    """Create some Lambdas that write to the EFS file system."""
 
     def __init__(
         self,
@@ -139,6 +142,24 @@ class EFSWriteLambda(Stack):
         efs_instance: efs.FileSystem,
         **kwargs,
     ) -> None:
+        """Construct the EFS lambdas.
+
+        Parameters
+        ----------
+        scope : Construct
+            Parent construct.
+        construct_id : str
+            A unique string identifier for this construct.
+        vpc : ec2.Vpc
+            VPC into which to put the resources that require networking.
+        data_bucket : obj
+            The data bucket
+        efs_instance : obj
+            The EFS filesystem instance
+        kwargs : dict
+            Keyword arguments
+
+        """
         super().__init__(scope, construct_id, **kwargs)
 
         # Create a role for the EFS Lambda

@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-# Installed
-from aws_cdk import App, Environment
+"""Serves as the dev and production deployment app.
 
-# Local
-from sds_data_manager.utils.stackbuilder import build_backup, build_sds
+The app defaults to a dev deployment via a default `account_name` value in
+`cdk.json.`
 
-"""
-This app is designed to be the dev and production deployment app.
-It defaults to a dev deployment via a default `account_name` value in cdk.json.
 To deploy to prod, specify `--context account_name=prod`.
 To deploy to the backup account (only deploys required backup stacks),
 specify `--context account_name=backup`.
-
 """
+
+from aws_cdk import App, Environment
+
+from sds_data_manager.utils.stackbuilder import build_backup, build_sds
 
 app = App()
 

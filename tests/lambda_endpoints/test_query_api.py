@@ -1,4 +1,4 @@
-"""Test queries lambda"""
+"""Tests for the Query API."""
 import datetime
 import json
 
@@ -11,6 +11,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 
 @pytest.fixture()
 def setup_test_data(test_engine):
+    """Return a database engine to test with."""
     filepath = "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts"
 
     metadata_params = {
@@ -38,6 +39,7 @@ def setup_test_data(test_engine):
 
 @pytest.fixture()
 def expected_response():
+    """Return the expected response."""
     expected_response = json.dumps(
         [
             {
@@ -57,7 +59,7 @@ def expected_response():
 
 
 def test_query_result_body(setup_test_data):
-    """Tests that the query result body can be loaded"""
+    """Tests that the query result body can be loaded."""
     event = {"queryStringParameters": {}}
 
     returned_query = query_api.lambda_handler(event=event, context={})
@@ -66,7 +68,7 @@ def test_query_result_body(setup_test_data):
 
 
 def test_start_date_query(setup_test_data, test_engine, expected_response):
-    """Test that start date can be queried"""
+    """Test that start date can be queried."""
     event = {"queryStringParameters": {"start_date": "20251101"}}
 
     returned_query = query_api.lambda_handler(event=event, context={})
@@ -76,7 +78,7 @@ def test_start_date_query(setup_test_data, test_engine, expected_response):
 
 
 def test_end_date_query(setup_test_data, test_engine, expected_response):
-    """Test that end date can be queried"""
+    """Test that end date can be queried."""
     event = {
         "queryStringParameters": {"start_date": "20251101"},
     }
@@ -87,7 +89,7 @@ def test_end_date_query(setup_test_data, test_engine, expected_response):
 
 
 def test_start_and_end_date_query(setup_test_data, test_engine, expected_response):
-    "test that both start and end date can be queried"
+    """Test that both start and end date can be queried."""
     event = {
         "queryStringParameters": {"start_date": "20251101", "end_date": "20251201"}
     }
@@ -99,7 +101,7 @@ def test_start_and_end_date_query(setup_test_data, test_engine, expected_respons
 
 
 def test_empty_start_date_query(setup_test_data, test_engine):
-    "Test that a start_date query with no matches returns an empty list"
+    """Test that a start_date query with no matches returns an empty list."""
     event = {"queryStringParameters": {"start_date": "20261101"}}
     expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
@@ -109,7 +111,7 @@ def test_empty_start_date_query(setup_test_data, test_engine):
 
 
 def test_empty_end_date_query(setup_test_data, test_engine):
-    "Test that an end_date query with no matches returns an empty list"
+    """Test that an end_date query with no matches returns an empty list."""
     event = {"queryStringParameters": {"start_date": "20261101"}}
     expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
@@ -119,7 +121,7 @@ def test_empty_end_date_query(setup_test_data, test_engine):
 
 
 def test_empty_non_date_query(setup_test_data, test_engine):
-    "Test that a non-date query with no matches returns an empty list"
+    """Test that a non-date query with no matches returns an empty list."""
     event = {"queryStringParameters": {"data_level": "l2"}}
     expected_response = json.dumps([])
     returned_query = query_api.lambda_handler(event=event, context={})
@@ -129,7 +131,7 @@ def test_empty_non_date_query(setup_test_data, test_engine):
 
 
 def test_non_date_query(setup_test_data, test_engine, expected_response):
-    """Test that a non-date parameters can be queried"""
+    """Test that a non-date parameters can be queried."""
     event = {"queryStringParameters": {"instrument": "hit"}}
 
     returned_query = query_api.lambda_handler(event=event, context={})
@@ -139,7 +141,7 @@ def test_non_date_query(setup_test_data, test_engine, expected_response):
 
 
 def test_multi_param_query(setup_test_data, test_engine, expected_response):
-    "Test that multiple parameters can be queried"
+    """Test that multiple parameters can be queried."""
     event = {"queryStringParameters": {"instrument": "hit", "data_level": "l0"}}
 
     returned_query = query_api.lambda_handler(event=event, context={})
@@ -148,7 +150,7 @@ def test_multi_param_query(setup_test_data, test_engine, expected_response):
 
 
 def test_invalid_query(setup_test_data, test_engine):
-    "Test that invalid parameters return a 400 status with explanation"
+    """Test that invalid parameters return a 400 status with explanation."""
     event = {"queryStringParameters": {"size": "500"}}
     expected_response = json.dumps(
         "size is not a valid query parameter. "

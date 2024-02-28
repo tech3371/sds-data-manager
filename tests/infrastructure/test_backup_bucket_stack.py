@@ -1,3 +1,5 @@
+"""Test the backup bucket stack."""
+
 import pytest
 from aws_cdk.assertions import Match, Template
 
@@ -6,6 +8,7 @@ from sds_data_manager.stacks.backup_bucket_stack import BackupBucket
 
 @pytest.fixture(scope="module")
 def template(app):
+    """Return a template for the backup bucket stack."""
     backup = BackupBucket(
         app,
         construct_id="BackupBucket-test",
@@ -18,10 +21,12 @@ def template(app):
 
 
 def test_s3_bucket_resource_count(template):
+    """Ensure that the template has a S3 bucket."""
     template.resource_count_is("AWS::S3::Bucket", 1)
 
 
 def test_s3_config_bucket_resource_properties(template):
+    """Ensure that the template has the appropriate bucket properties."""
     template.has_resource(
         "AWS::S3::Bucket",
         {
@@ -45,10 +50,12 @@ def test_s3_config_bucket_resource_properties(template):
 
 
 def test_s3_bucket_policy_resource_count(template):
+    """Ensure that the template has the appropriate bucket policy."""
     template.resource_count_is("AWS::S3::BucketPolicy", 1)
 
 
 def test_s3_data_bucket_policy_resource_properties(template):
+    """Ensure the template has the appropriate policy resource properties."""
     template.has_resource_properties(
         "AWS::S3::BucketPolicy",
         props={

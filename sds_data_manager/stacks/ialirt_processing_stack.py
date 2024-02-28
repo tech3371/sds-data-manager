@@ -1,6 +1,7 @@
-"""Processing Stack
-This is the module containing the general stack to be built for
-computation of I-ALiRT algorithms
+"""Configure the i-alirt processing stack.
+
+This is the module containing the general stack to be built for computation of
+I-ALiRT algorithms.
 """
 from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_dynamodb as dynamodb
@@ -22,7 +23,7 @@ class IalirtProcessing(Stack):
         instance_type: str = "t3.micro",
         **kwargs,
     ) -> None:
-        """Constructor
+        """Construct the i-alirt processing stack.
 
         Parameters
         ----------
@@ -34,6 +35,11 @@ class IalirtProcessing(Stack):
             VPC into which to put the resources that require networking.
         repo : ecr.Repository
             ECR repository containing the Docker image.
+        instance_type : str
+            The EC2 instance type.
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, **kwargs)
 
@@ -46,7 +52,6 @@ class IalirtProcessing(Stack):
     # Setup the EC2 resources
     def add_compute_resources(self):
         """EC2 compute environment."""
-
         # Define user data script
         # - Updates the instance
         # - Installs Docker

@@ -1,30 +1,16 @@
-# Standard
+"""Configure the indexer lambda stack."""
+
 import pathlib
 
-# Installed
 import aws_cdk as cdk
-from aws_cdk import (
-    Stack,
-)
-from aws_cdk import (
-    aws_ec2 as ec2,
-)
+from aws_cdk import Stack
+from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_events as events
-from aws_cdk import (
-    aws_events_targets as targets,
-)
-from aws_cdk import (
-    aws_iam as iam,
-)
-from aws_cdk import (
-    aws_lambda as lambda_,
-)
-from aws_cdk import (
-    aws_lambda_python_alpha as lambda_alpha_,
-)
-from aws_cdk import (
-    aws_secretsmanager as secrets,
-)
+from aws_cdk import aws_events_targets as targets
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_lambda as lambda_
+from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
+from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
 
@@ -43,7 +29,7 @@ class IndexerLambda(Stack):
         data_bucket,
         **kwargs,
     ) -> None:
-        """IndexerLambda Stack
+        """IndexerLambda Stack.
 
         Parameters
         ----------
@@ -51,6 +37,21 @@ class IndexerLambda(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        env : obj
+            The environment
+        db_secret_name : str
+            The DB secret name
+        vpc : obj
+            The VPC
+        vpc_subnets : obj
+            The VPC subnets
+        rds_security_group : obj
+            The RDS security group
+        data_bucket : obj
+            The data bucket
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 

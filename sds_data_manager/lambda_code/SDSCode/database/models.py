@@ -1,4 +1,4 @@
-"""Stores the IMAP SDC database schema definition
+"""Stores the IMAP SDC database schema definition.
 
 This module is used to define the database Object Relational Mappers (ORMs).
 Each class within maps to a table in the database.
@@ -68,6 +68,8 @@ DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direc
 
 
 class Status(Enum):
+    """Enum to store the status."""
+
     INPROGRESS = "INPROGRESS"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
@@ -77,11 +79,13 @@ STATUSES = SqlEnum(Status)
 
 
 class Base(DeclarativeBase):
+    """Base class."""
+
     pass
 
 
 class UniversalSpinTable(Base):
-    """Universal Spin Table schema"""
+    """Universal Spin Table schema."""
 
     __tablename__ = "universal_spin_table"
     id = Column(Integer, primary_key=True)
@@ -98,7 +102,7 @@ class UniversalSpinTable(Base):
 
 
 class StatusTracking(Base):
-    """Status tracking table"""
+    """Status tracking table."""
 
     __tablename__ = "status_tracking"
     __table_args__ = (
@@ -126,7 +130,7 @@ class StatusTracking(Base):
 
 
 class FileCatalog(Base):
-    """File catalog table"""
+    """File catalog table."""
 
     __tablename__ = "file_catalog"
     __table_args__ = (
@@ -155,7 +159,7 @@ class FileCatalog(Base):
 
 
 class PreProcessingDependency(Base):
-    """Preprocessing dependency table"""
+    """Preprocessing dependency table."""
 
     __tablename__ = "preprocessing_dependency"
     __table_args__ = (
@@ -186,7 +190,7 @@ class PreProcessingDependency(Base):
 
 
 class Version(Base):
-    """Version table"""
+    """Version table."""
 
     __tablename__ = "version"
     __table_args__ = (

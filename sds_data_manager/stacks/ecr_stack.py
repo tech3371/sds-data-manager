@@ -1,4 +1,5 @@
-"""ECR Stack"""
+"""Configure the ECR Stack."""
+
 from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_iam as iam
@@ -6,7 +7,7 @@ from constructs import Construct
 
 
 class EcrStack(Stack):
-    """Ecr Resources"""
+    """Construct the ECR Resources."""
 
     def __init__(
         self,
@@ -15,7 +16,7 @@ class EcrStack(Stack):
         instrument_name: str,
         **kwargs,
     ) -> None:
-        """DataStorageStack constructor
+        """DataStorageStack constructor.
 
         Parameters
         ----------
@@ -25,6 +26,9 @@ class EcrStack(Stack):
             A unique string identifier for this construct.
         instrument_name : str
             Name of instrument
+        kwargs : dict
+            Keyword arguments
+
         """
         super().__init__(scope, construct_id, **kwargs)
 

@@ -1,5 +1,4 @@
-"""Test indexer lambda"""
-
+"""Tests for the indexer lambda."""
 
 import os
 
@@ -19,7 +18,7 @@ from sds_data_manager.lambda_code.SDSCode.indexer import (
 
 @pytest.fixture()
 def write_to_s3(s3_client):
-    """Write test data to s3"""
+    """Write test data to s3."""
     # first create test bucket
     s3_client.create_bucket(
         Bucket="test-data-bucket",
@@ -40,7 +39,7 @@ def write_to_s3(s3_client):
 
 
 def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
-    """Test batch job event"""
+    """Test batch job event."""
     # Send s3 event first to write initial data to satus
     # table
     custom_event = {
@@ -163,7 +162,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
 
 
 def test_custom_lambda_event(test_engine):
-    """Test custom PutEvent from lambda"""
+    """Test custom PutEvent from lambda."""
     # Took out unused parameters from event
     event = {
         "detail-type": "Job Started",
@@ -194,7 +193,7 @@ def test_custom_lambda_event(test_engine):
 
 
 def test_s3_event(test_engine, events_client, write_to_s3):
-    """Test s3 event"""
+    """Test s3 event."""
     # Took out unused parameters from event
     event = {
         "detail-type": "Object Created",
@@ -245,7 +244,7 @@ def test_s3_event(test_engine, events_client, write_to_s3):
 
 
 def test_unknown_event(test_engine):
-    """Test for unknown event source"""
+    """Test for unknown event source."""
     event = {"source": "test"}
     returned_value = indexer.lambda_handler(event=event, context={})
     assert returned_value["statusCode"] == 400
@@ -253,6 +252,7 @@ def test_unknown_event(test_engine):
 
 
 def test_send_lambda_put_event(events_client):
+    """Test the ``send_event_from_indexer`` function."""
     filename = "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
 
     result = send_event_from_indexer(filename)

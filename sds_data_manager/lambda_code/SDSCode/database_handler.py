@@ -1,4 +1,5 @@
-"""Common functions to write to database"""
+"""Common functions to write to database."""
+
 import logging
 
 from sqlalchemy.exc import IntegrityError
@@ -13,12 +14,13 @@ logger.setLevel(logging.INFO)
 
 
 def update_status_table(status_params):
-    """Update status tracking table
+    """Update status tracking table.
 
     Parameters
     ----------
     status_params : dict
         Data information
+
     """
     try:
         # Add data to the file catalog and status tables
@@ -31,12 +33,13 @@ def update_status_table(status_params):
 
 
 def update_file_catalog_table(metadata_params):
-    """Update file catalog table
+    """Update file catalog table.
 
     Parameters
     ----------
     metadata_params : dict
         Data information
+
     """
     try:
         # Add data to the file catalog

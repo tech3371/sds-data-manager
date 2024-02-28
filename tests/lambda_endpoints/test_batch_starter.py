@@ -1,3 +1,5 @@
+"""Tests the batch starter."""
+
 from datetime import datetime
 from unittest.mock import patch
 
@@ -30,7 +32,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import (
 # TODO: figure out why scope of test_engine is not working properly
 @pytest.fixture(scope="module")
 def test_engine():
-    """Create an in-memory SQLite database engine"""
+    """Create an in-memory SQLite database engine."""
     with patch.object(db, "get_engine") as mock_engine:
         engine = create_engine("sqlite:///:memory:")
         mock_engine.return_value = engine
@@ -43,6 +45,7 @@ def test_engine():
 # TODO: may be move this to confest.py if scope works properly
 @pytest.fixture()
 def populate_db(test_engine):
+    """Add test data to database."""
     # all_dependents = (
     #     dependency_config.downstream_dependents
     #     + dependency_config.upstream_dependents
@@ -62,6 +65,7 @@ def populate_db(test_engine):
 
 @pytest.fixture()
 def test_file_catalog_simulation(test_engine):
+    """Return a session that has a ``FileCatalog``."""
     # Setup: Add records to the database
     test_record = [
         FileCatalog(
@@ -126,18 +130,20 @@ def test_file_catalog_simulation(test_engine):
 
 @pytest.fixture()
 def batch_client(_aws_credentials):
+    """Yield a batch client."""
     with mock_batch():
         yield boto3.client("batch", region_name="us-west-2")
 
 
 @pytest.fixture()
 def sts_client(_aws_credentials):
+    """Yield a STS client."""
     with mock_sts():
         yield boto3.client("sts", region_name="us-west-2")
 
 
 def test_pre_processing_dependency(test_engine, populate_db):
-    """Test pre-processing dependency"""
+    """Test pre-processing dependency."""
     # upstream dependency
     upstream_dependency = get_dependency(
         instrument="mag",
@@ -166,8 +172,7 @@ def test_pre_processing_dependency(test_engine, populate_db):
 
 
 def test_query_instrument(test_file_catalog_simulation):
-    "Tests query_instrument function."
-
+    """Tests ``query_instrument`` function."""
     upstream_dependency = {
         "instrument": "ultra45",
         "data_level": "l2",
@@ -191,8 +196,7 @@ def test_query_instrument(test_file_catalog_simulation):
 
 
 def test_query_downstream_dependencies(test_file_catalog_simulation):
-    "Tests query_downstream_dependencies function."
-
+    """Tests ``query_downstream_dependencies`` function."""
     filename = "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"
     file_params = ScienceFilePath.extract_filename_components(filename)
     complete_dependents = query_downstream_dependencies(
@@ -212,8 +216,7 @@ def test_query_downstream_dependencies(test_file_catalog_simulation):
 
 
 def test_query_upstream_dependencies(test_file_catalog_simulation):
-    "Tests query_upstream_dependencies function."
-
+    """Tests ``query_upstream_dependencies`` function."""
     downstream_dependents = [
         {
             "instrument": "hit",
@@ -303,8 +306,7 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
 
 
 def test_prepare_data():
-    "Tests prepare_data function."
-
+    """Tests ``prepare_data`` function."""
     upstream_dependencies = [
         {
             "instrument": "hit",
@@ -345,7 +347,7 @@ def test_prepare_data():
 
 
 def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
-    # Tests lambda_handler function.
+    """Tests ``lambda_handler`` function."""
     event = {
         "detail": {"object": {"key": "imap_hit_l1a_sci_20240101_20240102_v00-01.cdf"}}
     }
@@ -355,6 +357,7 @@ def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
 
 
 def test_send_lambda_put_event(events_client):
+    """Test the ``send_lambda_put_event`` function."""
     input_command = [
         "--instrument",
         "mag",
