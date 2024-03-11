@@ -140,7 +140,6 @@ class FileCatalog(Base):
             "instrument",
             "data_level",
             "start_date",
-            "end_date",
             name="file_catalog_uc",
         ),
     )
@@ -152,8 +151,8 @@ class FileCatalog(Base):
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String(20), nullable=False)
     start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
-    version = Column(String(8), nullable=False)
+    repointing_number = Column(String(11), nullable=True)  # repointXXXXX
+    version = Column(String(4), nullable=False)  # vXXX
     extension = Column(EXTENSIONS, nullable=False)
     ingestion_date = Column(DateTime)
 
@@ -209,8 +208,11 @@ class Version(Base):
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
+    # TODO: determine cap for strings based on what software version
+    # will look like
     software_version = Column(String(2), nullable=False)
-    data_version = Column(String(2), nullable=False)
+    # Data version is a string of the form vXXX
+    data_version = Column(String(4), nullable=False)
     updated_date = Column(DateTime, nullable=False)
 
 
