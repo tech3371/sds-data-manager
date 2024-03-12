@@ -66,6 +66,12 @@ EXTENSIONS = SqlEnum("pkts", "cdf", name="extensions")
 # instrument's processing
 DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
 
+# 'hard' dependency means that the dependent instrument's processing cannot
+# proceed without the primary instrument's data. 'soft' dependency means that
+# the dependent instrument's processing can proceed without the primary
+# instrument's data. It's nice to have but not necessary.
+DEPENDENCY_RELATIONSHIPS = SqlEnum("SOFT", "HARD", name="dependency_relationship")
+
 
 class Status(Enum):
     """Enum to store the status."""
@@ -150,7 +156,7 @@ class FileCatalog(Base):
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String(20), nullable=False)
     start_date = Column(DateTime, nullable=False)
-    repointing = Column(String(11), nullable=True)  # repointXXXXX
+    repointing = Column(Integer, nullable=True)
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(EXTENSIONS, nullable=False)
     ingestion_date = Column(DateTime)
@@ -183,7 +189,7 @@ class PreProcessingDependency(Base):
     dependent_instrument = Column(INSTRUMENTS, nullable=False)
     dependent_data_level = Column(DATA_LEVELS, nullable=False)
     dependent_descriptor = Column(String, nullable=False)
-    relationship = Column(String, nullable=False)
+    relationship = Column(DEPENDENCY_RELATIONSHIPS, nullable=False)
     direction = Column(DEPENDENCY_DIRECTIONS, nullable=False)
 
 
