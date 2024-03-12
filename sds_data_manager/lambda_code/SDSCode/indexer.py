@@ -158,7 +158,7 @@ def s3_event_handler(event):
     #     "data_level": self.data_level,
     #     "descriptor": self.descriptor,
     #     "start_date": datetime.strptime(self.startdate, "%Y%m%d"),
-    #     "end_date": datetime.strptime(self.enddate, "%Y%m%d"),
+    #     "repointing": self.repointing,
     #     "version": self.version,
     #     "extension": self.extension,
     #     "ingestion_date": date_object,
@@ -170,7 +170,6 @@ def s3_event_handler(event):
     file_params["start_date"] = datetime.strptime(
         file_params.pop("start_date"), "%Y%m%d"
     )
-    file_params["end_date"] = datetime.strptime(file_params.pop("end_date"), "%Y%m%d")
 
     file_params["file_path"] = s3_filepath
 
@@ -225,14 +224,12 @@ def batch_event_handler(event):
                     "--instrument", "swapi",
                     "--level", "l1",
                     "--start-date", "20230724",
-                    "--end-date", "20230724",
                     "--version", "v02-01",
                     "--dependency", \"""[
                         {
                             'instrument': 'swapi',
                             'level': 'l0',
                             'start_date': 20230724,
-                            'end_date': 20230724,
                             'version': 'v02-01'
                         }
                     ]\""",
@@ -258,8 +255,7 @@ def batch_event_handler(event):
     instrument = command[1]
     data_level = command[3]
     start_date = datetime.strptime(command[5], "%Y%m%d")
-    end_date = datetime.strptime(command[7], "%Y%m%d")
-    version = command[9]
+    version = command[7]
 
     # Get job status
     job_status = (
@@ -278,7 +274,6 @@ def batch_event_handler(event):
             .filter(models.StatusTracking.instrument == instrument)
             .filter(models.StatusTracking.data_level == data_level)
             .filter(models.StatusTracking.start_date == start_date)
-            .filter(models.StatusTracking.end_date == end_date)
             .filter(models.StatusTracking.version == version)
             .first()
         )
@@ -287,14 +282,13 @@ def batch_event_handler(event):
             logger.info(
                 "No existing record found, creating"
                 f" new record for {instrument},{data_level},"
-                f"{start_date},{end_date},{version}"
+                f"{start_date},{version}"
             )
             status_params = {
                 "status": job_status,
                 "instrument": instrument,
                 "data_level": data_level,
                 "start_date": start_date,
-                "end_date": end_date,
                 "version": version,
             }
             update_status_table(status_params)
@@ -303,7 +297,6 @@ def batch_event_handler(event):
                 .filter(models.StatusTracking.instrument == instrument)
                 .filter(models.StatusTracking.data_level == data_level)
                 .filter(models.StatusTracking.start_date == start_date)
-                .filter(models.StatusTracking.end_date == end_date)
                 .filter(models.StatusTracking.version == version)
                 .first()
             )
@@ -337,7 +330,6 @@ def custom_event_handler(event):
             "instrument": "swapi",
             "level": "l1",
             "start_date": "20230724",
-            "end_date": "20230724",
             "version": "v02-01",
             "status": "INPROGRESS",
             "dependency": json.dumps([
@@ -361,7 +353,6 @@ def custom_event_handler(event):
         "instrument": event_details["instrument"],
         "data_level": event_details["data_level"],
         "start_date": datetime.strptime(event_details["start_date"], "%Y%m%d"),
-        "end_date": datetime.strptime(event_details["end_date"], "%Y%m%d"),
         "version": event_details["version"],
         "job_definition": None,
     }

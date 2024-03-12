@@ -118,7 +118,6 @@ class StatusTracking(Base):
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
     start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
     version = Column(String(8), nullable=False)
     # TODO:
     # Didn't make it required field yet. Revisit this
@@ -151,7 +150,7 @@ class FileCatalog(Base):
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String(20), nullable=False)
     start_date = Column(DateTime, nullable=False)
-    repointing_number = Column(String(11), nullable=True)  # repointXXXXX
+    repointing = Column(String(11), nullable=True)  # repointXXXXX
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(EXTENSIONS, nullable=False)
     ingestion_date = Column(DateTime)

@@ -27,12 +27,12 @@ def write_to_s3(s3_client):
     # write file to s3
     s3_client.put_object(
         Bucket="test-data-bucket",
-        Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"),
+        Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_v001.cdf"),
         Body=b"test",
     )
     s3_client.put_object(
         Bucket="test-data-bucket",
-        Key=("imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts"),
+        Key=("imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"),
         Body=b"test",
     )
     return s3_client
@@ -49,8 +49,7 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
             "instrument": "swapi",
             "data_level": "l1",
             "start_date": "20230724",
-            "end_date": "20230724",
-            "version": "v02-01",
+            "version": "v001",
             "status": "INPROGRESS",
             "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
         },
@@ -93,18 +92,15 @@ def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
                     "l1",
                     "--start-date",
                     "20230724",
-                    "--end-date",
-                    "20230724",
                     "--version",
-                    "v02-01",
+                    "v001",
                     "--dependency",
                     """[
                         {
                             'instrument': 'swapi',
                             'level': 'l0',
                             'start_date': 20230724,
-                            'end_date': 20230724,
-                            'version': 'v02-01'
+                            'version': 'v001'
                         }
                     ]""",
                     "--use-remote",
@@ -171,8 +167,7 @@ def test_custom_lambda_event(test_engine):
             "instrument": "swapi",
             "data_level": "l1",
             "start_date": "20230724",
-            "end_date": "20230724",
-            "version": "v02-01",
+            "version": "v001",
             "status": "INPROGRESS",
             "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
         },
@@ -188,7 +183,7 @@ def test_custom_lambda_event(test_engine):
         assert len(result) == 1
         assert result[0].instrument == "swapi"
         assert result[0].data_level == "l1"
-        assert result[0].version == "v02-01"
+        assert result[0].version == "v001"
         assert result[0].status == models.Status.INPROGRESS
 
 
@@ -204,8 +199,7 @@ def test_s3_event(test_engine, events_client, write_to_s3):
             "bucket": {"name": "sds-data-123456789012"},
             "object": {
                 "key": (
-                    "imap/hit/l0/2024/01/"
-                    "imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts"
+                    "imap/hit/l0/2024/01/" "imap_hit_l0_sci-test_20240101_v001.pkts"
                 ),
                 "reason": "PutObject",
             },
@@ -221,7 +215,7 @@ def test_s3_event(test_engine, events_client, write_to_s3):
         assert len(result) == 1
         assert (
             result[0].file_path
-            == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_20240104_v02-01.pkts"
+            == "imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"
         )
         assert result[0].data_level == "l0"
         assert result[0].instrument == "hit"
@@ -229,7 +223,7 @@ def test_s3_event(test_engine, events_client, write_to_s3):
 
     # Test for bad filename input
     event["detail"]["object"]["key"] = (
-        "imap/hit/l0/2024/01/" "imap_hit_l0_sci-test_20240101_20240104_v02-01.cdf"
+        "imap/hit/l0/2024/01/" "imap_hit_l0_sci-test_20240101_v001.cdf"
     )
 
     expected_msg = (
@@ -253,7 +247,7 @@ def test_unknown_event(test_engine):
 
 def test_send_lambda_put_event(events_client):
     """Test the ``send_event_from_indexer`` function."""
-    filename = "imap_swapi_l1_sci-1m_20230724_20230724_v02-01.cdf"
+    filename = "imap_swapi_l1_sci-1m_20230724_v001.cdf"
 
     result = send_event_from_indexer(filename)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
