@@ -271,6 +271,7 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
     #             'start_date': '20231212',
     #             'version': 'v00-01',
     #         }]""",
+    #    "--repointing", "None | int",
     #     "--upload-to-sdc"
     # ]
     prepared_data = [
@@ -286,6 +287,7 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
         f"{upstream_dependencies}",
         "--upload-to-sdc",
     ]
+    # TODO: Add repointing information to the command
 
     return prepared_data
 
