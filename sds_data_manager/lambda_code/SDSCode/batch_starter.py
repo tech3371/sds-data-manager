@@ -85,13 +85,20 @@ def query_instrument(session, upstream_dependency, start_date, version):
     instrument = upstream_dependency["instrument"]
     data_level = upstream_dependency["data_level"]
 
+    # TODO: narrow down the query using end_date.
+    # This will give ability to query range of time.
+    # Eg. when we are query 3 months of data to create
+    # 3 months map, end_date will help narrow search.
+    # When we have the end_date, we can query
+    # using table.start_date >= start_date and
+    # table.end_date <= end_date.
     record = (
         session.query(models.FileCatalog)
         .filter(
             models.FileCatalog.instrument == instrument,
             models.FileCatalog.data_level == data_level,
             models.FileCatalog.version == version,
-            models.FileCatalog.start_date >= datetime.strptime(start_date, "%Y%m%d"),
+            models.FileCatalog.start_date == datetime.strptime(start_date, "%Y%m%d"),
         )
         .first()
     )
@@ -271,7 +278,7 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
     #             'start_date': '20231212',
     #             'version': 'v001',
     #         }]""",
-    #    "--repointing", "None | int",
+    #    "--repointing", 1,
     #     "--upload-to-sdc"
     # ]
     prepared_data = [

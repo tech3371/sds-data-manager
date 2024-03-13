@@ -66,8 +66,10 @@ def lambda_handler(event, context):
                     "Access-Control-Allow-Origin": "*",  # Allow CORS
                 },
             }
-            logger.debug(f"valid_parameters: {valid_parameters}")
-            logger.debug(f"Invalid query parameter: {param}")
+            logger.debug(
+                f"Received an invalid query parameter [{param}],"
+                " valid options are: {valid_parameters}"
+            )
             return response
         # check if we're search for start_date or end date to
         # setup the correct "where" time condition
