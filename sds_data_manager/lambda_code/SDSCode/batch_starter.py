@@ -210,7 +210,7 @@ def query_upstream_dependencies(session, downstream_dependents):
             #     'data_level': 'l0',
             #     'descriptor': 'lveng-hk',
             #     'start_date': '20231212',
-            #     'version': 'v01-00',
+            #     'version': 'v001',
             # },
             prepared_data = prepare_data(
                 instrument=instrument,
@@ -255,21 +255,21 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
     #     "--instrument", "mag",
     #     "--data-level", "l1a",
     #     "--start-date", "20231212",
-    #     "--version", "v00-01",
+    #     "--version", "v001",
     #     "--dependency", """[
     #         {
     #             'instrument': 'swe',
     #             'data_level': 'l0',
     #             'descriptor': 'lveng-hk',
     #             'start_date': '20231212',
-    #             'version': 'v01-00',
+    #             'version': 'v001',
     #         },
     #         {
     #             'instrument': 'mag',
     #             'data_level': 'l0',
     #             'descriptor': 'lveng-hk',
     #             'start_date': '20231212',
-    #             'version': 'v00-01',
+    #             'version': 'v001',
     #         }]""",
     #    "--repointing", "None | int",
     #     "--upload-to-sdc"
@@ -317,21 +317,21 @@ def send_lambda_put_event(command_parameters):
             "--instrument", "mag",
             "--data-level", "l1a",
             "--start-date", "20231212",
-            "--version", "v00-01",
+            "--version", "v001",
             "--dependency", \"""[
                 {
                     'instrument': 'swe',
                     'data_level': 'l0',
                     'descriptor': 'lveng-hk',
                     'start_date': '20231212',
-                    'version': 'v01-00',
+                    'version': 'v001',
                 },
                 {
                     'instrument': 'mag',
                     'data_level': 'l0',
                     'descriptor': 'lveng-hk',
                     'start_date': '20231212',
-                    'version': 'v00-01',
+                    'version': 'v001',
                 }]\""",
             "--upload-to-sdc"
         ]

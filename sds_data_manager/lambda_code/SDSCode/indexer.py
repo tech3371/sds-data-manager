@@ -224,13 +224,13 @@ def batch_event_handler(event):
                     "--instrument", "swapi",
                     "--level", "l1",
                     "--start-date", "20230724",
-                    "--version", "v02-01",
+                    "--version", "v001",
                     "--dependency", \"""[
                         {
                             'instrument': 'swapi',
                             'level': 'l0',
                             'start_date': 20230724,
-                            'version': 'v02-01'
+                            'version': 'v001'
                         }
                     ]\""",
                     "--use-remote",
@@ -330,13 +330,13 @@ def custom_event_handler(event):
             "instrument": "swapi",
             "level": "l1",
             "start_date": "20230724",
-            "version": "v02-01",
+            "version": "v001",
             "status": "INPROGRESS",
             "dependency": json.dumps([
                 {
                     "instrument": "swe",
                     "level": "l0",
-                    "version": "v00-01"
+                    "version": "v001"
                 }]),
         }}
 

@@ -27,7 +27,7 @@ def write_to_s3(s3_client):
     # write file to s3
     s3_client.put_object(
         Bucket="test-data-bucket",
-        Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1m_20230724_v001.cdf"),
+        Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1min_20230724_v001.cdf"),
         Body=b"test",
     )
     s3_client.put_object(
@@ -247,7 +247,7 @@ def test_unknown_event(test_engine):
 
 def test_send_lambda_put_event(events_client):
     """Test the ``send_event_from_indexer`` function."""
-    filename = "imap_swapi_l1_sci-1m_20230724_v001.cdf"
+    filename = "imap_swapi_l1_sci-1min_20230724_v001.cdf"
 
     result = send_event_from_indexer(filename)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
