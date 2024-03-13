@@ -12,7 +12,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 @pytest.fixture()
 def setup_test_data(test_engine):
     """Return a database engine to test with."""
-    filepath = "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts"
+    filepath = "test/file/path/imap_hit_l0_raw_20251107_v001.pkts"
 
     metadata_params = {
         "file_path": filepath,
@@ -20,8 +20,7 @@ def setup_test_data(test_engine):
         "data_level": "l0",
         "descriptor": "raw",
         "start_date": datetime.datetime.strptime("20251107", "%Y%m%d"),
-        "end_date": datetime.datetime.strptime("20251108", "%Y%m%d"),
-        "version": "v02-01",
+        "version": "v001",
         "extension": "pkts",
         "ingestion_date": datetime.datetime.strptime(
             "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
@@ -43,13 +42,13 @@ def expected_response():
     expected_response = json.dumps(
         [
             {
-                "file_path": "test/file/path/imap_hit_l0_raw_20251107_20251108_v02-01.pkts",  # noqa: E501
+                "file_path": "test/file/path/imap_hit_l0_raw_20251107_v001.pkts",
                 "instrument": "hit",
                 "data_level": "l0",
                 "descriptor": "raw",
                 "start_date": "20251107",
-                "end_date": "20251108",
-                "version": "v02-01",
+                "repointing": None,
+                "version": "v001",
                 "extension": "pkts",
                 "ingestion_date": "2025-11-07 10:13:12",
             }
@@ -156,7 +155,8 @@ def test_invalid_query(setup_test_data, test_engine):
         "size is not a valid query parameter. "
         + "Valid query parameters are: "
         + "['file_path', 'instrument', 'data_level', 'descriptor', "
-        "'start_date', 'end_date', 'version', 'extension', 'ingestion_date']"
+        "'start_date', 'repointing', 'version', 'extension', 'ingestion_date', "
+        + "'end_date']"
     )
     returned_query = query_api.lambda_handler(event=event, context={})
 

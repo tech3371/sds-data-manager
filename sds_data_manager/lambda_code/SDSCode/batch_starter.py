@@ -62,8 +62,8 @@ def get_dependency(instrument, data_level, descriptor, direction, relationship):
     return dependency
 
 
-def query_instrument(session, upstream_dependency, start_date, end_date, version):
-    """Append information to downstream dependents.
+def query_instrument(session, upstream_dependency, start_date, version):
+    """Query to database to get the first FileCatalog record.
 
     Parameters
     ----------
@@ -73,8 +73,6 @@ def query_instrument(session, upstream_dependency, start_date, end_date, version
         Dictionary of upstream dependency.
     start_date : str
         Start date of the event data.
-    end_date : str
-        End date of the event data.
     version : str
         Version of the event data.
 
@@ -87,14 +85,20 @@ def query_instrument(session, upstream_dependency, start_date, end_date, version
     instrument = upstream_dependency["instrument"]
     data_level = upstream_dependency["data_level"]
 
+    # TODO: narrow down the query using end_date.
+    # This will give ability to query range of time.
+    # Eg. when we are query 3 months of data to create
+    # 3 months map, end_date will help narrow search.
+    # When we have the end_date, we can query
+    # using table.start_date >= start_date and
+    # table.end_date <= end_date.
     record = (
         session.query(models.FileCatalog)
         .filter(
             models.FileCatalog.instrument == instrument,
             models.FileCatalog.data_level == data_level,
             models.FileCatalog.version == version,
-            models.FileCatalog.start_date >= datetime.strptime(start_date, "%Y%m%d"),
-            models.FileCatalog.end_date <= datetime.strptime(end_date, "%Y%m%d"),
+            models.FileCatalog.start_date == datetime.strptime(start_date, "%Y%m%d"),
         )
         .first()
     )
@@ -132,11 +136,9 @@ def query_downstream_dependencies(session, filename_components):
         dependent["version"] = filename_components["version"]  # placeholder
 
         # TODO: add repointing table query if dependent is ENA or GLOWS
-        #  Use start_date and end_date to query repointing table.
-        # Use pointing start_time and end_time in place of start_date and end_date.
+        # Use start_date to query repointing table.
         # Add pointing number to dependent.
         dependent["start_date"] = filename_components["start_date"]
-        dependent["end_date"] = filename_components["end_date"]
 
     return downstream_dependents
 
@@ -165,10 +167,9 @@ def query_upstream_dependencies(session, downstream_dependents):
     for dependent in downstream_dependents:
         instrument = dependent["instrument"]
         data_level = dependent["data_level"]
-        version = dependent["version"]
-        start_date = dependent["start_date"]
-        end_date = dependent["end_date"]
         descriptor = dependent["descriptor"]
+        start_date = dependent["start_date"]
+        version = dependent["version"]
 
         # For each downstream dependent, find its upstream dependencies
         upstream_dependencies = get_dependency(
@@ -182,9 +183,7 @@ def query_upstream_dependencies(session, downstream_dependents):
         all_dependencies_available = True  # Initialize the flag
         for upstream_dependency in upstream_dependencies:
             # Check to see if each upstream dependency is available
-            record = query_instrument(
-                session, upstream_dependency, start_date, end_date, version
-            )
+            record = query_instrument(session, upstream_dependency, start_date, version)
             if record is None:
                 all_dependencies_available = (
                     False  # Set flag to false if any dependency is missing
@@ -206,7 +205,6 @@ def query_upstream_dependencies(session, downstream_dependents):
                 # Add additional information to the upstream dependency
                 additional_info = {
                     "start_date": start_date,
-                    "end_date": end_date,
                     "version": version,
                 }
                 upstream_dependency.update(additional_info)
@@ -219,14 +217,12 @@ def query_upstream_dependencies(session, downstream_dependents):
             #     'data_level': 'l0',
             #     'descriptor': 'lveng-hk',
             #     'start_date': '20231212',
-            #     'end_date': '20231212',
-            #     'version': 'v01-00',
+            #     'version': 'v001',
             # },
             prepared_data = prepare_data(
                 instrument=instrument,
                 data_level=data_level,
                 start_date=start_date,
-                end_date=end_date,
                 version=version,
                 upstream_dependencies=upstream_dependencies,
             )
@@ -238,9 +234,7 @@ def query_upstream_dependencies(session, downstream_dependents):
     return instruments_to_process
 
 
-def prepare_data(
-    instrument, data_level, start_date, end_date, version, upstream_dependencies
-):
+def prepare_data(instrument, data_level, start_date, version, upstream_dependencies):
     """Prepare data for batch job.
 
     Parameters
@@ -250,8 +244,6 @@ def prepare_data(
     data_level : str
         Data level.
     start_date : str
-        Data start date.
-    end_date : str
         Data start date.
     version : str
         version.
@@ -270,25 +262,23 @@ def prepare_data(
     #     "--instrument", "mag",
     #     "--data-level", "l1a",
     #     "--start-date", "20231212",
-    #     "--end-date", "20231212",
-    #     "--version", "v00-01",
+    #     "--version", "v001",
     #     "--dependency", """[
     #         {
     #             'instrument': 'swe',
     #             'data_level': 'l0',
     #             'descriptor': 'lveng-hk',
     #             'start_date': '20231212',
-    #             'end_date': '20231212',
-    #             'version': 'v01-00',
+    #             'version': 'v001',
     #         },
     #         {
     #             'instrument': 'mag',
     #             'data_level': 'l0',
     #             'descriptor': 'lveng-hk',
     #             'start_date': '20231212',
-    #             'end_date': '20231212',
-    #             'version': 'v00-01',
+    #             'version': 'v001',
     #         }]""",
+    #    "--repointing", 1,
     #     "--upload-to-sdc"
     # ]
     prepared_data = [
@@ -298,14 +288,13 @@ def prepare_data(
         data_level,
         "--start-date",
         start_date,
-        "--end-date",
-        end_date,
         "--version",
         version,
         "--dependency",
         f"{upstream_dependencies}",
         "--upload-to-sdc",
     ]
+    # TODO: Add repointing information to the command
 
     return prepared_data
 
@@ -335,24 +324,21 @@ def send_lambda_put_event(command_parameters):
             "--instrument", "mag",
             "--data-level", "l1a",
             "--start-date", "20231212",
-            "--end-date", "20231212",
-            "--version", "v00-01",
+            "--version", "v001",
             "--dependency", \"""[
                 {
                     'instrument': 'swe',
                     'data_level': 'l0',
                     'descriptor': 'lveng-hk',
                     'start_date': '20231212',
-                    'end_date': '20231212',
-                    'version': 'v01-00',
+                    'version': 'v001',
                 },
                 {
                     'instrument': 'mag',
                     'data_level': 'l0',
                     'descriptor': 'lveng-hk',
                     'start_date': '20231212',
-                    'end_date': '20231212',
-                    'version': 'v00-01',
+                    'version': 'v001',
                 }]\""",
             "--upload-to-sdc"
         ]
@@ -368,9 +354,8 @@ def send_lambda_put_event(command_parameters):
     instrument = command_parameters[1]
     data_level = command_parameters[3]
     start_date = command_parameters[5]
-    end_date = command_parameters[7]
-    version = command_parameters[9]
-    dependency = command_parameters[11]
+    version = command_parameters[7]
+    dependency = command_parameters[9]
 
     # Create event["detail"] information
     detail = {
@@ -378,7 +363,6 @@ def send_lambda_put_event(command_parameters):
         "instrument": instrument,
         "data_level": data_level,
         "start_date": start_date,
-        "end_date": end_date,
         "version": version,
         "dependency": dependency,
     }

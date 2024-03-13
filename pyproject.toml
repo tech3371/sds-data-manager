@@ -37,7 +37,7 @@ freezegun = "^1.2.2"
 sphinx = {version="^7.1.0", optional=true}
 myst-parser = {version="^2.0.0", optional=true}
 pydata-sphinx-theme = {version="^0.13.3", optional=true}
-imap-data-access = "^0.4.0"
+imap-data-access = "^0.5.0"
 
 [tool.poetry.group.cdk-install.dependencies]
 # 2.66+ required for aws-cdk.aws-lambda-python-alpha
@@ -68,7 +68,7 @@ requests-aws4auth = "^1.2.3"
 psycopg2-binary = "^2.9.9"
 urllib3 = "<2.0.0"
 SQLAlchemy = "<=3.0.0"
-imap-data-access = ">=0.4.0"
+imap-data-access = ">=0.5.0"
 
 # Used for installing with pip
 [tool.poetry.extras]

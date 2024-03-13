@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import imap_data_access
 from aws_cdk import App, Environment
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_rds as rds
@@ -120,13 +121,11 @@ def build_sds(
     # create EFS
     efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
 
-    # TODO: import this from imap-data-access
-    instrument_list = ["codice", "swe", "mag"]  # etc
-
     lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
     lambda_code_directory_str = str(lambda_code_directory.resolve())
 
-    for instrument in instrument_list:
+    # This valid instrument list is from imap-data-access package
+    for instrument in imap_data_access.VALID_INSTRUMENTS:
         ecr = ecr_stack.EcrStack(
             scope,
             f"{instrument}Ecr",
@@ -178,8 +177,6 @@ def build_sds(
         efs_instance=efs_instance,
         env=env,
     )
-
-    # TODO: create batch_starter_lambda
 
     # I-ALiRT IOIS ECR
     ialirt_ecr = ecr_stack.EcrStack(

@@ -45,6 +45,12 @@ def lambda_handler(event, context):
         for column in models.FileCatalog.__table__.columns
         if column.key not in ["id"]
     ]
+    # Up until this point, valid_parameters are the same as the
+    # columns in the FileCatalog table. And looks like we removed
+    # the "id" column from the list. But we also need to add
+    # 'end_date' to the list of valid_parameters.
+    valid_parameters.append("end_date")
+
     # go through each query parameter to set up sqlalchemy query conditions
     for param, value in query_params.items():
         # confirm that the query parameter is valid
@@ -60,6 +66,10 @@ def lambda_handler(event, context):
                     "Access-Control-Allow-Origin": "*",  # Allow CORS
                 },
             }
+            logger.debug(
+                f"Received an invalid query parameter [{param}],"
+                " valid options are: {valid_parameters}"
+            )
             return response
         # check if we're search for start_date or end date to
         # setup the correct "where" time condition
@@ -90,7 +100,6 @@ def lambda_handler(event, context):
     # Also remove values that are not needed by users
     for result in search_results:
         result["start_date"] = result["start_date"].strftime("%Y%m%d")
-        result["end_date"] = result["end_date"].strftime("%Y%m%d")
         result["ingestion_date"] = result["ingestion_date"].strftime(
             "%Y-%m-%d %H:%M:%S%z"
         )

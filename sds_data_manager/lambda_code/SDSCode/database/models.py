@@ -66,6 +66,12 @@ EXTENSIONS = SqlEnum("pkts", "cdf", name="extensions")
 # instrument's processing
 DEPENDENCY_DIRECTIONS = SqlEnum("UPSTREAM", "DOWNSTREAM", name="dependency_direction")
 
+# 'hard' dependency means that the dependent instrument's processing cannot
+# proceed without the primary instrument's data. 'soft' dependency means that
+# the dependent instrument's processing can proceed without the primary
+# instrument's data. It's nice to have but not necessary.
+DEPENDENCY_RELATIONSHIPS = SqlEnum("SOFT", "HARD", name="dependency_relationship")
+
 
 class Status(Enum):
     """Enum to store the status."""
@@ -118,7 +124,6 @@ class StatusTracking(Base):
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
     start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
     version = Column(String(8), nullable=False)
     # TODO:
     # Didn't make it required field yet. Revisit this
@@ -140,7 +145,6 @@ class FileCatalog(Base):
             "instrument",
             "data_level",
             "start_date",
-            "end_date",
             name="file_catalog_uc",
         ),
     )
@@ -152,8 +156,8 @@ class FileCatalog(Base):
     data_level = Column(DATA_LEVELS, nullable=False)
     descriptor = Column(String(20), nullable=False)
     start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
-    version = Column(String(8), nullable=False)
+    repointing = Column(Integer, nullable=True)
+    version = Column(String(4), nullable=False)  # vXXX
     extension = Column(EXTENSIONS, nullable=False)
     ingestion_date = Column(DateTime)
 
@@ -185,7 +189,7 @@ class PreProcessingDependency(Base):
     dependent_instrument = Column(INSTRUMENTS, nullable=False)
     dependent_data_level = Column(DATA_LEVELS, nullable=False)
     dependent_descriptor = Column(String, nullable=False)
-    relationship = Column(String, nullable=False)
+    relationship = Column(DEPENDENCY_RELATIONSHIPS, nullable=False)
     direction = Column(DEPENDENCY_DIRECTIONS, nullable=False)
 
 
@@ -209,8 +213,11 @@ class Version(Base):
     id = Column(Integer, Identity(start=1, increment=1), primary_key=True)
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
+    # TODO: determine cap for strings based on what software version
+    # will look like
     software_version = Column(String(2), nullable=False)
-    data_version = Column(String(2), nullable=False)
+    # Data version is a string of the form vXXX
+    data_version = Column(String(4), nullable=False)
     updated_date = Column(DateTime, nullable=False)
 
 

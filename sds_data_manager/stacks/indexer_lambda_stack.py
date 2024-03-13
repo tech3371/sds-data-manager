@@ -149,7 +149,6 @@ class IndexerLambda(Stack):
                     "instrument": [{"exists": True}],
                     "data_level": [{"exists": True}],
                     "start_date": [{"exists": True}],
-                    "end_date": [{"exists": True}],
                     "version": [{"exists": True}],
                     "status": ["INPROGRESS"],
                     "dependency": [{"exists": True}],
