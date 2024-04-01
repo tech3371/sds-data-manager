@@ -1,4 +1,5 @@
 """Setup testing environment to test lambda handler code."""
+
 import os
 from unittest.mock import patch
 

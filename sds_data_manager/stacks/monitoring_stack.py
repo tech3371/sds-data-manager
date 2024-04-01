@@ -11,6 +11,7 @@ Choosing the channel and permissions as you go through the steps.
 
 More monitoring integrations can be added here in the future.
 """
+
 from aws_cdk import Stack, aws_sns
 from constructs import Construct
 
