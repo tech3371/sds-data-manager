@@ -1,4 +1,5 @@
 """Configure an Enum for processing status."""
+
 from enum import Enum
 
 

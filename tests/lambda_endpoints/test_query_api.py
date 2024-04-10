@@ -1,4 +1,5 @@
 """Tests for the Query API."""
+
 import datetime
 import json
 

@@ -21,6 +21,7 @@ Connect using Session Manager.
 Note: verification may also be done via the
 webbrowser: http://<EC2_IP>:8080/
 """
+
 import os
 
 import requests

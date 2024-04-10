@@ -3,6 +3,7 @@
 This is the module containing the general stack to be built for computation of
 I-ALiRT algorithms.
 """
+
 from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_ec2 as ec2
