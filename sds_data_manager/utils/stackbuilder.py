@@ -187,16 +187,21 @@ def build_sds(
         instrument_name="IalirtEcr",
     )
 
-    # TODO: look into creating a separate stackbuilder
-    #  for I-ALiRT
-    # I-ALiRT Processing (currently only IOIS)
-    ialirt_processing_stack.IalirtProcessing(
-        scope,
-        "IalirtProcessing",
-        env=env,
-        vpc=networking.vpc,
-        repo=ialirt_ecr.container_repo,
-    )
+    # All traffic to I-ALiRT is directed to listed container ports
+    ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
+    container_ports = {"Primary": 8080, "Secondary": 80}
+
+    for primary_or_secondary in ialirt_ports:
+        ialirt_processing_stack.IalirtProcessing(
+            scope,
+            f"IalirtProcessing{primary_or_secondary}",
+            env=env,
+            vpc=networking.vpc,
+            repo=ialirt_ecr.container_repo,
+            processing_name=primary_or_secondary,
+            ialirt_ports=ialirt_ports[primary_or_secondary],
+            container_port=container_ports[primary_or_secondary],
+        )
 
 
 def build_backup(scope: App, env: Environment, source_account: str):
