@@ -1,63 +1,82 @@
-"""Tests for the Download API."""
+"""Tests for the Upload API."""
 
-from pathlib import Path
+import os
+from unittest.mock import patch
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode.download_api import lambda_handler
-
-BUCKET_NAME = "test-bucket"
-TEST_FILE = "science_block_20221116_163611Z_idle.bin"
+from sds_data_manager.lambda_code.SDSCode import upload_api
 
 
 @pytest.fixture(autouse=True)
-def setup_s3(s3_client, monkeypatch):
+def setup_s3(s3_client):
     """Populate the mocked s3 client with a bucket and a file.
 
     Each test below will use this fixture by default.
     """
+    bucket_name = os.getenv("S3_BUCKET")
     s3_client.create_bucket(
-        Bucket=BUCKET_NAME,
+        Bucket=bucket_name,
     )
     result = s3_client.list_buckets()
     assert len(result["Buckets"]) == 1
-    assert result["Buckets"][0]["Name"] == BUCKET_NAME
-    # Temporarily set the environment variable S3_BUCKET for the test
-    monkeypatch.setenv("S3_BUCKET", BUCKET_NAME)
+    assert result["Buckets"][0]["Name"] == bucket_name
 
-    # upload a file
-    local_filepath = Path(__file__).parent.parent.resolve() / f"test-data/{TEST_FILE}"
-    s3_client.upload_file(local_filepath, BUCKET_NAME, TEST_FILE)
-    file_list = s3_client.list_objects(Bucket=BUCKET_NAME)["Contents"]
-    assert len(file_list) == 1
-    return s3_client
+    # patch the mocked client into the upload_api module
+    # These have to be patched in because they were imported
+    # prior to test discovery and would have the default values (None)
+    with (
+        patch.object(upload_api, "S3_CLIENT", s3_client),
+        patch.object(upload_api, "BUCKET_NAME", bucket_name),
+    ):
+        yield s3_client
 
 
-def test_object_exists_with_s3_uri():
-    """Test that this object exists within s3."""
+def test_spice_file_upload(spice_file):
+    """Test spice files being uploaded."""
     event = {
         "version": "2.0",
         "routeKey": "$default",
         "rawPath": "/",
-        "pathParameters": {"proxy": TEST_FILE},
+        "pathParameters": {"proxy": spice_file.replace("v000", "v001")},
     }
-    response = lambda_handler(event=event, context=None)
-    assert response["statusCode"] == 302
-    assert "Location" in response["headers"]
-    assert "download_url" in response["body"]
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 200
 
-
-def test_object_exists_with_s3_uri_fails():
-    """Test that objects exist in s3 fails."""
+    # Try to upload over a pre-existing file and we should get a 409
+    # Note that we are using pre-signed urls so we haven't actually
+    # uploaded anything in the previous call, only gotten back a url
+    # So we need to look at one of the original files uploaded
     event = {
         "version": "2.0",
         "routeKey": "$default",
         "rawPath": "/",
-        "pathParameters": {"proxy": "bad_path/bad_file.txt"},
+        "pathParameters": {"proxy": spice_file},
     }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 409
 
-    response = lambda_handler(event=event, context=None)
-    assert response["statusCode"] == 404
+
+def test_science_file_upload(science_file):
+    """Test science files being uploaded."""
+    event = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": "/",
+        "pathParameters": {"proxy": science_file.replace("v000", "v001")},
+    }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 200
+
+    # Try to upload again and we should get a 409 duplicate error
+    event = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": "/",
+        "pathParameters": {"proxy": science_file},
+    }
+    response = upload_api.lambda_handler(event=event, context=None)
+    assert response["statusCode"] == 409
 
 
 def test_input_parameters_missing():
@@ -69,5 +88,5 @@ def test_input_parameters_missing():
         # No pathParameters
     }
 
-    response = lambda_handler(event=empty_para_event, context=None)
+    response = upload_api.lambda_handler(event=empty_para_event, context=None)
     assert response["statusCode"] == 400

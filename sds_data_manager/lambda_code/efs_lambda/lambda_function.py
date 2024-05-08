@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Define the paths
-mount_path = Path(os.environ.get("EFS_MOUNT_PATH"))
+mount_path = Path(os.getenv("EFS_MOUNT_PATH"))
 
 attitude_symlink_path = mount_path / "latest_attitude_kernel.ah.a"
 ephemeris_symlink_path = mount_path / "latest_ephemeris_kernel.bsp"

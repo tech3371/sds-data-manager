@@ -16,29 +16,7 @@ from sds_data_manager.lambda_code.SDSCode.indexer import (
 )
 
 
-@pytest.fixture()
-def write_to_s3(s3_client):
-    """Write test data to s3."""
-    # first create test bucket
-    s3_client.create_bucket(
-        Bucket="test-data-bucket",
-        CreateBucketConfiguration={"LocationConstraint": "us-west-2"},
-    )
-    # write file to s3
-    s3_client.put_object(
-        Bucket="test-data-bucket",
-        Key=("imap/swapi/l1/2023/01/imap_swapi_l1_sci-1min_20230724_v001.cdf"),
-        Body=b"test",
-    )
-    s3_client.put_object(
-        Bucket="test-data-bucket",
-        Key=("imap/hit/l0/2024/01/imap_hit_l0_sci-test_20240101_v001.pkts"),
-        Body=b"test",
-    )
-    return s3_client
-
-
-def test_batch_job_event(test_engine, write_to_s3, events_client):
+def test_batch_job_event(test_engine, events_client):
     """Test batch job event."""
     # Send s3 event first to write initial data to satus
     # table
@@ -187,7 +165,7 @@ def test_custom_lambda_event(test_engine):
         assert result[0].status == models.Status.INPROGRESS
 
 
-def test_s3_event(test_engine, events_client, write_to_s3):
+def test_s3_event(test_engine, events_client):
     """Test s3 event."""
     # Took out unused parameters from event
     event = {

@@ -7,25 +7,32 @@ import os
 import boto3
 import botocore
 import imap_data_access
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from .database import database as db
-from .database import models
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-BUCKET_NAME = os.environ["S3_BUCKET"]
+BUCKET_NAME = os.getenv("S3_BUCKET")
 S3_CLIENT = boto3.client("s3")
 
 
-def _generate_signed_upload_response(key_path, tags=None):
+def _file_exists(s3_key_path):
+    """Check if a file exists in the SDS storage bucket at this key."""
+    try:
+        S3_CLIENT.head_object(Bucket=BUCKET_NAME, Key=s3_key_path)
+        # If the head_object operation succeeds, that means there
+        # is a file already at the specified path, so return a 409
+        return True
+    except botocore.exceptions.ClientError:
+        # No file exists
+        return False
+
+
+def _generate_signed_upload_response(s3_key_path, tags=None):
     """Create a presigned url for a file in the SDS storage bucket.
 
     Parameters
     ----------
-    key_path : str
+    s3_key_path : str
         The fully qualified path of the object to upload.
     tags : dict, optional
          Additional S3 object metadata to add to the object.
@@ -34,11 +41,23 @@ def _generate_signed_upload_response(key_path, tags=None):
     -------
     Response with status code and a pre-signed URL for the object.
     """
+    if _file_exists(s3_key_path):
+        # We already have a file at this location, return a 409
+        return {
+            "statusCode": 409,
+            "body": json.dumps(f"{s3_key_path} already exists."),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+    # We know there isn't an object at this location, so
+    # generate a pre-signed URL for the client to upload to
     url = S3_CLIENT.generate_presigned_url(
         ClientMethod="put_object",
         Params={
             "Bucket": BUCKET_NAME,
-            "Key": key_path,
+            "Key": s3_key_path,
             "Metadata": tags or dict(),
         },
         ExpiresIn=3600,
@@ -112,23 +131,7 @@ def _spice_file_upload(filename):
         imap_data_access.config["DATA_DIR"]
     ).as_posix()
     s3_key_path = str(s3_key_path)
-
     # check if this SPICE file already exists, return a 409 if so
-    try:
-        S3_CLIENT.head_object(Bucket=BUCKET_NAME, Key=s3_key_path)
-        # If the head_object operation succeeds, that means there
-        # is a file already at the specified path, so return a 409
-        return {
-            "statusCode": 409,
-            "body": json.dumps(f"{s3_key_path} already exists."),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-        }
-    except botocore.exceptions.ClientError:
-        # No file exists, continue on and generate a signed URL
-        pass
 
     return _generate_signed_upload_response(s3_key_path)
 
@@ -147,22 +150,5 @@ def _science_file_upload(filename):
     s3_key_path_str = str(
         s3_key_path.relative_to(imap_data_access.config["DATA_DIR"]).as_posix()
     )
-
-    # Check for already existing file in the database
-    with Session(db.get_engine()) as session:
-        # query and check for a matching file path
-        query = select(models.FileCatalog.__table__).where(
-            models.FileCatalog.file_path == s3_key_path_str
-        )
-        # return a 409 response if an existing file is found
-        if session.execute(query).first():
-            return {
-                "statusCode": 409,
-                "body": json.dumps(f"{s3_key_path_str} already exists."),
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                },
-            }
 
     return _generate_signed_upload_response(s3_key_path_str)

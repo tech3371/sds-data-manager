@@ -37,7 +37,7 @@ def get_file_creation_date(file_path):
     s3_client = boto3.client("s3")
 
     # Retrieve the metadata of the object
-    bucket_name = os.environ.get("S3_BUCKET")
+    bucket_name = os.getenv("S3_BUCKET")
     logger.info(f"looking up ingestion date for {file_path}")
 
     response = s3_client.head_object(Bucket=bucket_name, Key=file_path)
