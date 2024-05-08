@@ -125,14 +125,14 @@ def test_file_catalog_simulation(test_engine):
 
 
 @pytest.fixture()
-def batch_client(_aws_credentials):
+def batch_client():
     """Yield a batch client."""
     with mock_batch():
         yield boto3.client("batch", region_name="us-west-2")
 
 
 @pytest.fixture()
-def sts_client(_aws_credentials):
+def sts_client():
     """Yield a STS client."""
     with mock_sts():
         yield boto3.client("sts", region_name="us-west-2")

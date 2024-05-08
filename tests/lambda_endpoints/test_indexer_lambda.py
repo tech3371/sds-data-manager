@@ -38,7 +38,7 @@ def write_to_s3(s3_client):
     return s3_client
 
 
-def test_batch_job_event(test_engine, write_to_s3, events_client, set_env):
+def test_batch_job_event(test_engine, write_to_s3, events_client):
     """Test batch job event."""
     # Send s3 event first to write initial data to satus
     # table

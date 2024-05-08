@@ -1,6 +1,5 @@
 """Setup testing environment to test lambda handler code."""
 
-import os
 from unittest.mock import patch
 
 import boto3
@@ -12,32 +11,27 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import Base
 
 
-@pytest.fixture()
-def _aws_credentials():
-    """Mock AWS Credentials for moto."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"  # noqa
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"  # noqa
-    os.environ["AWS_SESSION_TOKEN"] = "testing"  # noqa
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-
-
 @pytest.fixture(autouse=True)
-def set_env(monkeypatch):
-    """Set the environment variable."""
+def _set_env(monkeypatch):
+    """Set global environment variables."""
     monkeypatch.setenv("S3_DATA_BUCKET", "test-data-bucket")
-    return ""
+    # Mock AWS Credentials for moto
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
+    monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
 
 
 @pytest.fixture()
-def s3_client(_aws_credentials):
+def s3_client():
     """Mock S3 Client, so we don't need network requests."""
     with mock_s3():
         yield boto3.client("s3", region_name="us-east-1")
 
 
 @pytest.fixture()
-def events_client(_aws_credentials):
+def events_client():
     """Mock EventBridge client."""
     with mock_events():
         yield boto3.client("events", region_name="us-west-2")
