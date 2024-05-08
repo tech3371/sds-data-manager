@@ -66,9 +66,8 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event : dict
-        Specifically only requires event['queryStringParameters']['filename']
-        User-specified key:value pairs can also exist in the 'queryStringParameters',
-        storing these pairs as object metadata.
+        Specifically looking at the event['pathParameters']['proxy'], which
+        specifies the filename to upload.
     context : None
         Currently not used
 
@@ -89,21 +88,19 @@ def lambda_handler(event, context):
                 "in the path. Eg. /upload/path/to/file/filename.pkts"
             ),
         }
-    # TODO: Handle other filetypes other than science files
-    #      The current ScienceFilePath only accepts filenames, not the full path
-    filename = os.path.basename(path_params)
 
+    filename = os.path.basename(path_params)
     try:
-        return spice_file_upload(filename)
+        return _spice_file_upload(filename)
     except imap_data_access.SPICEFilePath.InvalidSPICEFileError:
         # Not a good SPICE filename, continue on and try science file type next
         pass
 
     # Upload for science files, which will catch other filetype errors
-    return science_file_upload(filename)
+    return _science_file_upload(filename)
 
 
-def spice_file_upload(filename):
+def _spice_file_upload(filename):
     """Handle SPICE file uploads and place them in the proper location."""
     # Will raise SPICEFilePath.InvalidSPICEFileError if the filename is invalid
     # We catch that in the calling routine
@@ -136,7 +133,7 @@ def spice_file_upload(filename):
     return _generate_signed_upload_response(s3_key_path)
 
 
-def science_file_upload(filename):
+def _science_file_upload(filename):
     """Handle Science file uploads and place them in the proper location."""
     try:
         science_file = imap_data_access.ScienceFilePath(filename)

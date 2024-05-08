@@ -77,7 +77,7 @@ class IndexerLambda(Stack):
             security_groups=[rds_security_group],
             environment={
                 "DATA_TRACKER_INDEX": "data_tracker",
-                "S3_DATA_BUCKET": data_bucket.bucket_name,
+                "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
         )

@@ -14,7 +14,7 @@ from sds_data_manager.lambda_code.SDSCode.database.models import Base
 @pytest.fixture(autouse=True)
 def _set_env(monkeypatch):
     """Set global environment variables."""
-    monkeypatch.setenv("S3_DATA_BUCKET", "test-data-bucket")
+    monkeypatch.setenv("S3_BUCKET", "test-data-bucket")
     # Mock AWS Credentials for moto
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
