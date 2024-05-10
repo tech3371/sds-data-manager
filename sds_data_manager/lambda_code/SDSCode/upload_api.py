@@ -63,16 +63,6 @@ def _generate_signed_upload_response(s3_key_path, tags=None):
         ExpiresIn=3600,
     )
 
-    if url is None:
-        return {
-            "statusCode": 400,
-            "body": json.dumps(
-                "A pre-signed URL could not be generated. Please ensure that the "
-                "file name matches mission file naming convention "
-                f"{imap_data_access.FILENAME_CONVENTION} or is a valid SPICE file."
-            ),
-        }
-
     return {"statusCode": 200, "body": json.dumps(url)}
 
 
@@ -109,42 +99,24 @@ def lambda_handler(event, context):
         }
 
     filename = os.path.basename(path_params)
+    # Try to create a SPICE file first
+    file_obj = None
     try:
-        return _spice_file_upload(filename)
+        file_obj = imap_data_access.SPICEFilePath(filename)
     except imap_data_access.SPICEFilePath.InvalidSPICEFileError:
-        # Not a good SPICE filename, continue on and try science file type next
+        # Not a SPICE file, continue on to science files
         pass
 
-    # Upload for science files, which will catch other filetype errors
-    return _science_file_upload(filename)
-
-
-def _spice_file_upload(filename):
-    """Handle SPICE file uploads and place them in the proper location."""
-    # Will raise SPICEFilePath.InvalidSPICEFileError if the filename is invalid
-    # We catch that in the calling routine
-    spice_file = imap_data_access.SPICEFilePath(filename)
-
-    s3_key_path = spice_file.construct_path()
-    # Strip off the data directory for s3 uploads
-    s3_key_path = s3_key_path.relative_to(
-        imap_data_access.config["DATA_DIR"]
-    ).as_posix()
-    s3_key_path = str(s3_key_path)
-    # check if this SPICE file already exists, return a 409 if so
-
-    return _generate_signed_upload_response(s3_key_path)
-
-
-def _science_file_upload(filename):
-    """Handle Science file uploads and place them in the proper location."""
     try:
-        science_file = imap_data_access.ScienceFilePath(filename)
+        # file_obj will be None if it's not a SPICE file
+        file_obj = file_obj or imap_data_access.ScienceFilePath(filename)
     except imap_data_access.ScienceFilePath.InvalidScienceFileError as e:
+        # No science file type matched, return an error with the
+        # exception message indicating how to fix it to the user
         logger.error(str(e))
         return {"statusCode": 400, "body": str(e)}
 
-    s3_key_path = science_file.construct_path()
+    s3_key_path = file_obj.construct_path()
     # Strip off the data directory to get the upload path + name
     # Must be posix style for the URL
     s3_key_path_str = str(
