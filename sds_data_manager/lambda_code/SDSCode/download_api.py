@@ -63,7 +63,7 @@ def lambda_handler(event, context):
 
     """
     one_day = 86400
-    url_life = os.environ.get("URL_EXPIRE", one_day)
+    url_life = os.getenv("URL_EXPIRE", one_day)
     path_params = event.get("pathParameters", {}).get("proxy", None)
     logger.debug("Parsing path parameters=[%s] from event=[%s]", path_params, event)
     if not path_params:
@@ -73,7 +73,7 @@ def lambda_handler(event, context):
         )
         return http_response(status_code=400, body=response_body)
 
-    bucket = os.environ.get("S3_BUCKET")
+    bucket = os.getenv("S3_BUCKET")
     filepath = path_params
 
     s3_client = boto3.client("s3")

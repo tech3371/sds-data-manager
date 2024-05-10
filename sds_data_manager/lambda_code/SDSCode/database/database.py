@@ -15,7 +15,7 @@ def get_engine():
         sqlalchemy.engine.Engine : Engine
 
     """
-    secret_name = os.environ["SECRET_NAME"]
+    secret_name = os.getenv("SECRET_NAME")
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager")
     secret_string = client.get_secret_value(SecretId=secret_name)["SecretString"]

@@ -5,40 +5,65 @@ import logging
 import os
 
 import boto3
-from imap_data_access import ScienceFilePath
-from imap_data_access import config as imap_data_access_config
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from .database import database as db
-from .database import models
+import botocore
+import imap_data_access
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-s3 = boto3.client("s3")
+BUCKET_NAME = os.getenv("S3_BUCKET")
+S3_CLIENT = boto3.client("s3")
 
 
-def _generate_signed_upload_url(key_path, tags=None):
+def _file_exists(s3_key_path):
+    """Check if a file exists in the SDS storage bucket at this key."""
+    try:
+        S3_CLIENT.head_object(Bucket=BUCKET_NAME, Key=s3_key_path)
+        # If the head_object operation succeeds, that means there
+        # is a file already at the specified path, so return a 409
+        return True
+    except botocore.exceptions.ClientError:
+        # No file exists
+        return False
+
+
+def _generate_signed_upload_response(s3_key_path, tags=None):
     """Create a presigned url for a file in the SDS storage bucket.
 
-    :param key_path: Required.  A string representing the name of the object to upload.
-    :param tags: Optional.  A dictionary that will be stored in the S3 object metadata.
+    Parameters
+    ----------
+    s3_key_path : str
+        The fully qualified path of the object to upload.
+    tags : dict, optional
+         Additional S3 object metadata to add to the object.
 
-    :return: A URL string if the file was found, otherwise None.
+    Returns
+    -------
+    Response with status code and a pre-signed URL for the object.
     """
-    bucket_name = os.environ["S3_BUCKET"]
-    url = boto3.client("s3").generate_presigned_url(
+    if _file_exists(s3_key_path):
+        # We already have a file at this location, return a 409
+        return {
+            "statusCode": 409,
+            "body": json.dumps(f"{s3_key_path} already exists."),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        }
+    # We know there isn't an object at this location, so
+    # generate a pre-signed URL for the client to upload to
+    url = S3_CLIENT.generate_presigned_url(
         ClientMethod="put_object",
         Params={
-            "Bucket": bucket_name,
-            "Key": key_path,
+            "Bucket": BUCKET_NAME,
+            "Key": s3_key_path,
             "Metadata": tags or dict(),
         },
         ExpiresIn=3600,
     )
 
-    return url
+    return {"statusCode": 200, "body": json.dumps(url)}
 
 
 def lambda_handler(event, context):
@@ -50,9 +75,8 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event : dict
-        Specifically only requires event['queryStringParameters']['filename']
-        User-specified key:value pairs can also exist in the 'queryStringParameters',
-        storing these pairs as object metadata.
+        Specifically looking at the event['pathParameters']['proxy'], which
+        specifies the filename to upload.
     context : None
         Currently not used
 
@@ -69,55 +93,34 @@ def lambda_handler(event, context):
         return {
             "statusCode": 400,
             "body": json.dumps(
-                "No filename given for upload. "
-                "Please provide a filename "
+                "No filename given for the upload. Please provide a filename "
                 "in the path. Eg. /upload/path/to/file/filename.pkts"
             ),
         }
-    # TODO: Handle other filetypes other than science files
-    #      The current ScienceFilePath only accepts filenames, not the full path
+
     filename = os.path.basename(path_params)
+    # Try to create a SPICE file first
+    file_obj = None
     try:
-        science_file = ScienceFilePath(filename)
-    except ScienceFilePath.InvalidScienceFileError as e:
+        file_obj = imap_data_access.SPICEFilePath(filename)
+    except imap_data_access.SPICEFilePath.InvalidSPICEFileError:
+        # Not a SPICE file, continue on to science files
+        pass
+
+    try:
+        # file_obj will be None if it's not a SPICE file
+        file_obj = file_obj or imap_data_access.ScienceFilePath(filename)
+    except imap_data_access.ScienceFilePath.InvalidScienceFileError as e:
+        # No science file type matched, return an error with the
+        # exception message indicating how to fix it to the user
         logger.error(str(e))
         return {"statusCode": 400, "body": str(e)}
 
-    s3_key_path = science_file.construct_path()
+    s3_key_path = file_obj.construct_path()
     # Strip off the data directory to get the upload path + name
     # Must be posix style for the URL
     s3_key_path_str = str(
-        s3_key_path.relative_to(imap_data_access_config["DATA_DIR"]).as_posix()
+        s3_key_path.relative_to(imap_data_access.config["DATA_DIR"]).as_posix()
     )
 
-    # Check for already existing file in the database
-    with Session(db.get_engine()) as session:
-        # query and check for a matching file path
-        query = select(models.FileCatalog.__table__).where(
-            models.FileCatalog.file_path == s3_key_path_str
-        )
-        result = session.execute(query).first()
-        # return a 409 response if an existing file is found
-        if result:
-            response = {
-                "statusCode": 409,
-                "body": json.dumps(f"{s3_key_path_str} already exists."),
-                "headers": {
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                },
-            }
-            return response
-
-    url = _generate_signed_upload_url(s3_key_path_str)
-
-    if url is None:
-        return {
-            "statusCode": 400,
-            "body": json.dumps(
-                "A pre-signed URL could not be generated. Please ensure that the "
-                "file name matches mission file naming conventions."
-            ),
-        }
-
-    return {"statusCode": 200, "body": json.dumps(url)}
+    return _generate_signed_upload_response(s3_key_path_str)

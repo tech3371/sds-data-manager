@@ -389,8 +389,8 @@ def lambda_handler(event: dict, context):
     instrument = components["instrument"]
 
     # Get information for the batch job.
-    region = os.environ.get("REGION")
-    account = os.environ.get("ACCOUNT")
+    region = os.getenv("REGION")
+    account = os.getenv("ACCOUNT")
     # Create a batch client
     batch_client = boto3.client("batch")
 
