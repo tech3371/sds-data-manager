@@ -7,6 +7,12 @@ import requests
 from SDSCode.database import database as db
 from SDSCode.database.models import Base
 from SDSCode.dependency_config import downstream_dependents, upstream_dependents
+from SDSCode.dependency_config_codice import (
+    downstream_dependents as downstream_dependents_codice,
+)
+from SDSCode.dependency_config_codice import (
+    upstream_dependents as upstream_dependents_codice,
+)
 from SDSCode.dependency_config_ultra import (
     downstream_dependents as downstream_dependents_ultra,
 )
@@ -67,8 +73,10 @@ def lambda_handler(event, context):
         engine = db.get_engine()
         Base.metadata.create_all(engine)
         # Write dependencies to pre-processing dependency table
+        downstream_dependents.extend(downstream_dependents_codice)
         downstream_dependents.extend(downstream_dependents_ultra)
         downstream_dependents.extend(upstream_dependents)
+        downstream_dependents.extend(upstream_dependents_codice)
         downstream_dependents.extend(upstream_dependents_ultra)
         with Session(engine) as session:
             session.add_all(downstream_dependents)
