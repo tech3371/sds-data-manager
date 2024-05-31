@@ -443,7 +443,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- IDEX Dependencies ---->
     PreProcessingDependency(
@@ -455,7 +454,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- LO Dependencies ---->
     # TODO: add LO dependencies
@@ -469,7 +467,6 @@ downstream_dependents = [
         dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -480,7 +477,6 @@ downstream_dependents = [
         dependent_descriptor="normal-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -491,7 +487,6 @@ downstream_dependents = [
         dependent_descriptor="normal-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -502,7 +497,6 @@ downstream_dependents = [
         dependent_descriptor="burst-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -513,7 +507,6 @@ downstream_dependents = [
         dependent_descriptor="burst-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -524,7 +517,6 @@ downstream_dependents = [
         dependent_descriptor="normal-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -535,7 +527,6 @@ downstream_dependents = [
         dependent_descriptor="normal-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -546,7 +537,6 @@ downstream_dependents = [
         dependent_descriptor="burst-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="mag",
@@ -557,7 +547,6 @@ downstream_dependents = [
         dependent_descriptor="burst-magi",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- SWAPI Dependencies ---->
     PreProcessingDependency(
@@ -569,7 +558,6 @@ downstream_dependents = [
         dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- SWE Dependencies ---->
     PreProcessingDependency(
@@ -581,7 +569,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="swe",
@@ -592,7 +579,6 @@ downstream_dependents = [
         dependent_descriptor="sci",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- ULTRA Dependencies ---->
     PreProcessingDependency(
@@ -604,7 +590,6 @@ downstream_dependents = [
         dependent_descriptor="all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # Ultra-45 products
     PreProcessingDependency(
@@ -616,7 +601,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -627,7 +611,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -638,7 +621,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -649,7 +631,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # TODO: uncomment for post-SIT-3
     # PreProcessingDependency(
@@ -681,7 +662,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -692,7 +672,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -703,7 +682,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -714,7 +692,6 @@ downstream_dependents = [
         dependent_descriptor="45all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # Ultra-90 products
     PreProcessingDependency(
@@ -726,7 +703,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -737,7 +713,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -748,7 +723,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -759,7 +733,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # TODO: uncomment for post-SIT-3
     # PreProcessingDependency(
@@ -791,7 +764,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -802,7 +774,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -813,7 +784,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     PreProcessingDependency(
         primary_instrument="ultra",
@@ -824,7 +794,6 @@ downstream_dependents = [
         dependent_descriptor="90all",
         relationship="HARD",
         direction="DOWNSTREAM",
-        reserve_direction=True,
     ),
     # <---- IDEX Dependencies ---->
     PreProcessingDependency(
