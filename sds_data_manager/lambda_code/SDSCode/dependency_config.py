@@ -642,27 +642,6 @@ downstream_dependents = [
         relationship="HARD",
         direction="DOWNSTREAM",
     ),
-    # TODO: ask difference of following two products
-    PreProcessingDependency(
-        primary_instrument="ultra",
-        primary_data_level="l1b",
-        primary_descriptor="45sensor-extendedspin",
-        dependent_instrument="ultra",
-        dependent_data_level="l1b",
-        dependent_descriptor="45sensor-cullingmask",
-        relationship="HARD",
-        direction="DOWNSTREAM",
-    ),
-    PreProcessingDependency(
-        primary_instrument="ultra",
-        primary_data_level="l1b",
-        primary_descriptor="45sensor-extendedspin",
-        dependent_instrument="ultra",
-        dependent_data_level="l1b",
-        dependent_descriptor="45sensor-badtimes",
-        relationship="HARD",
-        direction="DOWNSTREAM",
-    ),
     # L1B to L1C dependencies
     PreProcessingDependency(
         primary_instrument="ultra",
