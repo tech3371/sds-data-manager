@@ -152,7 +152,8 @@ class FileCatalog(Base):
     file_path = Column(String, nullable=False)
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
-    descriptor = Column(String(20), nullable=False)
+    # TODO: determine character limit for descriptor
+    descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     repointing = Column(Integer, nullable=True)
     version = Column(String(4), nullable=False)  # vXXX
