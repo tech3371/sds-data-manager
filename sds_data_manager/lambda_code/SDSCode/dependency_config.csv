@@ -75,7 +75,7 @@ lo, l0, hk, lo, l1a, hk, HARD, DOWNSTREAM
 
 lo, l1a, de, lo, l1b, de, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, de, HARD, DOWNSTREAM
-lo, l1a, tbd, lo, l1b, badtimes, HARD, DOWNSTREAM
+lo, l1a, TODO, lo, l1b, badtimes, HARD, DOWNSTREAM
 lo, l1a, histogram, lo, l1b, monitorrates, HARD, DOWNSTREAM
 lo, l1a, spin, lo, l1b, monitorrates, HARD, DOWNSTREAM
 lo, l1a, histogram, lo, l1b, histogramrates, HARD, DOWNSTREAM
@@ -85,9 +85,9 @@ lo, l1a, spin, lo, l1b, derates, HARD, DOWNSTREAM
 lo, l1a, star, lo, l1b, prostar, HARD, DOWNSTREAM
 lo, l1a, hk, lo, l1b, hk, HARD, DOWNSTREAM
 
-lo, l1b, tbd, lo, l1c, goodtimes, HARD, DOWNSTREAM
+lo, l1b, TODO, lo, l1c, goodtimes, HARD, DOWNSTREAM
 lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
-lo, l1b, tbd, lo, l1c, pset, HARD, DOWNSTREAM
+lo, l1b, TODO, lo, l1c, pset, HARD, DOWNSTREAM
 
 # <---- MAG Dependencies ---->
 
