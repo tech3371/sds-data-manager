@@ -235,6 +235,7 @@ def test_query_instrument(test_file_catalog_simulation):
         "instrument": "ultra",
         "data_level": "l2",
         "version": "v001",
+        "descriptor": "science",
     }
 
     "Tests query_instrument function."
