@@ -84,6 +84,7 @@ def query_instrument(session, upstream_dependency, start_date, version):
     """
     instrument = upstream_dependency["instrument"]
     data_level = upstream_dependency["data_level"]
+    descriptor = upstream_dependency["descriptor"]
 
     # TODO: narrow down the query using end_date.
     # This will give ability to query range of time.
@@ -98,6 +99,7 @@ def query_instrument(session, upstream_dependency, start_date, version):
             models.FileCatalog.instrument == instrument,
             models.FileCatalog.data_level == data_level,
             models.FileCatalog.version == version,
+            models.FileCatalog.descriptor == descriptor,
             models.FileCatalog.start_date == datetime.strptime(start_date, "%Y%m%d"),
         )
         .first()
@@ -191,15 +193,20 @@ def query_upstream_dependencies(session, downstream_dependents):
                 logger.info(
                     f"Missing dependency: {upstream_dependency['instrument']}, "
                     f"{upstream_dependency['data_level']}, "
+                    f"{upstream_dependency['descriptor']}, "
                     f"{version}"
                 )
-                logger.debug(f"Downstream dependent: {dependent}")
-                logger.debug(f"Upstream dependencies: {upstream_dependencies}")
+                logger.info(
+                    f"Failed to kickoff this downstream dependent: {dependent}, "
+                    "because it requires data for all these upstream "
+                    f" dependencies: {upstream_dependencies}"
+                )
                 break  # Exit the loop early as we already found a missing dependency
             else:
                 logger.info(
                     f"Dependency found: {upstream_dependency['instrument']}, "
                     f"{upstream_dependency['data_level']}, "
+                    f"{upstream_dependency['descriptor']}, "
                     f"{version}"
                 )
                 # Add additional information to the upstream dependency
@@ -228,6 +235,11 @@ def query_upstream_dependencies(session, downstream_dependents):
             )
             instruments_to_process.append({"command": prepared_data})
             logger.info(f"All dependencies for {instrument} present.")
+            logger.info(
+                f"For this downstream dependent: {dependent}, "
+                "all these upstream dependencies data are available: "
+                f"{upstream_dependencies}"
+            )
         else:
             logger.info(f"Some dependencies for {instrument} are missing.")
 
