@@ -41,7 +41,6 @@ codice, l1a, lo-ialirt, codice, l1b, lo-ialirt, HARD, DOWNSTREAM
 codice, l1a, hi-ialirt, codice, l1b, hi-ialirt, HARD, DOWNSTREAM
 
 # <---- GLOWS Dependencies ---->
-# TODO: add GLOWS l0 to l1a dependencies
 glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
 
 glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
