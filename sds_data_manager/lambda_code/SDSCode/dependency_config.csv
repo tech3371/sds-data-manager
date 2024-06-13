@@ -41,7 +41,10 @@ codice, l1a, lo-ialirt, codice, l1b, lo-ialirt, HARD, DOWNSTREAM
 codice, l1a, hi-ialirt, codice, l1b, hi-ialirt, HARD, DOWNSTREAM
 
 # <---- GLOWS Dependencies ---->
-# TODO: add GLOWS l0 to l1a dependencies
+glows, l0, raw, glows, l1a, all, HARD, DOWNSTREAM
+
+glows, l1a, de, glows, l1b, de, HARD, DOWNSTREAM
+glows, l1a, hist, glows, l1b, hist, HARD, DOWNSTREAM
 
 # <---- HI Dependencies ---->
 
@@ -99,9 +102,9 @@ mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
 
 mag, l1b, normal-mago, mag, l1c, normal-mago, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1c, normal-mago, HARD, DOWNSTREAM
 mag, l1b, normal-magi, mag, l1c, normal-magi, HARD, DOWNSTREAM
-mag, l1b, burst-mago, mag, l1c, burst-mago, HARD, DOWNSTREAM
-mag, l1b, burst-magi, mag, l1c, burst-magi, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1c, normal-magi, HARD, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 
