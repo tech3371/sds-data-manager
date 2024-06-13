@@ -66,7 +66,7 @@ def test_file_catalog_simulation(test_engine):
             file_path="/path/to/file",
             instrument="ultra",
             data_level="l2",
-            descriptor="science",
+            descriptor="sci",
             start_date=datetime(2024, 1, 1),
             version="v001",
             extension="cdf",
@@ -235,7 +235,7 @@ def test_query_instrument(test_file_catalog_simulation):
         "instrument": "ultra",
         "data_level": "l2",
         "version": "v001",
-        "descriptor": "science",
+        "descriptor": "sci",
     }
 
     "Tests query_instrument function."
