@@ -36,7 +36,7 @@ class FargateBatchResources(Stack):
         account_name: str,
         batch_max_vcpus=10,
         job_vcpus=0.25,
-        job_memory=512,
+        job_memory=2048,
         **kwargs,
     ):
         """Construct the fargate batch resources.
@@ -70,7 +70,7 @@ class FargateBatchResources(Stack):
             Number of virtual CPUs required per Batch job.
             Dependent on Docker image contents.
         job_memory : int: Optional
-            Memory required per Batch job in MB. Dependent on Docker image contents.
+            Memory required per Batch job in MiB. Dependent on Docker image contents.
         kwargs : dict
             Keyword arguments
 
