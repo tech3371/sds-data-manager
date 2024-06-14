@@ -219,14 +219,14 @@ def test_pre_processing_dependency(test_engine, populate_db):
     downstream_dependency = get_dependency(
         instrument="mag",
         data_level="l1b",
-        descriptor="normal-mago",
+        descriptor="norm-mago",
         relationship="HARD",
         direction="DOWNSTREAM",
     )
 
     assert downstream_dependency[0]["instrument"] == "mag"
     assert downstream_dependency[0]["data_level"] == "l1c"
-    assert downstream_dependency[0]["descriptor"] == "normal-mago"
+    assert downstream_dependency[0]["descriptor"] == "norm-mago"
 
 
 def test_query_instrument(test_file_catalog_simulation):
