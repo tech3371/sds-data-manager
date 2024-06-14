@@ -11,6 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
+    check_duplicate_job,
     get_dependency,
     lambda_handler,
     prepare_data,
@@ -23,6 +24,7 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
     FileCatalog,
+    StatusTracking,
 )
 from sds_data_manager.lambda_code.SDSCode.dependency_config import (
     all_dependents,
@@ -110,9 +112,73 @@ def test_file_catalog_simulation(test_engine):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
+        # Adding files to test for duplicate job
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2010, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="spin",
+            start_date=datetime(2010, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
     ]
     with Session(db.get_engine()) as session:
         session.add_all(test_record)
+        session.commit()
+
+    return session
+
+
+@pytest.fixture()
+def populate_status_tracking_table(test_engine):
+    """Add test data to database."""
+    # Add an inprogress record to the status_tracking table
+    # to test the check_duplicate_job function
+    command = [
+        "--instrument",
+        "lo",
+        "--data-level",
+        "l1b",
+        "--start-date",
+        "20100101",
+        "--version",
+        "v001",
+        "--dependency",
+        "[{'instrument': 'lo', 'data_level': 'l1a', 'descriptor': 'de', "
+        "'start_date': '20100101', 'version': 'v001'}, {'instrument': 'lo', "
+        "'data_level': 'l1a', 'descriptor': 'spin', 'start_date': '20100101', "
+        "'version': 'v001'}]",
+        "--upload-to-sdc",
+    ]
+    record = StatusTracking(
+        status="INPROGRESS",
+        instrument="lo",
+        data_level="l1b",
+        start_date=datetime(2010, 1, 1),
+        version="v001",
+        job_definition="test",
+        job_log_stream_id="test",
+        container_image="test",
+        container_command=" ".join(command),
+    )
+    with Session(db.get_engine()) as session:
+        session.add(record)
         session.commit()
 
     return session
@@ -394,12 +460,66 @@ def test_prepare_data():
     assert prepared_data == expected_prepared_data
 
 
-def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
+def test_lambda_handler(
+    test_file_catalog_simulation,
+    batch_client,
+    sts_client,
+    populate_status_tracking_table,
+):
     """Tests ``lambda_handler`` function."""
-    event = {"detail": {"object": {"key": "imap_hit_l1a_sci_20240101_v001.cdf"}}}
+    event = {"detail": {"object": {"key": "imap_lo_l1a_de_20100101_v001.cdf"}}}
     context = {"context": "sample_context"}
 
     lambda_handler(event, context)
+
+
+def test_check_duplicate_job(populate_status_tracking_table):
+    """Test the ``check_duplicate_job`` function."""
+    duplicate_command = [
+        {
+            "command": [
+                "--instrument",
+                "lo",
+                "--data-level",
+                "l1b",
+                "--start-date",
+                "20100101",
+                "--version",
+                "v001",
+                "--dependency",
+                "[{'instrument': 'lo', 'data_level': 'l1a', 'descriptor': 'de', "
+                "'start_date': '20100101', 'version': 'v001'}, {'instrument': 'lo', "
+                "'data_level': 'l1a', 'descriptor': 'spin', 'start_date': '20100101', "
+                "'version': 'v001'}]"
+                "--upload-to-sdc",
+            ]
+        },
+    ]
+    # query the status_tracking table if this job is already in progress
+    result = check_duplicate_job(duplicate_command[0]["command"])
+    assert result is True
+
+    non_duplicate_command = [
+        {
+            "command": [
+                "--instrument",
+                "swapi",
+                "--data-level",
+                "l1b",
+                "--start-date",
+                "20100101",
+                "--version",
+                "v001",
+                "--dependency",
+                "[{'instrument': 'swapi', 'data_level': 'l1a', 'descriptor': 'sci', "
+                "'start_date': '20100101', 'version': 'v001'}]"
+                "--upload-to-sdc",
+            ]
+        },
+    ]
+
+    result = check_duplicate_job(non_duplicate_command[0]["command"])
+    assert result is False
 
 
 def test_send_lambda_put_event(events_client):

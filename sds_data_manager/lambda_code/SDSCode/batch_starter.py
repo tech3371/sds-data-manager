@@ -311,6 +311,52 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
     return prepared_data
 
 
+def check_duplicate_job(job_command: list):
+    """Check if the job is already running.
+
+    Parameters
+    ----------
+    job_command : list
+        Job command to check for duplicates.
+        Eg.
+        [
+            "--instrument",
+            "lo",
+            "--data-level",
+            "l1b",
+            "--start-date",
+            "20100101",
+            "--version",
+            "v001",
+            "--dependency",
+            "[{'instrument': 'lo', 'data_level': 'l1a', 'descriptor': 'de', \
+                'start_date': '20100101', 'version': 'v001'}, {'instrument': 'lo', \
+                'data_level': 'l1a', 'descriptor': 'spin', 'start_date': '20100101', \
+                'version': 'v001'}]"
+            "--upload-to-sdc",
+        ]
+
+    Returns
+    -------
+    bool
+        True if duplicate job is found, False otherwise.
+    """
+    # check in status tracking table if job is already in progress
+    # for this instrument, data level, version and with this dependency
+    with Session(db.get_engine()) as session:
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.instrument == job_command[1],
+            models.StatusTracking.data_level == job_command[3],
+            models.StatusTracking.version == job_command[7],
+            models.StatusTracking.container_command == " ".join(job_command),
+            models.StatusTracking.status == models.Status.INPROGRESS.value,
+        )
+        results = session.execute(query).all()
+        if results:
+            return True
+    return False
+
+
 def send_lambda_put_event(command_parameters):
     r"""Send custom PutEvent to EventBridge.
 
@@ -437,6 +483,16 @@ def lambda_handler(event: dict, context):
 
         # Start Batch Job execution for those that has all dependencies
         for downstream_data in downstream_instruments_to_process:
+            # Check if the job is already running
+            logger.info(
+                f"command before checking duplicate job: {downstream_data['command']}"
+            )
+            duplicate_job_exist = check_duplicate_job(downstream_data["command"])
+            logger.info(f"Duplicate job exist: {duplicate_job_exist}")
+            if check_duplicate_job(downstream_data["command"]):
+                logger.info("Job is already running. Skipping.")
+                continue
+
             command = downstream_data["command"]
             logger.info(f"Submitting job with this command - {command}")
             # NOTE: The batch job name should contain only
