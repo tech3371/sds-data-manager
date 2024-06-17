@@ -26,6 +26,7 @@ def test_batch_job_event(test_engine, events_client):
         "detail": {
             "instrument": "swapi",
             "data_level": "l1",
+            "descriptor": "sci-1min",
             "start_date": "20230724",
             "version": "v001",
             "status": "INPROGRESS",
@@ -144,6 +145,7 @@ def test_custom_lambda_event(test_engine):
         "detail": {
             "instrument": "swapi",
             "data_level": "l1",
+            "descriptor": "sci-1min",
             "start_date": "20230724",
             "version": "v001",
             "status": "INPROGRESS",

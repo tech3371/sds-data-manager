@@ -21,6 +21,7 @@ from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     send_lambda_put_event,
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
+from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
     FileCatalog,
@@ -149,33 +150,15 @@ def test_file_catalog_simulation(test_engine):
 def populate_status_tracking_table(test_engine):
     """Add test data to database."""
     # Add an inprogress record to the status_tracking table
-    # to test the check_duplicate_job function
-    command = [
-        "--instrument",
-        "lo",
-        "--data-level",
-        "l1b",
-        "--start-date",
-        "20100101",
-        "--version",
-        "v001",
-        "--dependency",
-        "[{'instrument': 'lo', 'data_level': 'l1a', 'descriptor': 'de', "
-        "'start_date': '20100101', 'version': 'v001'}, {'instrument': 'lo', "
-        "'data_level': 'l1a', 'descriptor': 'spin', 'start_date': '20100101', "
-        "'version': 'v001'}]",
-        "--upload-to-sdc",
-    ]
+    # to test the check_duplicate_job function.
+    # At the time of job kickoff, we only have these written to the table
     record = StatusTracking(
-        status="INPROGRESS",
+        status=models.Status.INPROGRESS,
         instrument="lo",
         data_level="l1b",
+        descriptor="de",
         start_date=datetime(2010, 1, 1),
         version="v001",
-        job_definition="test",
-        job_log_stream_id="test",
-        container_image="test",
-        container_command=" ".join(command),
     )
     with Session(db.get_engine()) as session:
         session.add(record)
@@ -360,16 +343,19 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
         test_file_catalog_simulation, downstream_dependents
     )
 
-    assert list(result[0].keys()) == ["command"]
-    assert result[0]["command"][1] == "hit"
-    assert result[0]["command"][3] == "l1a"
-    assert result[0]["command"][7] == "v001"
-    expected_upstream_dependents = (
-        "[{'instrument': 'hit', 'data_level': 'l0', "
-        "'descriptor': 'sci', 'start_date': '20240101',"
-        " 'version': 'v001'}]"
-    )
-    assert result[0]["command"][9] == expected_upstream_dependents
+    assert result[0]["instrument"] == "hit"
+    assert result[0]["data_level"] == "l1a"
+    assert result[0]["version"] == "v001"
+    expected_upstream_dependents = [
+        {
+            "instrument": "hit",
+            "data_level": "l0",
+            "descriptor": "sci",
+            "start_date": "20240101",
+            "version": "v001",
+        }
+    ]
+    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
 
     # find swe upstream dependencies
     downstream_dependents = [
@@ -387,15 +373,20 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     )
 
     assert len(result) == 1
-    assert result[0]["command"][1] == "swe"
-    assert result[0]["command"][3] == "l1a"
-    assert result[0]["command"][7] == "v001"
-    expected_upstream_dependents = (
-        "[{'instrument': 'swe', 'data_level': 'l0', "
-        "'descriptor': 'raw', 'start_date': '20240101',"
-        " 'version': 'v001'}]"
-    )
-    assert result[0]["command"][9] == expected_upstream_dependents
+    assert result[0]["instrument"] == "swe"
+    assert result[0]["data_level"] == "l1a"
+    assert result[0]["version"] == "v001"
+    expected_upstream_dependents = [
+        {
+            "instrument": "swe",
+            "data_level": "l0",
+            "descriptor": "raw",
+            "start_date": "20240101",
+            "version": "v001",
+        }
+    ]
+
+    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
 
     downstream_dependents = [
         {
@@ -412,15 +403,20 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     )
 
     assert len(result) == 1
-    assert result[0]["command"][1] == "swe"
-    assert result[0]["command"][3] == "l1b"
-    assert result[0]["command"][7] == "v001"
-    expected_upstream_dependents = (
-        "[{'instrument': 'swe', 'data_level': 'l1a', "
-        "'descriptor': 'sci', 'start_date': '20240101',"
-        " 'version': 'v001'}]"
-    )
-    assert result[0]["command"][9] == expected_upstream_dependents
+    assert result[0]["instrument"] == "swe"
+    assert result[0]["data_level"] == "l1b"
+    assert result[0]["version"] == "v001"
+    expected_upstream_dependents = [
+        {
+            "instrument": "swe",
+            "data_level": "l1a",
+            "descriptor": "sci",
+            "start_date": "20240101",
+            "version": "v001",
+        }
+    ]
+
+    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
 
 
 def test_prepare_data():
@@ -464,10 +460,11 @@ def test_lambda_handler(
     test_file_catalog_simulation,
     batch_client,
     sts_client,
-    populate_status_tracking_table,
+    test_engine,
 ):
     """Tests ``lambda_handler`` function."""
-    event = {"detail": {"object": {"key": "imap_lo_l1a_de_20100101_v001.cdf"}}}
+    # TODO: fix this test to use the mock batch client
+    event = {"detail": {"object": {"key": "imap_hit_l1a_sci_20100101_v001.cdf"}}}
     context = {"context": "sample_context"}
 
     lambda_handler(event, context)
@@ -475,82 +472,52 @@ def test_lambda_handler(
 
 def test_check_duplicate_job(populate_status_tracking_table):
     """Test the ``check_duplicate_job`` function."""
-    duplicate_command = [
-        {
-            "command": [
-                "--instrument",
-                "lo",
-                "--data-level",
-                "l1b",
-                "--start-date",
-                "20100101",
-                "--version",
-                "v001",
-                "--dependency",
-                "[{'instrument': 'lo', 'data_level': 'l1a', 'descriptor': 'de', "
-                "'start_date': '20100101', 'version': 'v001'}, {'instrument': 'lo', "
-                "'data_level': 'l1a', 'descriptor': 'spin', 'start_date': '20100101', "
-                "'version': 'v001'}]"
-                "--upload-to-sdc",
-            ]
-        },
-    ]
     # query the status_tracking table if this job is already in progress
-    result = check_duplicate_job(duplicate_command[0]["command"])
-    assert result is True
+    result = check_duplicate_job(
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date="20100101",
+        version="v001",
+    )
 
-    non_duplicate_command = [
-        {
-            "command": [
-                "--instrument",
-                "swapi",
-                "--data-level",
-                "l1b",
-                "--start-date",
-                "20100101",
-                "--version",
-                "v001",
-                "--dependency",
-                "[{'instrument': 'swapi', 'data_level': 'l1a', 'descriptor': 'sci', "
-                "'start_date': '20100101', 'version': 'v001'}]"
-                "--upload-to-sdc",
-            ]
-        },
-    ]
+    assert result
 
-    result = check_duplicate_job(non_duplicate_command[0]["command"])
-    assert result is False
+    result = check_duplicate_job(
+        instrument="swapi",
+        data_level="l1b",
+        descriptor="sci",
+        start_date="20100101",
+        version="v001",
+    )
+    assert not result
 
 
 def test_send_lambda_put_event(events_client):
     """Test the ``send_lambda_put_event`` function."""
-    input_command = [
-        "--instrument",
-        "mag",
-        "--data-level",
-        "l1a",
-        "--start-date",
-        "20231212",
-        "--version",
-        "v001",
-        "--dependency",
-        """[
+    input_command = {
+        "instrument": "mag",
+        "data_level": "l1a",
+        "descriptor": "lveng-hk",
+        "start_date": "20231212",
+        "version": "v001",
+        "upstream_dependencies": [
             {
-                'instrument': 'swe',
-                'data_level': 'l0',
-                'descriptor': 'lveng-hk',
-                'start_date': '20231212',
-                'version': 'v01-00',
+                "instrument": "swe",
+                "data_level": "l0",
+                "descriptor": "lveng-hk",
+                "start_date": "20231212",
+                "version": "v01-00",
             },
             {
-                'instrument': 'mag',
-                'data_level': 'l0',
-                'descriptor': 'lveng-hk',
-                'start_date': '20231212',
-                'version': 'v001',
-            }]""",
-        "--upload-to-sdc",
-    ]
+                "instrument": "mag",
+                "data_level": "l0",
+                "descriptor": "lveng-hk",
+                "start_date": "20231212",
+                "version": "v001",
+            },
+        ],
+    }
 
     result = send_lambda_put_event(input_command)
     assert result["ResponseMetadata"]["HTTPStatusCode"] == 200

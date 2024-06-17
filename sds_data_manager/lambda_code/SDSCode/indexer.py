@@ -288,6 +288,7 @@ def batch_event_handler(event):
                 "status": job_status,
                 "instrument": instrument,
                 "data_level": data_level,
+                "descriptor": "sit-3",
                 "start_date": start_date,
                 "version": version,
             }
@@ -329,6 +330,7 @@ def custom_event_handler(event):
           "detail": {
             "instrument": "swapi",
             "level": "l1",
+            "descriptor": "sci",
             "start_date": "20230724",
             "version": "v001",
             "status": "INPROGRESS",
@@ -352,6 +354,7 @@ def custom_event_handler(event):
         "status": models.Status.INPROGRESS,
         "instrument": event_details["instrument"],
         "data_level": event_details["data_level"],
+        "descriptor": event_details["descriptor"],
         "start_date": datetime.strptime(event_details["start_date"], "%Y%m%d"),
         "version": event_details["version"],
         "job_definition": None,

@@ -121,6 +121,7 @@ class StatusTracking(Base):
     status = Column(STATUSES, nullable=False)
     instrument = Column(INSTRUMENTS, nullable=False)
     data_level = Column(DATA_LEVELS, nullable=False)
+    descriptor = Column(String, nullable=False)
     start_date = Column(DateTime, nullable=False)
     version = Column(String(8), nullable=False)
     # TODO:
@@ -130,6 +131,7 @@ class StatusTracking(Base):
     job_log_stream_id = Column(String)
     container_image = Column(String)
     container_command = Column(String)
+    processing_time = Column(Integer)
 
 
 class FileCatalog(Base):
