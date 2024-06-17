@@ -517,6 +517,8 @@ def lambda_handler(event: dict, context):
                 downstream_data["instrument"],
                 "--data-level",
                 downstream_data["data_level"],
+                "--descriptor",
+                downstream_data["descriptor"],
                 "--start-date",
                 downstream_data["start_date"],
                 "--version",

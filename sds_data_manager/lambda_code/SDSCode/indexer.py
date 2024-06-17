@@ -222,7 +222,8 @@ def batch_event_handler(event):
                 ),
                 "command": [
                     "--instrument", "swapi",
-                    "--level", "l1",
+                    "--data-level", "l1",
+                    "--descriptor", "sci",
                     "--start-date", "20230724",
                     "--version", "v001",
                     "--dependency", \"""[
@@ -233,7 +234,7 @@ def batch_event_handler(event):
                             'version': 'v001'
                         }
                     ]\""",
-                    "--use-remote",
+                    "--upload-to-sdc",
                 ],
                 "logStreamName": (
                     "fargate-batch-job-definitionswe/default/"
@@ -254,8 +255,9 @@ def batch_event_handler(event):
     # Get params from batch job command
     instrument = command[1]
     data_level = command[3]
-    start_date = datetime.strptime(command[5], "%Y%m%d")
-    version = command[7]
+    descriptor = command[5]
+    start_date = datetime.strptime(command[7], "%Y%m%d")
+    version = command[9]
 
     # Get job status
     job_status = (
@@ -273,6 +275,7 @@ def batch_event_handler(event):
             session.query(models.StatusTracking)
             .filter(models.StatusTracking.instrument == instrument)
             .filter(models.StatusTracking.data_level == data_level)
+            .filter(models.StatusTracking.descriptor == descriptor)
             .filter(models.StatusTracking.start_date == start_date)
             .filter(models.StatusTracking.version == version)
             .first()

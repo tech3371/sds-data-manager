@@ -79,6 +79,8 @@ def test_batch_job_event(test_engine, events_client):
                     "swapi",
                     "--level",
                     "l1",
+                    "--descriptor",
+                    "sci-1min",
                     "--start-date",
                     "20230724",
                     "--version",
