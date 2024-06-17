@@ -437,13 +437,13 @@ def send_lambda_put_event(instrument_to_process_data):
 
     # Create event["detail"] information
     detail = {
-        "status": models.Status.INPROGRESS.value,
+        "status": models.Status.INPROGRESS.name,
         "instrument": instrument,
         "data_level": data_level,
         "descriptor": descriptor,
         "start_date": start_date,
         "version": version,
-        "dependency": dependency,
+        "dependency": f"{dependency}",
     }
 
     # create PutEvent dictionary
