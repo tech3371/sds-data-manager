@@ -284,11 +284,11 @@ def batch_event_handler(event):
                 f" new record for {instrument},{data_level},"
                 f"{start_date},{version}"
             )
+            # TODO: figure out how to add descriptor here
             status_params = {
                 "status": job_status,
                 "instrument": instrument,
                 "data_level": data_level,
-                "descriptor": "sit-3",
                 "start_date": start_date,
                 "version": version,
             }
@@ -324,7 +324,7 @@ def custom_event_handler(event):
 
     PutEvent Example:
         {
-        "DetailType": "Batch Job Started",
+        "DetailType": "Job Started",
         "Source": "imap.lambda",
         "Detail": {
           "detail": {
@@ -359,6 +359,10 @@ def custom_event_handler(event):
         "version": event_details["version"],
         "job_definition": None,
     }
+
+    logger.info("BatchStarter Lambda Event received")
+
+    logger.info(f"Writing data to status tracking table: {status_params}")
     update_status_table(status_params)
 
     logger.debug("Wrote data to status tracking table")

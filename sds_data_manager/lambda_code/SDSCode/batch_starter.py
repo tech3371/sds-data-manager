@@ -245,28 +245,13 @@ def query_upstream_dependencies(session, downstream_dependents):
                     "upstream_dependencies": upstream_dependencies,
                 }
             )
-            # # These are the keys the upstream_dependencies should contain:
-            # # {
-            # #     'instrument': 'swe',
-            # #     'data_level': 'l0',
-            # #     'descriptor': 'lveng-hk',
-            # #     'start_date': '20231212',
-            # #     'version': 'v001',
-            # # },
-            # prepared_data = prepare_data(
-            #     instrument=instrument,
-            #     data_level=data_level,
-            #     start_date=start_date,
-            #     version=version,
-            #     upstream_dependencies=upstream_dependencies,
-            # )
-            # instruments_to_process.append({"command": prepared_data})
-            # logger.info(f"All dependencies for {instrument} present.")
-            # logger.info(
-            #     f"For this downstream dependent: {dependent}, "
-            #     "all these upstream dependencies data are available: "
-            #     f"{upstream_dependencies}"
-            # )
+
+            logger.info(f"All dependencies for {instrument} present.")
+            logger.info(
+                f"For this downstream dependent: {dependent}, "
+                "all these upstream dependencies data are available: "
+                f"{upstream_dependencies}"
+            )
         else:
             logger.info(f"Some dependencies for {instrument} are missing.")
 
@@ -362,7 +347,7 @@ def check_duplicate_job(
         True if duplicate job is found, False otherwise.
     """
     # check in status tracking table if job is already in progress
-    # for this instrument, data level, version and with this dependency
+    # for this instrument, data level, version, and descriptor
     with Session(db.get_engine()) as session:
         query = select(models.StatusTracking.__table__).where(
             models.StatusTracking.instrument == instrument,
@@ -385,16 +370,27 @@ def send_lambda_put_event(instrument_to_process_data):
     r"""Send custom PutEvent to EventBridge.
 
     Example of what PutEvent looks like:
+
         event = {
-            "Source": "imap.lambda",
             "DetailType": "Job Started",
+            "Source": "imap.lambda",
             "Detail": {
+            "detail": {
+                "instrument": "swapi",
+                "level": "l1",
+                "descriptor": "sci",
+                "start_date": "20230724",
+                "version": "v001",
                 "status": "INPROGRESS",
-                "dependency": "[{
-                    "codice": "s3-test",
-                    "mag": "s3-filepath"
-                }]")
-            },
+                "dependency": json.dumps([
+                    {
+                        "instrument": "swapi",
+                        "level": "l0",
+                        "descriptor": "sci",
+                        "start_date": "20230724",
+                        "version": "v001"
+                    }]),
+            }
         }
 
     Parameters
@@ -508,6 +504,14 @@ def lambda_handler(event: dict, context):
 
         # Start Batch Job execution for those that has all dependencies
         for downstream_data in downstream_instruments_to_process:
+            # FYI, these are the keys the upstream_dependencies should contain:
+            # {
+            #     'instrument': 'swe',
+            #     'data_level': 'l0',
+            #     'descriptor': 'lveng-hk',
+            #     'start_date': '20231212',
+            #     'version': 'v001',
+            # },
             batch_command = [
                 "--instrument",
                 downstream_data["instrument"],

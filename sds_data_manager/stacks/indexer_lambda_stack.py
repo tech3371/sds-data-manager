@@ -152,6 +152,7 @@ class IndexerLambda(Stack):
                 detail={
                     "instrument": [{"exists": True}],
                     "data_level": [{"exists": True}],
+                    "descriptor": [{"exists": True}],
                     "start_date": [{"exists": True}],
                     "version": [{"exists": True}],
                     "status": ["INPROGRESS"],
