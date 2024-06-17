@@ -96,15 +96,15 @@ lo, l1b, de, lo, l1c, pset, HARD, DOWNSTREAM
 
 mag, l0, raw, mag, l1a, all, HARD, DOWNSTREAM
 
-mag, l1a, normal-mago, mag, l1b, normal-mago, HARD, DOWNSTREAM
-mag, l1a, normal-magi, mag, l1b, normal-magi, HARD, DOWNSTREAM
+mag, l1a, norm-mago, mag, l1b, norm-mago, HARD, DOWNSTREAM
+mag, l1a, norm-magi, mag, l1b, norm-magi, HARD, DOWNSTREAM
 mag, l1a, burst-mago, mag, l1b, burst-mago, HARD, DOWNSTREAM
 mag, l1a, burst-magi, mag, l1b, burst-magi, HARD, DOWNSTREAM
 
-mag, l1b, normal-mago, mag, l1c, normal-mago, HARD, DOWNSTREAM
-mag, l1b, burst-mago, mag, l1c, normal-mago, HARD, DOWNSTREAM
-mag, l1b, normal-magi, mag, l1c, normal-magi, HARD, DOWNSTREAM
-mag, l1b, burst-magi, mag, l1c, normal-magi, HARD, DOWNSTREAM
+mag, l1b, norm-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
+mag, l1b, burst-mago, mag, l1c, norm-mago, HARD, DOWNSTREAM
+mag, l1b, norm-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
+mag, l1b, burst-magi, mag, l1c, norm-magi, HARD, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 
