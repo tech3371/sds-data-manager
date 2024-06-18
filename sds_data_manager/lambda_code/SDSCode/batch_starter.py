@@ -368,7 +368,7 @@ def lambda_handler(event: dict, context):
 
             if job_already_exist:
                 logger.info(
-                    f"Job was already started for {downstream_data['instrument']}, "
+                    f"Job record found for {downstream_data['instrument']}, "
                     f"{downstream_data['data_level']}, "
                     f"{downstream_data['descriptor']}, "
                     f"{downstream_data['start_date']}, "
@@ -377,11 +377,29 @@ def lambda_handler(event: dict, context):
                 continue
 
             logger.info(
-                f"Job not in progress for {downstream_data['instrument']}, "
+                f"Job record not found for {downstream_data['instrument']}, "
                 f"{downstream_data['data_level']}, "
                 f"{downstream_data['descriptor']}, "
                 f"{downstream_data['start_date']}, "
                 f"{downstream_data['version']}"
+            )
+
+            # Write to status tracking table with initial values
+            status_params = {
+                "status": models.Status.INPROGRESS,
+                "instrument": downstream_data["instrument"],
+                "data_level": downstream_data["data_level"],
+                "descriptor": downstream_data["descriptor"],
+                "start_date": datetime.strptime(
+                    downstream_data["start_date"], "%Y%m%d"
+                ),
+                "version": downstream_data["version"],
+            }
+
+            update_status_table(status_params)
+
+            logger.info(
+                f"Wrote job in progress to status tracking table - {status_params}"
             )
 
             # FYI, these are the keys the upstream_dependencies should contain:
@@ -427,21 +445,3 @@ def lambda_handler(event: dict, context):
                 },
             )
             logger.info(f"Submitted job - {response}")
-
-            # Write to status tracking table with initial values
-            status_params = {
-                "status": models.Status.INPROGRESS,
-                "instrument": downstream_data["instrument"],
-                "data_level": downstream_data["data_level"],
-                "descriptor": downstream_data["descriptor"],
-                "start_date": datetime.strptime(
-                    downstream_data["start_date"], "%Y%m%d"
-                ),
-                "version": downstream_data["version"],
-            }
-
-            update_status_table(status_params)
-
-            logger.info(
-                f"Wrote job in progress to status tracking table - {status_params}"
-            )
