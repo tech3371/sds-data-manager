@@ -174,6 +174,8 @@ def query_upstream_dependencies(session, downstream_dependents):
         start_date = dependent["start_date"]
         version = dependent["version"]
 
+        logger.info("Checking for job in progress before looking for dependencies.")
+
         job_already_exist = is_job_in_status_table(
             instrument=instrument,
             data_level=data_level,
@@ -188,6 +190,11 @@ def query_upstream_dependencies(session, downstream_dependents):
                 f"{descriptor}, {start_date}, {version}"
             )
             continue
+
+        logger.info(
+            f"Job not in progress for {instrument}, {data_level}, "
+            f"{descriptor}, {start_date}, {version}"
+        )
 
         # For each downstream dependent, find its upstream dependencies
         upstream_dependencies = get_dependency(
@@ -349,6 +356,34 @@ def lambda_handler(event: dict, context):
 
         # Start Batch Job execution for those that has all dependencies
         for downstream_data in downstream_instruments_to_process:
+            logger.info("Checking for duplicate job before kicking off the job.")
+
+            job_already_exist = is_job_in_status_table(
+                instrument=downstream_data["instrument"],
+                data_level=downstream_data["data_level"],
+                descriptor=downstream_data["descriptor"],
+                start_date=downstream_data["start_date"],
+                version=downstream_data["version"],
+            )
+
+            if job_already_exist:
+                logger.info(
+                    f"Job was already started for {downstream_data['instrument']}, "
+                    f"{downstream_data['data_level']}, "
+                    f"{downstream_data['descriptor']}, "
+                    f"{downstream_data['start_date']}, "
+                    f"{downstream_data['version']}"
+                )
+                continue
+
+            logger.info(
+                f"Job not in progress for {downstream_data['instrument']}, "
+                f"{downstream_data['data_level']}, "
+                f"{downstream_data['descriptor']}, "
+                f"{downstream_data['start_date']}, "
+                f"{downstream_data['version']}"
+            )
+
             # FYI, these are the keys the upstream_dependencies should contain:
             # {
             #     'instrument': 'swe',
