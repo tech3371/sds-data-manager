@@ -7,9 +7,7 @@ from datetime import datetime
 
 import boto3
 from imap_data_access import ScienceFilePath
-from sqlalchemy.orm import Session
 
-from .database import database as db
 from .database import models
 from .database_handler import update_file_catalog_table, update_status_table
 from .lambda_custom_events import IMAPLambdaPutEvent
@@ -266,55 +264,20 @@ def batch_event_handler(event):
         else models.Status.FAILED
     )
 
-    with Session(db.get_engine()) as session:
-        # Had to query this way because the select statement
-        # returns a RowProxy object when it executes it,
-        # not the actual StatusTracking model instance,
-        # which is why it can't update table row directly.
-        result = (
-            session.query(models.StatusTracking)
-            .filter(models.StatusTracking.instrument == instrument)
-            .filter(models.StatusTracking.data_level == data_level)
-            .filter(models.StatusTracking.descriptor == descriptor)
-            .filter(models.StatusTracking.start_date == start_date)
-            .filter(models.StatusTracking.version == version)
-            .first()
-        )
+    status_params = {
+        "status": job_status,
+        "instrument": instrument,
+        "data_level": data_level,
+        "descriptor": descriptor,
+        "start_date": start_date,
+        "version": version,
+        "job_definition": event["detail"]["jobDefinition"],
+        "job_log_stream_id": event["detail"]["container"]["logStreamName"],
+        "container_image": event["detail"]["container"]["image"],
+        "container_command": " ".join(command),
+    }
 
-        if result is None:
-            logger.info(
-                "No existing record found, creating"
-                f" new record for {instrument},{data_level},"
-                f"{start_date},{version}"
-            )
-
-            status_params = {
-                "status": job_status,
-                "instrument": instrument,
-                "data_level": data_level,
-                "descriptor": descriptor,
-                "start_date": start_date,
-                "version": version,
-            }
-
-            update_status_table(status_params)
-
-            result = (
-                session.query(models.StatusTracking)
-                .filter(models.StatusTracking.instrument == instrument)
-                .filter(models.StatusTracking.data_level == data_level)
-                .filter(models.StatusTracking.start_date == start_date)
-                .filter(models.StatusTracking.version == version)
-                .first()
-            )
-
-        logger.info(f"Query result before update: {result.__dict__}")
-        result.status = job_status
-        result.job_definition = event["detail"]["jobDefinition"]
-        result.job_log_stream_id = event["detail"]["container"]["logStreamName"]
-        result.container_image = event["detail"]["container"]["image"]
-        result.container_command = " ".join(command)
-        session.commit()
+    update_status_table(status_params)
 
     return http_response(status_code=200, body="Success")
 
