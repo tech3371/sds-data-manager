@@ -11,8 +11,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
-    check_duplicate_job,
     get_dependency,
+    is_job_in_status_table,
     lambda_handler,
     prepare_data,
     query_downstream_dependencies,
@@ -150,7 +150,7 @@ def test_file_catalog_simulation(test_engine):
 def populate_status_tracking_table(test_engine):
     """Add test data to database."""
     # Add an inprogress record to the status_tracking table
-    # to test the check_duplicate_job function.
+    # to test the is_job_in_status_table function.
     # At the time of job kickoff, we only have these written to the table
     record = StatusTracking(
         status=models.Status.INPROGRESS,
@@ -470,10 +470,10 @@ def test_lambda_handler(
     lambda_handler(event, context)
 
 
-def test_check_duplicate_job(populate_status_tracking_table):
-    """Test the ``check_duplicate_job`` function."""
+def test_is_job_in_status_table(populate_status_tracking_table):
+    """Test the ``is_job_in_status_table`` function."""
     # query the status_tracking table if this job is already in progress
-    result = check_duplicate_job(
+    result = is_job_in_status_table(
         instrument="lo",
         data_level="l1b",
         descriptor="de",
@@ -483,7 +483,7 @@ def test_check_duplicate_job(populate_status_tracking_table):
 
     assert result
 
-    result = check_duplicate_job(
+    result = is_job_in_status_table(
         instrument="swapi",
         data_level="l1b",
         descriptor="sci",

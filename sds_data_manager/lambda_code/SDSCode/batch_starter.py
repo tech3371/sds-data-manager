@@ -174,7 +174,7 @@ def query_upstream_dependencies(session, downstream_dependents):
         start_date = dependent["start_date"]
         version = dependent["version"]
 
-        job_already_exist = check_duplicate_job(
+        job_already_exist = is_job_in_status_table(
             instrument=instrument,
             data_level=data_level,
             descriptor=descriptor,
@@ -323,7 +323,7 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
     return prepared_data
 
 
-def check_duplicate_job(
+def is_job_in_status_table(
     instrument: str, data_level: str, descriptor: str, start_date: str, version: str
 ):
     """Check if the job is already running.
