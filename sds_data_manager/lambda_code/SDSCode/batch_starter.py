@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
+from .database_handler import update_status_table
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
@@ -527,6 +528,7 @@ def lambda_handler(event: dict, context):
                 f"{downstream_data['upstream_dependencies']}",
                 "--upload-to-sdc",
             ]
+
             logger.info(f"Submitting job with this command - {batch_command}")
             # NOTE: The batch job name should contain only
             # alphanumeric characters and hyphens.
@@ -546,7 +548,21 @@ def lambda_handler(event: dict, context):
                 },
             )
             logger.info(f"Submitted job - {response}")
-            # Send EventBridge event to indexer lambda
-            logger.info("Sending EventBridge event to indexer lambda.")
-            send_lambda_put_event(downstream_data)
-            logger.info("EventBridge event sent.")
+
+            # Write to status tracking table with initial values
+            status_params = {
+                "status": models.Status.INPROGRESS,
+                "instrument": downstream_data["instrument"],
+                "data_level": downstream_data["data_level"],
+                "descriptor": downstream_data["descriptor"],
+                "start_date": datetime.strptime(
+                    downstream_data["start_date"], "%Y%m%d"
+                ),
+                "version": downstream_data["version"],
+            }
+
+            update_status_table(status_params)
+
+            logger.info(
+                f"Wrote job in prgoress to status tracking table - {status_params}"
+            )

@@ -287,15 +287,18 @@ def batch_event_handler(event):
                 f" new record for {instrument},{data_level},"
                 f"{start_date},{version}"
             )
-            # TODO: figure out how to add descriptor here
+
             status_params = {
                 "status": job_status,
                 "instrument": instrument,
                 "data_level": data_level,
+                "descriptor": descriptor,
                 "start_date": start_date,
                 "version": version,
             }
+
             update_status_table(status_params)
+
             result = (
                 session.query(models.StatusTracking)
                 .filter(models.StatusTracking.instrument == instrument)
@@ -316,67 +319,10 @@ def batch_event_handler(event):
     return http_response(status_code=200, body="Success")
 
 
-def custom_event_handler(event):
-    """Event handling logic.
-
-    Parameters
-    ----------
-    event : dict
-        The JSON formatted document with the data required for the
-        lambda function to process
-
-    PutEvent Example:
-        {
-        "DetailType": "Job Started",
-        "Source": "imap.lambda",
-        "Detail": {
-          "detail": {
-            "instrument": "swapi",
-            "level": "l1",
-            "descriptor": "sci",
-            "start_date": "20230724",
-            "version": "v001",
-            "status": "INPROGRESS",
-            "dependency": json.dumps([
-                {
-                    "instrument": "swe",
-                    "level": "l0",
-                    "version": "v001"
-                }]),
-        }}
-
-    Returns
-    -------
-    dict
-        HTTP response
-
-    """
-    event_details = event["detail"]
-    # Write event information to status tracking table.
-    status_params = {
-        "status": models.Status.INPROGRESS,
-        "instrument": event_details["instrument"],
-        "data_level": event_details["data_level"],
-        "descriptor": event_details["descriptor"],
-        "start_date": datetime.strptime(event_details["start_date"], "%Y%m%d"),
-        "version": event_details["version"],
-        "job_definition": None,
-    }
-
-    logger.info("BatchStarter Lambda Event received")
-
-    logger.info(f"Writing data to status tracking table: {status_params}")
-    update_status_table(status_params)
-
-    logger.debug("Wrote data to status tracking table")
-    return http_response(status_code=200, body="Success")
-
-
 # Handlers mapping
 event_handlers = {
     "aws.s3": s3_event_handler,
     "aws.batch": batch_event_handler,
-    "imap.lambda": custom_event_handler,
 }
 
 

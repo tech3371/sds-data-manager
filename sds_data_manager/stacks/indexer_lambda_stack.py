@@ -122,45 +122,6 @@ class IndexerLambda(Stack):
             ),
         )
 
-        # This event listens for PutEvent from Lambda that builds
-        # dependency and starts Batch Job.
-        # Indexer Lambda listens for that event and writes
-        # all information to database
-        # and intialized other information such as
-        # ingestion time to null.
-        # PutEvent Example:
-        #     {
-        #     "DetailType": "Batch Job Started",
-        #     "Source": "imap.lambda",
-        #     "Detail": {
-        #       "file_path_to_create": "str",
-        #       "status": "InProgress",
-        #       "dependency": json.dumps({
-        #           "codice": "s3-filepath",
-        #           "mag": "s3-filepath"}
-        #       )
-        #     }}
-        # NOTE: Exists matching only works on leaf nodes. It does not work on
-        # intermediate nodes.
-        batch_starter_event_rule = events.Rule(
-            self,
-            "batchStarterEvent",
-            rule_name="batch-starter-event",
-            event_pattern=events.EventPattern(
-                source=["imap.lambda"],
-                detail_type=["Job Started"],
-                detail={
-                    "instrument": [{"exists": True}],
-                    "data_level": [{"exists": True}],
-                    "descriptor": [{"exists": True}],
-                    "start_date": [{"exists": True}],
-                    "version": [{"exists": True}],
-                    "status": ["INPROGRESS"],
-                    "dependency": [{"exists": True}],
-                },
-            ),
-        )
-
         # Uses batch job status
         # to update status in the database and
         # update ingested time if status was success
@@ -190,6 +151,5 @@ class IndexerLambda(Stack):
 
         # Add the Lambda function as the target for the rules
         imap_data_arrival_rule.add_target(targets.LambdaFunction(indexer_lambda))
-        batch_starter_event_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_job_status_rule.add_target(targets.LambdaFunction(indexer_lambda))
         batch_job_failure_rule.add_target(targets.SnsTopic(sns_topic))

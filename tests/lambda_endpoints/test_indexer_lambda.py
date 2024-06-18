@@ -1,6 +1,7 @@
 """Tests for the indexer lambda."""
 
 import os
+from datetime import datetime
 
 import pytest
 from imap_data_access import ScienceFilePath
@@ -10,6 +11,9 @@ from sqlalchemy.orm import Session
 from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.lambda_code.SDSCode.database_handler import (
+    update_status_table,
+)
 from sds_data_manager.lambda_code.SDSCode.indexer import (
     send_event_from_indexer,
 )
@@ -17,36 +21,16 @@ from sds_data_manager.lambda_code.SDSCode.indexer import (
 
 def test_batch_job_event(test_engine, events_client):
     """Test batch job event."""
-    # Send s3 event first to write initial data to satus
-    # table
-    custom_event = {
-        "detail-type": "Job Started",
-        "source": "imap.lambda",
-        "detail": {
-            "instrument": "swapi",
-            "data_level": "l1",
-            "descriptor": "sci-1min",
-            "start_date": "20230724",
-            "version": "v001",
-            "status": "INPROGRESS",
-            "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
-        },
+    # Write to status tracking table with current batch job event info
+    status_params = {
+        "status": models.Status.INPROGRESS,
+        "instrument": "swapi",
+        "data_level": "l1",
+        "descriptor": "sci-1min",
+        "start_date": datetime.strptime("20230724", "%Y%m%d"),
+        "version": "v001",
     }
-
-    # Test for good event
-    returned_value = indexer.lambda_handler(event=custom_event, context={})
-    assert returned_value["statusCode"] == 200
-
-    # check that data was written to status table
-    with Session(db.get_engine()) as session:
-        event_details = custom_event["detail"]
-        query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.instrument == event_details["instrument"],
-            models.StatusTracking.data_level == event_details["data_level"],
-            models.StatusTracking.version == event_details["version"],
-        )
-
-        status_tracking = session.execute(query).first()
+    update_status_table(status_params)
 
     # TODO: Will update this test further
     # when I extend batch job event handler.
@@ -108,11 +92,10 @@ def test_batch_job_event(test_engine, events_client):
 
     # check that data was written to status table
     with Session(db.get_engine()) as session:
-        event_details = custom_event["detail"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.instrument == event_details["instrument"],
-            models.StatusTracking.data_level == event_details["data_level"],
-            models.StatusTracking.version == event_details["version"],
+            models.StatusTracking.instrument == status_params["instrument"],
+            models.StatusTracking.data_level == status_params["data_level"],
+            models.StatusTracking.version == status_params["version"],
         )
 
         status_tracking = session.execute(query).first()
@@ -124,61 +107,27 @@ def test_batch_job_event(test_engine, events_client):
     assert returned_value["statusCode"] == 200
 
     with Session(db.get_engine()) as session:
-        event_details = custom_event["detail"]
         query = select(models.StatusTracking.__table__).where(
-            models.StatusTracking.instrument == event_details["instrument"],
-            models.StatusTracking.data_level == event_details["data_level"],
-            models.StatusTracking.version == event_details["version"],
+            models.StatusTracking.instrument == status_params["instrument"],
+            models.StatusTracking.data_level == status_params["data_level"],
+            models.StatusTracking.version == status_params["version"],
         )
 
         status_tracking = session.execute(query).first()
         assert status_tracking.status == models.Status.SUCCEEDED
 
-    # TODO: fix this test
-    # # Test for file that is not in status table
-    # event["detail"]["container"]["command"][1] = "swe"
-    # result = batch_event_handler(event)
-    # assert result["statusCode"] == 200
+    # Test for file that is not in status table
+    event["detail"]["container"]["command"][1] = "swe"
+    result = indexer.lambda_handler(event=event, context={})
+    assert result["statusCode"] == 200
 
-    # with Session(db.get_engine()) as session:
-    #     query = select(models.StatusTracking.__table__).where(
-    #         models.StatusTracking.instrument == "swe"
-    #     )
-
-    #     status_tracking = session.execute(query).first()
-    #     assert status_tracking.status == models.Status.SUCCEEDED
-
-
-def test_custom_lambda_event(test_engine):
-    """Test custom PutEvent from lambda."""
-    # Took out unused parameters from event
-    event = {
-        "detail-type": "Job Started",
-        "source": "imap.lambda",
-        "detail": {
-            "instrument": "swapi",
-            "data_level": "l1",
-            "descriptor": "sci-1min",
-            "start_date": "20230724",
-            "version": "v001",
-            "status": "INPROGRESS",
-            "dependency": {"codice": "s3-filepath", "mag": "s3-filepath"},
-        },
-    }
-
-    # Test for good event
-    returned_value = indexer.lambda_handler(event=event, context={})
-    assert returned_value["statusCode"] == 200
-
-    # Check that data was written to database by lambda
     with Session(db.get_engine()) as session:
-        result = session.query(models.StatusTracking).all()
-        assert len(result) == 1
-        assert result[0].instrument == "swapi"
-        assert result[0].data_level == "l1"
-        assert result[0].descriptor == "sci-1min"
-        assert result[0].version == "v001"
-        assert result[0].status == models.Status.INPROGRESS
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.instrument == "swe"
+        )
+
+        status_tracking = session.execute(query).first()
+        assert status_tracking.status == models.Status.SUCCEEDED
 
 
 def test_s3_event(test_engine, events_client):
