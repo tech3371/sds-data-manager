@@ -7,9 +7,7 @@ from datetime import datetime
 
 import boto3
 from imap_data_access import ScienceFilePath
-from sqlalchemy.orm import Session
 
-from .database import database as db
 from .database import models
 from .database_handler import update_file_catalog_table, update_status_table
 from .lambda_custom_events import IMAPLambdaPutEvent
@@ -222,7 +220,8 @@ def batch_event_handler(event):
                 ),
                 "command": [
                     "--instrument", "swapi",
-                    "--level", "l1",
+                    "--data-level", "l1",
+                    "--descriptor", "sci",
                     "--start-date", "20230724",
                     "--version", "v001",
                     "--dependency", \"""[
@@ -233,7 +232,7 @@ def batch_event_handler(event):
                             'version': 'v001'
                         }
                     ]\""",
-                    "--use-remote",
+                    "--upload-to-sdc",
                 ],
                 "logStreamName": (
                     "fargate-batch-job-definitionswe/default/"
@@ -254,8 +253,9 @@ def batch_event_handler(event):
     # Get params from batch job command
     instrument = command[1]
     data_level = command[3]
-    start_date = datetime.strptime(command[5], "%Y%m%d")
-    version = command[7]
+    descriptor = command[5]
+    start_date = datetime.strptime(command[7], "%Y%m%d")
+    version = command[9]
 
     # Get job status
     job_status = (
@@ -264,101 +264,21 @@ def batch_event_handler(event):
         else models.Status.FAILED
     )
 
-    with Session(db.get_engine()) as session:
-        # Had to query this way because the select statement
-        # returns a RowProxy object when it executes it,
-        # not the actual StatusTracking model instance,
-        # which is why it can't update table row directly.
-        result = (
-            session.query(models.StatusTracking)
-            .filter(models.StatusTracking.instrument == instrument)
-            .filter(models.StatusTracking.data_level == data_level)
-            .filter(models.StatusTracking.start_date == start_date)
-            .filter(models.StatusTracking.version == version)
-            .first()
-        )
-
-        if result is None:
-            logger.info(
-                "No existing record found, creating"
-                f" new record for {instrument},{data_level},"
-                f"{start_date},{version}"
-            )
-            status_params = {
-                "status": job_status,
-                "instrument": instrument,
-                "data_level": data_level,
-                "start_date": start_date,
-                "version": version,
-            }
-            update_status_table(status_params)
-            result = (
-                session.query(models.StatusTracking)
-                .filter(models.StatusTracking.instrument == instrument)
-                .filter(models.StatusTracking.data_level == data_level)
-                .filter(models.StatusTracking.start_date == start_date)
-                .filter(models.StatusTracking.version == version)
-                .first()
-            )
-
-        logger.info(f"Query result before update: {result.__dict__}")
-        result.status = job_status
-        result.job_definition = event["detail"]["jobDefinition"]
-        result.job_log_stream_id = event["detail"]["container"]["logStreamName"]
-        result.container_image = event["detail"]["container"]["image"]
-        result.container_command = " ".join(command)
-        session.commit()
-
-    return http_response(status_code=200, body="Success")
-
-
-def custom_event_handler(event):
-    """Event handling logic.
-
-    Parameters
-    ----------
-    event : dict
-        The JSON formatted document with the data required for the
-        lambda function to process
-
-    PutEvent Example:
-        {
-        "DetailType": "Batch Job Started",
-        "Source": "imap.lambda",
-        "Detail": {
-          "detail": {
-            "instrument": "swapi",
-            "level": "l1",
-            "start_date": "20230724",
-            "version": "v001",
-            "status": "INPROGRESS",
-            "dependency": json.dumps([
-                {
-                    "instrument": "swe",
-                    "level": "l0",
-                    "version": "v001"
-                }]),
-        }}
-
-    Returns
-    -------
-    dict
-        HTTP response
-
-    """
-    event_details = event["detail"]
-    # Write event information to status tracking table.
     status_params = {
-        "status": models.Status.INPROGRESS,
-        "instrument": event_details["instrument"],
-        "data_level": event_details["data_level"],
-        "start_date": datetime.strptime(event_details["start_date"], "%Y%m%d"),
-        "version": event_details["version"],
-        "job_definition": None,
+        "status": job_status,
+        "instrument": instrument,
+        "data_level": data_level,
+        "descriptor": descriptor,
+        "start_date": start_date,
+        "version": version,
+        "job_definition": event["detail"]["jobDefinition"],
+        "job_log_stream_id": event["detail"]["container"]["logStreamName"],
+        "container_image": event["detail"]["container"]["image"],
+        "container_command": " ".join(command),
     }
+
     update_status_table(status_params)
 
-    logger.debug("Wrote data to status tracking table")
     return http_response(status_code=200, body="Success")
 
 
@@ -366,7 +286,6 @@ def custom_event_handler(event):
 event_handlers = {
     "aws.s3": s3_event_handler,
     "aws.batch": batch_event_handler,
-    "imap.lambda": custom_event_handler,
 }
 
 

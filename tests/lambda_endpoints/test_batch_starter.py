@@ -12,17 +12,18 @@ from sqlalchemy.orm import Session
 
 from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     get_dependency,
+    is_job_in_status_table,
     lambda_handler,
-    prepare_data,
     query_downstream_dependencies,
     query_instrument,
     query_upstream_dependencies,
-    send_lambda_put_event,
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
+from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     Base,
     FileCatalog,
+    StatusTracking,
 )
 from sds_data_manager.lambda_code.SDSCode.dependency_config import (
     all_dependents,
@@ -110,9 +111,55 @@ def test_file_catalog_simulation(test_engine):
                 "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
             ),
         ),
+        # Adding files to test for duplicate job
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="de",
+            start_date=datetime(2010, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
+        FileCatalog(
+            file_path="/path/to/file",
+            instrument="lo",
+            data_level="l1a",
+            descriptor="spin",
+            start_date=datetime(2010, 1, 1),
+            version="v001",
+            extension="cdf",
+            ingestion_date=datetime.strptime(
+                "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+        ),
     ]
     with Session(db.get_engine()) as session:
         session.add_all(test_record)
+        session.commit()
+
+    return session
+
+
+@pytest.fixture()
+def populate_status_tracking_table(test_engine):
+    """Add test data to database."""
+    # Add an inprogress record to the status_tracking table
+    # to test the is_job_in_status_table function.
+    # At the time of job kickoff, we only have these written to the table
+    record = StatusTracking(
+        status=models.Status.INPROGRESS,
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date=datetime(2010, 1, 1),
+        version="v001",
+    )
+    with Session(db.get_engine()) as session:
+        session.add(record)
         session.commit()
 
     return session
@@ -294,16 +341,19 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
         test_file_catalog_simulation, downstream_dependents
     )
 
-    assert list(result[0].keys()) == ["command"]
-    assert result[0]["command"][1] == "hit"
-    assert result[0]["command"][3] == "l1a"
-    assert result[0]["command"][7] == "v001"
-    expected_upstream_dependents = (
-        "[{'instrument': 'hit', 'data_level': 'l0', "
-        "'descriptor': 'sci', 'start_date': '20240101',"
-        " 'version': 'v001'}]"
-    )
-    assert result[0]["command"][9] == expected_upstream_dependents
+    assert result[0]["instrument"] == "hit"
+    assert result[0]["data_level"] == "l1a"
+    assert result[0]["version"] == "v001"
+    expected_upstream_dependents = [
+        {
+            "instrument": "hit",
+            "data_level": "l0",
+            "descriptor": "sci",
+            "start_date": "20240101",
+            "version": "v001",
+        }
+    ]
+    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
 
     # find swe upstream dependencies
     downstream_dependents = [
@@ -321,15 +371,20 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     )
 
     assert len(result) == 1
-    assert result[0]["command"][1] == "swe"
-    assert result[0]["command"][3] == "l1a"
-    assert result[0]["command"][7] == "v001"
-    expected_upstream_dependents = (
-        "[{'instrument': 'swe', 'data_level': 'l0', "
-        "'descriptor': 'raw', 'start_date': '20240101',"
-        " 'version': 'v001'}]"
-    )
-    assert result[0]["command"][9] == expected_upstream_dependents
+    assert result[0]["instrument"] == "swe"
+    assert result[0]["data_level"] == "l1a"
+    assert result[0]["version"] == "v001"
+    expected_upstream_dependents = [
+        {
+            "instrument": "swe",
+            "data_level": "l0",
+            "descriptor": "raw",
+            "start_date": "20240101",
+            "version": "v001",
+        }
+    ]
+
+    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
 
     downstream_dependents = [
         {
@@ -346,91 +401,54 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     )
 
     assert len(result) == 1
-    assert result[0]["command"][1] == "swe"
-    assert result[0]["command"][3] == "l1b"
-    assert result[0]["command"][7] == "v001"
-    expected_upstream_dependents = (
-        "[{'instrument': 'swe', 'data_level': 'l1a', "
-        "'descriptor': 'sci', 'start_date': '20240101',"
-        " 'version': 'v001'}]"
-    )
-    assert result[0]["command"][9] == expected_upstream_dependents
-
-
-def test_prepare_data():
-    """Tests ``prepare_data`` function."""
-    upstream_dependencies = [
+    assert result[0]["instrument"] == "swe"
+    assert result[0]["data_level"] == "l1b"
+    assert result[0]["version"] == "v001"
+    expected_upstream_dependents = [
         {
-            "instrument": "hit",
-            "data_level": "l0",
+            "instrument": "swe",
+            "data_level": "l1a",
+            "descriptor": "sci",
             "start_date": "20240101",
             "version": "v001",
         }
     ]
 
-    filename = "imap_hit_l1a_sci_20240101_v001.cdf"
-    file_params = ScienceFilePath.extract_filename_components(filename)
-    prepared_data = prepare_data(
-        instrument=file_params["instrument"],
-        data_level=file_params["data_level"],
-        start_date=file_params["start_date"],
-        version=file_params["version"],
-        upstream_dependencies=upstream_dependencies,
-    )
-
-    expected_prepared_data = [
-        "--instrument",
-        "hit",
-        "--data-level",
-        "l1a",
-        "--start-date",
-        "20240101",
-        "--version",
-        "v001",
-        "--dependency",
-        f"{upstream_dependencies}",
-        "--upload-to-sdc",
-    ]
-    assert prepared_data == expected_prepared_data
+    assert result[0]["upstream_dependencies"] == expected_upstream_dependents
 
 
-def test_lambda_handler(test_file_catalog_simulation, batch_client, sts_client):
+def test_lambda_handler(
+    test_file_catalog_simulation,
+    batch_client,
+    sts_client,
+    test_engine,
+):
     """Tests ``lambda_handler`` function."""
-    event = {"detail": {"object": {"key": "imap_hit_l1a_sci_20240101_v001.cdf"}}}
+    # TODO: fix this test to use the mock batch client
+    event = {"detail": {"object": {"key": "imap_hit_l1a_sci_20100101_v001.cdf"}}}
     context = {"context": "sample_context"}
 
     lambda_handler(event, context)
 
 
-def test_send_lambda_put_event(events_client):
-    """Test the ``send_lambda_put_event`` function."""
-    input_command = [
-        "--instrument",
-        "mag",
-        "--data-level",
-        "l1a",
-        "--start-date",
-        "20231212",
-        "--version",
-        "v001",
-        "--dependency",
-        """[
-            {
-                'instrument': 'swe',
-                'data_level': 'l0',
-                'descriptor': 'lveng-hk',
-                'start_date': '20231212',
-                'version': 'v01-00',
-            },
-            {
-                'instrument': 'mag',
-                'data_level': 'l0',
-                'descriptor': 'lveng-hk',
-                'start_date': '20231212',
-                'version': 'v001',
-            }]""",
-        "--upload-to-sdc",
-    ]
+def test_is_job_in_status_table(populate_status_tracking_table):
+    """Test the ``is_job_in_status_table`` function."""
+    # query the status_tracking table if this job is already in progress
+    result = is_job_in_status_table(
+        instrument="lo",
+        data_level="l1b",
+        descriptor="de",
+        start_date="20100101",
+        version="v001",
+    )
 
-    result = send_lambda_put_event(input_command)
-    assert result["ResponseMetadata"]["HTTPStatusCode"] == 200
+    assert result
+
+    result = is_job_in_status_table(
+        instrument="swapi",
+        data_level="l1b",
+        descriptor="sci",
+        start_date="20100101",
+        version="v001",
+    )
+    assert not result

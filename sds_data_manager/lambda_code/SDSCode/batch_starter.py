@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from .database import database as db
 from .database import models
-from .lambda_custom_events import IMAPLambdaPutEvent
+from .database_handler import update_status_table
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -161,7 +161,8 @@ def query_upstream_dependencies(session, downstream_dependents):
     Returns
     -------
     instruments_to_process : list of dict
-        A list of dictionaries containing the prepared command.
+        A list of dictionaries containing the information needed for batch
+        job command.
     """
     instruments_to_process = []
 
@@ -172,6 +173,28 @@ def query_upstream_dependencies(session, downstream_dependents):
         descriptor = dependent["descriptor"]
         start_date = dependent["start_date"]
         version = dependent["version"]
+
+        logger.info("Checking for job in progress before looking for dependencies.")
+
+        job_already_exist = is_job_in_status_table(
+            instrument=instrument,
+            data_level=data_level,
+            descriptor=descriptor,
+            start_date=start_date,
+            version=version,
+        )
+
+        if job_already_exist:
+            logger.info(
+                f"Job already in progress for {instrument}, {data_level}, "
+                f"{descriptor}, {start_date}, {version}"
+            )
+            continue
+
+        logger.info(
+            f"Job not in progress for {instrument}, {data_level}, "
+            f"{descriptor}, {start_date}, {version}"
+        )
 
         # For each downstream dependent, find its upstream dependencies
         upstream_dependencies = get_dependency(
@@ -218,22 +241,18 @@ def query_upstream_dependencies(session, downstream_dependents):
 
         # If all dependencies are available, prepare the data for batch job
         if all_dependencies_available:
-            # These are the keys the upstream_dependencies should contain:
-            # {
-            #     'instrument': 'swe',
-            #     'data_level': 'l0',
-            #     'descriptor': 'lveng-hk',
-            #     'start_date': '20231212',
-            #     'version': 'v001',
-            # },
-            prepared_data = prepare_data(
-                instrument=instrument,
-                data_level=data_level,
-                start_date=start_date,
-                version=version,
-                upstream_dependencies=upstream_dependencies,
+            # Add it's information to the instrument to process list
+            instruments_to_process.append(
+                {
+                    "instrument": instrument,
+                    "data_level": data_level,
+                    "descriptor": descriptor,
+                    "start_date": start_date,
+                    "version": version,
+                    "upstream_dependencies": upstream_dependencies,
+                }
             )
-            instruments_to_process.append({"command": prepared_data})
+
             logger.info(f"All dependencies for {instrument} present.")
             logger.info(
                 f"For this downstream dependent: {dependent}, "
@@ -246,8 +265,10 @@ def query_upstream_dependencies(session, downstream_dependents):
     return instruments_to_process
 
 
-def prepare_data(instrument, data_level, start_date, version, upstream_dependencies):
-    """Prepare data for batch job.
+def is_job_in_status_table(
+    instrument: str, data_level: str, descriptor: str, start_date: str, version: str
+):
+    """Check if the job is already running.
 
     Parameters
     ----------
@@ -255,138 +276,36 @@ def prepare_data(instrument, data_level, start_date, version, upstream_dependenc
         Instrument.
     data_level : str
         Data level.
+    descriptor : str
+        Data descriptor.
     start_date : str
-        Data start date.
+        Start date.
     version : str
-        version.
-    upstream_dependencies : list of dict
-        A list of dictionaries containing dependency instrument,
-        data level, and version.
+        Data version.
 
     Returns
     -------
-    prepared_data : str
-        Data to submit to batch job.
+    bool
+        True if duplicate job is found, False otherwise.
     """
-    # Prepare batch job command
-    # NOTE: Batch job expects command like this:
-    # "Command": [
-    #     "--instrument", "mag",
-    #     "--data-level", "l1a",
-    #     "--start-date", "20231212",
-    #     "--version", "v001",
-    #     "--dependency", """[
-    #         {
-    #             'instrument': 'swe',
-    #             'data_level': 'l0',
-    #             'descriptor': 'lveng-hk',
-    #             'start_date': '20231212',
-    #             'version': 'v001',
-    #         },
-    #         {
-    #             'instrument': 'mag',
-    #             'data_level': 'l0',
-    #             'descriptor': 'lveng-hk',
-    #             'start_date': '20231212',
-    #             'version': 'v001',
-    #         }]""",
-    #    "--repointing", 1,
-    #     "--upload-to-sdc"
-    # ]
-    prepared_data = [
-        "--instrument",
-        instrument,
-        "--data-level",
-        data_level,
-        "--start-date",
-        start_date,
-        "--version",
-        version,
-        "--dependency",
-        f"{upstream_dependencies}",
-        "--upload-to-sdc",
-    ]
-    # TODO: Add repointing information to the command
+    # check in status tracking table if job is already in progress
+    # for this instrument, data level, version, and descriptor
+    with Session(db.get_engine()) as session:
+        query = select(models.StatusTracking.__table__).where(
+            models.StatusTracking.instrument == instrument,
+            models.StatusTracking.data_level == data_level,
+            models.StatusTracking.descriptor == descriptor,
+            models.StatusTracking.start_date == datetime.strptime(start_date, "%Y%m%d"),
+            models.StatusTracking.version == version,
+            models.StatusTracking.status.in_(
+                [models.Status.INPROGRESS.value, models.Status.SUCCEEDED.value]
+            ),
+        )
 
-    return prepared_data
-
-
-def send_lambda_put_event(command_parameters):
-    r"""Send custom PutEvent to EventBridge.
-
-    Example of what PutEvent looks like:
-    event = {
-        "Source": "imap.lambda",
-        "DetailType": "Job Started",
-        "Detail": {
-            "status": "INPROGRESS",
-            "dependency": "[{
-                "codice": "s3-test",
-                "mag": "s3-filepath"
-            }]")
-        },
-    }
-
-    Parameters
-    ----------
-    command_parameters : str
-        IMAP cli command input parameters.
-        Example of input:
-            "Command": [
-            "--instrument", "mag",
-            "--data-level", "l1a",
-            "--start-date", "20231212",
-            "--version", "v001",
-            "--dependency", \"""[
-                {
-                    'instrument': 'swe',
-                    'data_level': 'l0',
-                    'descriptor': 'lveng-hk',
-                    'start_date': '20231212',
-                    'version': 'v001',
-                },
-                {
-                    'instrument': 'mag',
-                    'data_level': 'l0',
-                    'descriptor': 'lveng-hk',
-                    'start_date': '20231212',
-                    'version': 'v001',
-                }]\""",
-            "--upload-to-sdc"
-        ]
-
-    Returns
-    -------
-    dict
-        EventBridge response
-    """
-    event_client = boto3.client("events")
-
-    # Get event inputs ready
-    instrument = command_parameters[1]
-    data_level = command_parameters[3]
-    start_date = command_parameters[5]
-    version = command_parameters[7]
-    dependency = command_parameters[9]
-
-    # Create event["detail"] information
-    detail = {
-        "status": models.Status.INPROGRESS.value,
-        "instrument": instrument,
-        "data_level": data_level,
-        "start_date": start_date,
-        "version": version,
-        "dependency": dependency,
-    }
-
-    # create PutEvent dictionary
-    event = IMAPLambdaPutEvent(detail_type="Job Started", detail=detail)
-    event_data = event.to_event()
-
-    logger.info(f"Sending event to EventBridge - {event_data}")
-    # Send event to EventBridge
-    response = event_client.put_events(Entries=[event_data])
-    return response
+        results = session.execute(query).all()
+        if results:
+            return True
+    return False
 
 
 def lambda_handler(event: dict, context):
@@ -437,24 +356,92 @@ def lambda_handler(event: dict, context):
 
         # Start Batch Job execution for those that has all dependencies
         for downstream_data in downstream_instruments_to_process:
-            command = downstream_data["command"]
-            logger.info(f"Submitting job with this command - {command}")
+            logger.info("Checking for duplicate job before kicking off the job.")
+
+            job_already_exist = is_job_in_status_table(
+                instrument=downstream_data["instrument"],
+                data_level=downstream_data["data_level"],
+                descriptor=downstream_data["descriptor"],
+                start_date=downstream_data["start_date"],
+                version=downstream_data["version"],
+            )
+
+            if job_already_exist:
+                logger.info(
+                    f"Job record found for {downstream_data['instrument']}, "
+                    f"{downstream_data['data_level']}, "
+                    f"{downstream_data['descriptor']}, "
+                    f"{downstream_data['start_date']}, "
+                    f"{downstream_data['version']}"
+                )
+                continue
+
+            logger.info(
+                f"Job record not found for {downstream_data['instrument']}, "
+                f"{downstream_data['data_level']}, "
+                f"{downstream_data['descriptor']}, "
+                f"{downstream_data['start_date']}, "
+                f"{downstream_data['version']}"
+            )
+
+            # Write to status tracking table with initial values
+            status_params = {
+                "status": models.Status.INPROGRESS,
+                "instrument": downstream_data["instrument"],
+                "data_level": downstream_data["data_level"],
+                "descriptor": downstream_data["descriptor"],
+                "start_date": datetime.strptime(
+                    downstream_data["start_date"], "%Y%m%d"
+                ),
+                "version": downstream_data["version"],
+            }
+
+            update_status_table(status_params)
+
+            logger.info(
+                f"Wrote job in progress to status tracking table - {status_params}"
+            )
+
+            # FYI, these are the keys the upstream_dependencies should contain:
+            # {
+            #     'instrument': 'swe',
+            #     'data_level': 'l0',
+            #     'descriptor': 'lveng-hk',
+            #     'start_date': '20231212',
+            #     'version': 'v001',
+            # },
+            batch_command = [
+                "--instrument",
+                downstream_data["instrument"],
+                "--data-level",
+                downstream_data["data_level"],
+                "--descriptor",
+                downstream_data["descriptor"],
+                "--start-date",
+                downstream_data["start_date"],
+                "--version",
+                downstream_data["version"],
+                "--dependency",
+                f"{downstream_data['upstream_dependencies']}",
+                "--upload-to-sdc",
+            ]
+
+            logger.info(f"Submitting job with this command - {batch_command}")
             # NOTE: The batch job name should contain only
             # alphanumeric characters and hyphens.
-            level_to_process = command[3]
+            level_to_process = downstream_data["data_level"]
             # Eg. "codice-l1a-job"
-            job_name = f"{instrument}-{level_to_process}-job"
+            job_name = (
+                f"{downstream_data['instrument']}-{level_to_process}-"
+                f"{downstream_data['descriptor']}-job"
+            )
             logger.info("Job name: %s", job_name)
             response = batch_client.submit_job(
                 jobName=job_name,
                 jobQueue=job_queue,
                 jobDefinition=job_definition,
                 containerOverrides={
-                    "command": command,
+                    "command": batch_command,
                 },
             )
             logger.info(f"Submitted job - {response}")
-            # Send EventBridge event to indexer lambda
-            logger.info("Sending EventBridge event to indexer lambda.")
-            send_lambda_put_event(command)
-            logger.info("EventBridge event sent.")
