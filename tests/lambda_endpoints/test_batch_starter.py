@@ -14,11 +14,9 @@ from sds_data_manager.lambda_code.SDSCode.batch_starter import (
     get_dependency,
     is_job_in_status_table,
     lambda_handler,
-    prepare_data,
     query_downstream_dependencies,
     query_instrument,
     query_upstream_dependencies,
-    send_lambda_put_event,
 )
 from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -419,43 +417,6 @@ def test_query_upstream_dependencies(test_file_catalog_simulation):
     assert result[0]["upstream_dependencies"] == expected_upstream_dependents
 
 
-def test_prepare_data():
-    """Tests ``prepare_data`` function."""
-    upstream_dependencies = [
-        {
-            "instrument": "hit",
-            "data_level": "l0",
-            "start_date": "20240101",
-            "version": "v001",
-        }
-    ]
-
-    filename = "imap_hit_l1a_sci_20240101_v001.cdf"
-    file_params = ScienceFilePath.extract_filename_components(filename)
-    prepared_data = prepare_data(
-        instrument=file_params["instrument"],
-        data_level=file_params["data_level"],
-        start_date=file_params["start_date"],
-        version=file_params["version"],
-        upstream_dependencies=upstream_dependencies,
-    )
-
-    expected_prepared_data = [
-        "--instrument",
-        "hit",
-        "--data-level",
-        "l1a",
-        "--start-date",
-        "20240101",
-        "--version",
-        "v001",
-        "--dependency",
-        f"{upstream_dependencies}",
-        "--upload-to-sdc",
-    ]
-    assert prepared_data == expected_prepared_data
-
-
 def test_lambda_handler(
     test_file_catalog_simulation,
     batch_client,
@@ -491,33 +452,3 @@ def test_is_job_in_status_table(populate_status_tracking_table):
         version="v001",
     )
     assert not result
-
-
-def test_send_lambda_put_event(events_client):
-    """Test the ``send_lambda_put_event`` function."""
-    input_command = {
-        "instrument": "mag",
-        "data_level": "l1a",
-        "descriptor": "lveng-hk",
-        "start_date": "20231212",
-        "version": "v001",
-        "upstream_dependencies": [
-            {
-                "instrument": "swe",
-                "data_level": "l0",
-                "descriptor": "lveng-hk",
-                "start_date": "20231212",
-                "version": "v01-00",
-            },
-            {
-                "instrument": "mag",
-                "data_level": "l0",
-                "descriptor": "lveng-hk",
-                "start_date": "20231212",
-                "version": "v001",
-            },
-        ],
-    }
-
-    result = send_lambda_put_event(input_command)
-    assert result["ResponseMetadata"]["HTTPStatusCode"] == 200

@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from .database import database as db
 from .database import models
 from .database_handler import update_status_table
-from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -259,71 +258,6 @@ def query_upstream_dependencies(session, downstream_dependents):
     return instruments_to_process
 
 
-def prepare_data(instrument, data_level, start_date, version, upstream_dependencies):
-    """Prepare data for batch job.
-
-    Parameters
-    ----------
-    instrument : str
-        Instrument.
-    data_level : str
-        Data level.
-    start_date : str
-        Data start date.
-    version : str
-        version.
-    upstream_dependencies : list of dict
-        A list of dictionaries containing dependency instrument,
-        data level, and version.
-
-    Returns
-    -------
-    prepared_data : str
-        Data to submit to batch job.
-    """
-    # Prepare batch job command
-    # NOTE: Batch job expects command like this:
-    # "Command": [
-    #     "--instrument", "mag",
-    #     "--data-level", "l1a",
-    #     "--start-date", "20231212",
-    #     "--version", "v001",
-    #     "--dependency", """[
-    #         {
-    #             'instrument': 'swe',
-    #             'data_level': 'l0',
-    #             'descriptor': 'lveng-hk',
-    #             'start_date': '20231212',
-    #             'version': 'v001',
-    #         },
-    #         {
-    #             'instrument': 'mag',
-    #             'data_level': 'l0',
-    #             'descriptor': 'lveng-hk',
-    #             'start_date': '20231212',
-    #             'version': 'v001',
-    #         }]""",
-    #    "--repointing", 1,
-    #     "--upload-to-sdc"
-    # ]
-    prepared_data = [
-        "--instrument",
-        instrument,
-        "--data-level",
-        data_level,
-        "--start-date",
-        start_date,
-        "--version",
-        version,
-        "--dependency",
-        f"{upstream_dependencies}",
-        "--upload-to-sdc",
-    ]
-    # TODO: Add repointing information to the command
-
-    return prepared_data
-
-
 def is_job_in_status_table(
     instrument: str, data_level: str, descriptor: str, start_date: str, version: str
 ):
@@ -365,96 +299,6 @@ def is_job_in_status_table(
         if results:
             return True
     return False
-
-
-def send_lambda_put_event(instrument_to_process_data):
-    r"""Send custom PutEvent to EventBridge.
-
-    Example of what PutEvent looks like:
-
-        event = {
-            "DetailType": "Job Started",
-            "Source": "imap.lambda",
-            "Detail": {
-            "detail": {
-                "instrument": "swapi",
-                "level": "l1",
-                "descriptor": "sci",
-                "start_date": "20230724",
-                "version": "v001",
-                "status": "INPROGRESS",
-                "dependency": json.dumps([
-                    {
-                        "instrument": "swapi",
-                        "level": "l0",
-                        "descriptor": "sci",
-                        "start_date": "20230724",
-                        "version": "v001"
-                    }]),
-            }
-        }
-
-    Parameters
-    ----------
-    instrument_to_process_data : dict
-        Example of input:
-            {
-            "instrument": "mag",
-            "data_level": "l1a",
-            "descriptor": "norm-mago",
-            "start_date": "20231212",
-            "version": "v001",
-            "upstream_dependencies": [
-                {
-                    "instrument": "swe",
-                    "data_level": "l0",
-                    "descriptor": "lveng-hk",
-                    "start_date": "20231212",
-                    "version": "v001"
-                },
-                {
-                    "instrument": "mag",
-                    "data_level": "l0",
-                    "descriptor": "lveng-hk",
-                    "start_date": "20231212",
-                    "version": "v001"
-            }
-        ]
-
-    Returns
-    -------
-    dict
-        EventBridge response
-    """
-    event_client = boto3.client("events")
-
-    # Get event inputs ready
-    instrument = instrument_to_process_data["instrument"]
-    data_level = instrument_to_process_data["data_level"]
-    descriptor = instrument_to_process_data["descriptor"]
-    start_date = instrument_to_process_data["start_date"]
-    version = instrument_to_process_data["version"]
-    dependency = instrument_to_process_data["upstream_dependencies"]
-
-    # Create event["detail"] information
-    detail = {
-        "status": models.Status.INPROGRESS.name,
-        "instrument": instrument,
-        "data_level": data_level,
-        "descriptor": descriptor,
-        "start_date": start_date,
-        "version": version,
-        "dependency": f"{dependency}",
-    }
-
-    # create PutEvent dictionary
-    event = IMAPLambdaPutEvent(detail_type="Job Started", detail=detail)
-    event_data = event.to_event()
-
-    logger.info(f"Sending event to EventBridge - {event_data}")
-    # Send event to EventBridge
-    response = event_client.put_events(Entries=[event_data])
-    return response
 
 
 def lambda_handler(event: dict, context):
