@@ -408,5 +408,5 @@ def lambda_handler(event: dict, context):
             update_status_table(status_params)
 
             logger.info(
-                f"Wrote job in prgoress to status tracking table - {status_params}"
+                f"Wrote job in progress to status tracking table - {status_params}"
             )
