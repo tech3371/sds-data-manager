@@ -28,12 +28,9 @@ def get_engine():
 
 
 @contextmanager
-class Session:
+def Session():  # noqa: N802
     """Create session from engine.
 
     Setting it up this way allows us to more easily mock this behavior in tests.
     """
-
-    def __call__(self):
-        """Make a session from the engine."""
-        yield sessionmaker(get_engine())()
+    yield sessionmaker(get_engine())()
