@@ -184,7 +184,7 @@ def build_sds(
     )
     batch_starter_lambda.add_dependency(db_lambda_layer)
 
-    create_schema_stack.CreateSchema(
+    create_schema = create_schema_stack.CreateSchema(
         scope,
         "CreateSchemaStack",
         env=env,
@@ -192,7 +192,9 @@ def build_sds(
         vpc=networking.vpc,
         vpc_subnets=rds_stack.rds_subnet_selection,
         rds_security_group=networking.rds_security_group,
+        layers=[db_layer_name],
     )
+    create_schema.add_dependency(db_lambda_layer)
 
     # create lambda that mounts EFS and writes data to EFS
     efs_stack.EFSWriteLambda(
