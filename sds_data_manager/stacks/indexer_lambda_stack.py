@@ -27,6 +27,7 @@ class IndexerLambda(Stack):
         rds_security_group,
         data_bucket,
         sns_topic,
+        layers: list,
         **kwargs,
     ) -> None:
         """IndexerLambda Stack.
@@ -52,37 +53,22 @@ class IndexerLambda(Stack):
         sns_topic : aws_sns.Topic
             SNS Topic for sending notifications so that external
             resources can subscribe to for alerts.
+        layers : list
+            List of Lambda layers cdk.cdfnOutput names
         kwargs : dict
             Keyword arguments
 
         """
         super().__init__(scope, construct_id, env=env, **kwargs)
 
-        # Create Lambda Layer
+        indexer_layers = [
+            lambda_.LayerVersion.from_layer_version_arn(
+                self, "Layer", cdk.Fn.import_value(layer)
+            )
+            for layer in layers
+        ]
+
         lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
-
-        code_bundle = lambda_.Code.from_asset(
-            str(lambda_code_directory),
-            bundling=cdk.BundlingOptions(
-                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
-                platform="linux/arm64",  # Requires Docker Buildx.
-                command=[
-                    "bash",
-                    "-c",
-                    (
-                        "pip install -r requirements.txt -t /asset-output/python && "
-                        "cp -au . /asset-output/python"
-                    ),
-                ],
-            ),
-        )
-
-        indexer_layer = lambda_.LayerVersion(
-            self,
-            id="IndexerLayer",
-            code=code_bundle,
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
-        )
 
         indexer_lambda = lambda_.Function(
             self,
@@ -102,7 +88,7 @@ class IndexerLambda(Stack):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
-            layers=[indexer_layer],
+            layers=indexer_layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 

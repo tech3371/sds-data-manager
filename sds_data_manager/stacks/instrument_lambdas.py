@@ -30,6 +30,7 @@ class BatchStarterLambda(Stack):
         subnets: ec2.SubnetSelection,
         vpc: ec2.Vpc,
         sqs_queue: sqs.Queue,
+        layers: list,
         **kwargs,
     ):
         """BatchStarterLambda Constructor.
@@ -54,6 +55,8 @@ class BatchStarterLambda(Stack):
             VPC into which to put the resources that require networking.
         sqs_queue: sqs.Queue
             A FIFO queue to trigger the lambda with.
+        layers : list
+            List of Lambda layers cdk.cdfnOutput names
         kwargs : dict
             Keyword arguments
 
@@ -69,31 +72,12 @@ class BatchStarterLambda(Stack):
             "REGION": f"{self.region}",
         }
 
-        # Create Lambda Layer
-        lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
-
-        code_bundle = lambda_.Code.from_asset(
-            str(lambda_code_directory),
-            bundling=cdk.BundlingOptions(
-                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
-                platform="linux/arm64",  # Requires Docker Buildx.
-                command=[
-                    "bash",
-                    "-c",
-                    (
-                        "pip install -r requirements.txt -t /asset-output/python && "
-                        "cp -au . /asset-output/python"
-                    ),
-                ],
-            ),
-        )
-
-        batch_starter_layer = lambda_.LayerVersion(
-            self,
-            id="BatchStarterLayer",
-            code=code_bundle,
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
-        )
+        batch_starter_layers = [
+            lambda_.LayerVersion.from_layer_version_arn(
+                self, "Layer", cdk.Fn.import_value(layer)
+            )
+            for layer in layers
+        ]
 
         self.instrument_lambda = lambda_.Function(
             self,
@@ -109,7 +93,7 @@ class BatchStarterLambda(Stack):
             vpc_subnets=subnets,
             security_groups=[rds_security_group],
             allow_public_subnet=True,
-            layers=[batch_starter_layer],
+            layers=batch_starter_layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 

@@ -25,6 +25,7 @@ class SdsApiManager(Stack):
         vpc,
         rds_security_group,
         db_secret_name: str,
+        layers: list,
         **kwargs,
     ) -> None:
         """Initialize the SdsApiManagerStack.
@@ -47,6 +48,8 @@ class SdsApiManager(Stack):
             The RDS security group
         db_secret_name : str
             The DB secret name
+        layers : list
+            List of Lambda layers arns
         kwargs : dict
             Keyword arguments
         """
@@ -71,31 +74,12 @@ class SdsApiManager(Stack):
 
         lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
 
-        # Create Lambda Layer
-        code_bundle = lambda_.Code.from_asset(
-            str(lambda_code_directory),
-            bundling=cdk.BundlingOptions(
-                image=lambda_.Runtime.PYTHON_3_12.bundling_image,
-                platform="linux/arm64",  # Requires Docker Buildx.
-                command=[
-                    "bash",
-                    "-c",
-                    (
-                        "pip install -r requirements.txt -t /asset-output/python && "
-                        "cp -au . /asset-output/python"
-                    ),
-                ],
-            ),
-        )
-
-        db_layer = lambda_.LayerVersion(
-            self,
-            id="DatabaseLayer",
-            code=code_bundle,
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
-        )
-
-        api_layers = [db_layer]
+        api_layers = [
+            lambda_.LayerVersion.from_layer_version_arn(
+                self, "Layer", cdk.Fn.import_value(layer)
+            )
+            for layer in layers
+        ]
 
         lambda_raw_code = lambda_.Code.from_asset(str(lambda_code_directory))
 
