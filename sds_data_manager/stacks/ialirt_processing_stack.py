@@ -13,6 +13,8 @@ from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
+from aws_cdk import aws_iam as iam
+from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 
@@ -28,6 +30,7 @@ class IalirtProcessing(Stack):
         processing_name: str,
         ialirt_ports: list[int],
         container_port: int,
+        ialirt_bucket: s3.Bucket,
         **kwargs,
     ) -> None:
         """Construct the i-alirt processing stack.
@@ -48,6 +51,8 @@ class IalirtProcessing(Stack):
             List of ports to listen on for incoming traffic.
         container_port : int
             Port to be used by the container.
+        ialirt_bucket: s3.Bucket
+            S3 bucket
         kwargs : dict
             Keyword arguments
 
@@ -58,8 +63,9 @@ class IalirtProcessing(Stack):
         self.container_port = container_port
         self.vpc = vpc
         self.repo = repo
+        self.s3_bucket_name = ialirt_bucket.bucket_name
 
-        # Add a security group in which application load balancer will reside
+        # Add a security group in which network load balancer will reside
         self.create_load_balancer_security_group(processing_name)
 
         # Create security group in which containers will reside
@@ -126,6 +132,23 @@ class IalirtProcessing(Stack):
             self, f"IalirtCluster{processing_name}", vpc=self.vpc
         )
 
+        # Add IAM role and policy for S3 access
+        task_role = iam.Role(
+            self,
+            f"IalirtTaskRole{processing_name}",
+            assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+        )
+
+        task_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["s3:GetObject", "s3:ListBucket", "s3:PutObject"],
+                resources=[
+                    f"arn:aws:s3:::{self.s3_bucket_name}",
+                    f"arn:aws:s3:::{self.s3_bucket_name}/*",
+                ],
+            )
+        )
+
         # Specifies the networking mode as AWS_VPC.
         # ECS tasks in AWS_VPC mode can be registered with
         # Network Load Balancers (NLB).
@@ -133,6 +156,7 @@ class IalirtProcessing(Stack):
             self,
             f"IalirtTaskDef{processing_name}",
             network_mode=ecs.NetworkMode.AWS_VPC,
+            task_role=task_role,
         )
 
         # Adds a container to the ECS task definition
@@ -148,6 +172,10 @@ class IalirtProcessing(Stack):
             memory_limit_mib=512,
             cpu=256,
             logging=ecs.LogDrivers.aws_logs(stream_prefix=f"Ialirt{processing_name}"),
+            environment={"S3_BUCKET": self.s3_bucket_name},
+            # Ensure the ECS task is running in privileged mode,
+            # which allows the container to use FUSE.
+            privileged=True,
         )
 
         # Map ports to container
@@ -202,7 +230,7 @@ class IalirtProcessing(Stack):
 
         self.ecs_cluster.add_asg_capacity_provider(capacity_provider)
 
-        # Allow inbound traffic from the Application Load Balancer
+        # Allow inbound traffic from the Network Load Balancer
         # to the security groups associated with the EC2 instances
         # within the Auto Scaling Group.
         for port in self.ports:
@@ -212,7 +240,7 @@ class IalirtProcessing(Stack):
 
     def add_load_balancer(self, processing_name):
         """Add a load balancer for a container."""
-        # Create the Application Load Balancer and
+        # Create the Network Load Balancer and
         # place it in a public subnet.
         self.load_balancer = elbv2.NetworkLoadBalancer(
             self,
