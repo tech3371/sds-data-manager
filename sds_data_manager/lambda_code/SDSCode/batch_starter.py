@@ -362,6 +362,7 @@ def try_to_submit_job(session, job_info):
 
 def lambda_handler(event: dict, context):
     """Lambda handler."""
+    # TODO: UPdate event to be an eventsourcemapping from SQS
     logger.info(f"Event: {event}")
     logger.info(f"Context: {context}")
 

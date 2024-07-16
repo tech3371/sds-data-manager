@@ -24,6 +24,7 @@ from sds_data_manager.stacks import (
     monitoring_stack,
     networking_stack,
     sds_api_manager_stack,
+    sqs_stack,
 )
 
 
@@ -145,6 +146,13 @@ def build_sds(
             db_secret_name=db_secret_name,
             efs_instance=efs_instance,
             account_name=account_name,
+            env=env,
+        )
+
+        sqs_stack.SqsStack(
+            scope,
+            f"{instrument}SqsStack",
+            instrument_name=instrument,
             env=env,
         )
 

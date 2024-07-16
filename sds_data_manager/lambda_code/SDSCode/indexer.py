@@ -89,6 +89,7 @@ def send_event_from_indexer(filename):
         "Detail": {
             "object": {
                   "key": filename
+                  "instrument": instrument_name
             },
         },
     }
@@ -110,7 +111,10 @@ def send_event_from_indexer(filename):
     # Create event["detail"] information
     # TODO: This is what batch starter expect
     # as input. Revisit this.
-    detail = {"object": {"key": filename}}
+
+    science_filepath = ScienceFilePath(filename)
+
+    detail = {"object": {"key": filename, "instrument": science_filepath.instrument}}
 
     # create PutEvent dictionary
     event = IMAPLambdaPutEvent(detail_type="Processed File", detail=detail)

@@ -4,8 +4,6 @@ from pathlib import Path
 
 from aws_cdk import Duration, Stack
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_events as events
-from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
@@ -102,20 +100,4 @@ class BatchStarterLambda(Stack):
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)
 
-        # EventBridge Rule for this lambda
-        event_from_indexer_lambda = events.Rule(
-            self,
-            "EventFromIndexerLambda",
-            rule_name="event-from-indexer-lambda",
-            event_pattern=events.EventPattern(
-                source=["imap.lambda"],
-                detail_type=["Processed File"],
-                detail={
-                    "object": {"key": [{"exists": True}]},
-                },
-            ),
-        )
-
-        event_from_indexer_lambda.add_target(
-            targets.LambdaFunction(self.instrument_lambda)
-        )
+        # TODO add target from SQS queue here
