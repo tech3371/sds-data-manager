@@ -1,6 +1,6 @@
 """Stack for creating instrument SQS queues and attaching batch_starter as a target."""
 
-from aws_cdk import Stack, aws_sqs
+from aws_cdk import Duration, Stack, aws_sqs
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from constructs import Construct
@@ -13,7 +13,7 @@ class SqsStack(Stack):
         self,
         scope: Construct,
         construct_id: str,
-        instrument_name: str,
+        instrument_names: list[str],
         **kwargs,
     ):
         """Create a stack to create a SQS queue and Eventbridge rule for an instrument.
@@ -24,43 +24,52 @@ class SqsStack(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        instrument_name : str
-            The name of the instrument.
+        instrument_names : list[str]
+            A list of all instrument names
         kwargs : dict
             Keyword arguments
         """
         super().__init__(scope, construct_id, **kwargs)
-
-        # Event has filename in it, we need an EventPattern that matches that
-        # EventBridge Rule for the SQS queue
-        event_from_indexer = events.Rule(
-            self,
-            f"{instrument_name}FileArrived",
-            rule_name=f"{instrument_name}_file_arrived",
-            event_pattern=events.EventPattern(
-                source=["imap.lambda"],
-                detail_type=["Processed File"],
-                detail={
-                    "object": {
-                        "key": [{"exists": True}],
-                        "instrument": [instrument_name],
-                    },
-                },
-            ),
-        )
-
-        # This is not a FIFO queue because it isn't required. Anything reading
-        # from this queue should be resistant to duplicate events or out of order
-        # events.
+        # This needs to be a FIFO queue to enforce ordering
         self.instrument_queue = aws_sqs.Queue(
             self,
-            f"{instrument_name}FileArrivalQueue",
-            queue_name=f"{instrument_name}_file_arrival_queue",
+            "FileArrivalQueue",
+            queue_name="file_arrival_queue.fifo",
+            fifo=True,
+            encryption=aws_sqs.QueueEncryption.UNENCRYPTED,
+            # This timeout determines how long the queue waits for processing. It must
+            # be longer than the timeout of the lambda.
+            visibility_timeout=Duration.seconds(300),
+            # This is required. It removes messages with identical content. Since
+            # the event includes a filename each event should be totally unique.
+            content_based_deduplication=True,
         )
 
-        # TODO Add target to SQS
-        event_from_indexer.add_target(targets.SqsQueue(self.instrument_queue))
+        for instrument_name in instrument_names:
+            # Event has filename in it, we need an EventPattern that matches that
+            # EventBridge Rule for the SQS queue
+            event_from_indexer = events.Rule(
+                self,
+                f"{instrument_name}FileArrived",
+                rule_name=f"{instrument_name}_file_arrived",
+                event_pattern=events.EventPattern(
+                    source=["imap.lambda"],
+                    detail_type=["Processed File"],
+                    detail={
+                        "object": {
+                            "key": [{"exists": True}],
+                            "instrument": [instrument_name],
+                        },
+                    },
+                ),
+            )
 
-        # event_from_indexer_lambda.add_target(
-        #     targets.LambdaFunction(self.instrument_lambda)
-        # )
+            # Each rule points towards a new message_group_id within the file arrival
+            # queue. The ordering is enforced only within the message_group_id, so
+            # to scale up, just add additional rules and additional message_group_ids
+            # here and everything will automatically scale.
+            event_from_indexer.add_target(
+                targets.SqsQueue(
+                    self.instrument_queue, message_group_id=instrument_name
+                )
+            )

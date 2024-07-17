@@ -9,6 +9,8 @@ from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_lambda_python_alpha as lambda_alpha
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
+from aws_cdk import aws_sqs as sqs
+from aws_cdk.aws_lambda_event_sources import SqsEventSource
 from constructs import Construct
 
 from sds_data_manager.stacks.database_stack import SdpDatabase
@@ -27,6 +29,7 @@ class BatchStarterLambda(Stack):
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         vpc: ec2.Vpc,
+        sqs_queue: sqs.Queue,
         **kwargs,
     ):
         """BatchStarterLambda Constructor.
@@ -49,6 +52,8 @@ class BatchStarterLambda(Stack):
             RDS subnet selection.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
+        sqs_queue: sqs.Queue
+            A FIFO queue to trigger the lambda with.
         kwargs : dict
             Keyword arguments
 
@@ -100,4 +105,8 @@ class BatchStarterLambda(Stack):
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)
 
-        # TODO add target from SQS queue here
+        # Point the provided instrument queue to trigger the lambda. This will
+        # set things up so that each instrument can only have one instance running at a
+        # time, but multiple instruments can run in parallel, enforced by
+        # MessageGroupId.
+        self.instrument_lambda.add_event_source(SqsEventSource(sqs_queue))
