@@ -1,5 +1,6 @@
 """Functions for supporting the batch starter component of the architecture."""
 
+import json
 import logging
 import os
 from datetime import datetime
@@ -360,21 +361,27 @@ def try_to_submit_job(session, job_info):
     logger.info(f"Submitted job {job_name} with this command: {batch_command}")
 
 
-def lambda_handler(event: dict, context):
+def lambda_handler(events: dict, context):
     """Lambda handler."""
-    # TODO: UPdate event to be an eventsourcemapping from SQS
-    logger.info(f"Event: {event}")
+    logger.info(f"Event: {events}")
     logger.info(f"Context: {context}")
 
-    # Event details:
-    filename = event["detail"]["object"]["key"]
-    components = ScienceFilePath.extract_filename_components(filename)
-    logger.info(f"Initial event parsed filename: {components}")
+    for event in events["Records"]:
+        # Event details:
+        logger.info(f"Individual event: {event}")
+        body = json.loads(event["body"])
 
-    with db.Session() as session:
-        # Potential jobs are the instruments that depend on the current file.
-        potential_jobs = get_downstream_dependencies(session, components)
-        logger.info(f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}")
+        filename = body["detail"]["object"]["key"]
+        logger.info(f"Retrieved filename: {filename}")
+        components = ScienceFilePath.extract_filename_components(filename)
+        logger.info(f"Initial event parsed filename: {components}")
 
-        for job in potential_jobs:
-            try_to_submit_job(session, job)
+        with db.Session() as session:
+            # Potential jobs are the instruments that depend on the current file.
+            potential_jobs = get_downstream_dependencies(session, components)
+            logger.info(
+                f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}"
+            )
+
+            for job in potential_jobs:
+                try_to_submit_job(session, job)
