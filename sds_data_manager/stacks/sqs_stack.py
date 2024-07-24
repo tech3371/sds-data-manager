@@ -30,6 +30,17 @@ class SqsStack(Stack):
             Keyword arguments
         """
         super().__init__(scope, construct_id, **kwargs)
+
+        # Create a dead letter queue to save messages that could not be processed.
+        # This DLQ just saves the messages and doesn't do anything with them.
+        self.dead_letter_queue = aws_sqs.Queue(
+            self,
+            "FileDeadLetterQueue",
+            queue_name="file_dead_letter_queue.fifo",
+            fifo=True,
+            encryption=aws_sqs.QueueEncryption.UNENCRYPTED,
+        )
+
         # This needs to be a FIFO queue to enforce ordering
         self.instrument_queue = aws_sqs.Queue(
             self,
@@ -43,6 +54,10 @@ class SqsStack(Stack):
             # This is required. It removes messages with identical content. Since
             # the event includes a filename each event should be totally unique.
             content_based_deduplication=True,
+            # The dead letter queue will take messages that failed retry 20 times.
+            dead_letter_queue=aws_sqs.DeadLetterQueue(
+                max_receive_count=20, queue=self.dead_letter_queue
+            ),
         )
 
         for instrument_name in instrument_names:

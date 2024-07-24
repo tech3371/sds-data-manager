@@ -122,7 +122,6 @@ class IndexerLambda(Stack):
             ),
         )
 
-        # ADD SQS HERE
         # Uses batch job status
         # to update status in the database and
         # update ingested time if status was success

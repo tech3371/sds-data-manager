@@ -105,8 +105,8 @@ class BatchStarterLambda(Stack):
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)
 
-        # Point the provided instrument queue to trigger the lambda. This will
-        # set things up so that each instrument can only have one instance running at a
-        # time, but multiple instruments can run in parallel, enforced by
-        # MessageGroupId.
+        # This sets up the lambda to be triggered by the SQS queue. Since this is a FIFO
+        # queue, each instrument will have messages processed in order. However,
+        # different instruments will be processed in parallel, with multiple instances
+        # of the batch_starter lambda.
         self.instrument_lambda.add_event_source(SqsEventSource(sqs_queue))

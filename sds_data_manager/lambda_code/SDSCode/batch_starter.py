@@ -363,20 +363,21 @@ def try_to_submit_job(session, job_info):
 
 def lambda_handler(events: dict, context):
     """Lambda handler."""
-    logger.info(f"Event: {events}")
+    logger.info(f"Events: {events}")
     logger.info(f"Context: {context}")
 
-    for event in events["Records"]:
-        # Event details:
-        logger.info(f"Individual event: {event}")
-        body = json.loads(event["body"])
+    with db.Session() as session:
+        # Since the SQS events can be batched together, we need to loop through
+        # each event. In this loop, "event" represents one file landing.
+        for event in events["Records"]:
+            # Event details:
+            logger.info(f"Individual event: {event}")
+            body = json.loads(event["body"])
 
-        filename = body["detail"]["object"]["key"]
-        logger.info(f"Retrieved filename: {filename}")
-        components = ScienceFilePath.extract_filename_components(filename)
-        logger.info(f"Initial event parsed filename: {components}")
+            filename = body["detail"]["object"]["key"]
+            logger.info(f"Retrieved filename: {filename}")
+            components = ScienceFilePath.extract_filename_components(filename)
 
-        with db.Session() as session:
             # Potential jobs are the instruments that depend on the current file.
             potential_jobs = get_downstream_dependencies(session, components)
             logger.info(
