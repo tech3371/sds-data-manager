@@ -24,6 +24,7 @@ from sds_data_manager.stacks import (
     monitoring_stack,
     networking_stack,
     sds_api_manager_stack,
+    sqs_stack,
 )
 
 
@@ -148,6 +149,14 @@ def build_sds(
             env=env,
         )
 
+    # Create SQS pipeline for each instrument and add it to instrument_sqs
+    instrument_sqs = sqs_stack.SqsStack(
+        scope,
+        "SqsStack",
+        instrument_names=imap_data_access.VALID_INSTRUMENTS,
+        env=env,
+    ).instrument_queue
+
     instrument_lambdas.BatchStarterLambda(
         scope,
         "BatchStarterLambda",
@@ -157,6 +166,7 @@ def build_sds(
         rds_security_group=networking.rds_security_group,
         subnets=rds_stack.rds_subnet_selection,
         vpc=networking.vpc,
+        sqs_queue=instrument_sqs,
         env=env,
     )
 

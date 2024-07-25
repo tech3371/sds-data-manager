@@ -295,16 +295,42 @@ def test_lambda_handler(
     _populate_dependency_table(session)
     _populate_file_catalog(session)
 
-    event = {"detail": {"object": {"key": "imap_swe_l0_raw_20240101_v001.pkts"}}}
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_swe_l0_raw_20240101_v001.pkts"}}'
+                "}"
+            }
+        ]
+    }
+
     context = {"context": "sample_context"}
     with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
-        lambda_handler(event, context)
+        lambda_handler(events, context)
         mock_batch_client.submit_job.assert_called_once()
 
         # Submit a second job with the same file as input which will try to kick
         # off a duplicate job. We expect the submit_job method to not be called
         # so make sure it is still only called once from our previous iteration.
-        lambda_handler(event, context)
+        lambda_handler(events, context)
+        mock_batch_client.submit_job.assert_called_once()
+    multiple_events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_swe_l0_raw_20240101_v001.pkts"}}'
+                "}"
+            },
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_swe_l1a_sci_20240101_v001.pkts"}}'
+                "}"
+            },
+        ]
+    }
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(multiple_events, context)
         mock_batch_client.submit_job.assert_called_once()
 
 
