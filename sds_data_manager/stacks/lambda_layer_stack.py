@@ -10,7 +10,7 @@ class LambdaLayerStack(Stack):
     """Lambda Layer Stack."""
 
     def __init__(
-        self, scope: Construct, id: str, layer_code_directory: str, **kwargs
+        self, scope: Construct, id: str, layer_dependencies_dir: str, **kwargs
     ) -> None:
         """Create layer stack.
 
@@ -24,15 +24,15 @@ class LambdaLayerStack(Stack):
             Parent construct
         id : str
             A unique string identifier for this construct
-        layer_code_directory : str
-            Directory containing the lambda layer code
+        layer_dependencies_dir : str
+            Directory containing the lambda layer requirements.txt file
         kwargs : dict
             Keyword arguments
         """
         super().__init__(scope, id, **kwargs)
 
         code_bundle = lambda_.Code.from_asset(
-            layer_code_directory,
+            layer_dependencies_dir,
             bundling=cdk.BundlingOptions(
                 image=lambda_.Runtime.PYTHON_3_12.bundling_image,
                 command=[

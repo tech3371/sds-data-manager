@@ -100,10 +100,12 @@ def build_sds(
     )
 
     # create Layer for Lambda(s)
-    lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
+    lambda_code_directory = (
+        Path(__file__).parent.parent.parent / "lambda_layer/python"
+    ).resolve()
     db_layer_name = "DatabaseDependencies"
     db_lambda_layer = lambda_layer_stack.LambdaLayerStack(
-        scope=scope, id=db_layer_name, layer_code_directory=str(lambda_code_directory)
+        scope=scope, id=db_layer_name, layer_dependencies_dir=str(lambda_code_directory)
     )
 
     indexer_lambda = indexer_lambda_stack.IndexerLambda(
