@@ -63,7 +63,7 @@ class CreateSchema(Stack):
 
         schema_create_lambda = lambda_.Function(
             self,
-            "CreateSchemaLambda",
+            id="CreateMetadataSchema",
             function_name="create-schema",
             code=lambda_.Code.from_asset(str(lambda_code_directory)),
             handler="SDSCode.create_schema.lambda_handler",

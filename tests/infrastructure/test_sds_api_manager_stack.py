@@ -34,7 +34,7 @@ def api_gateway(app, env):
 
 
 @pytest.fixture(scope="module")
-def template(app, networking_stack, data_bucket, api_gateway, env):
+def template(app, networking_stack, data_bucket, api_gateway, lambda_layer_stack, env):
     """Return a template API manager."""
     stack = SdsApiManager(
         app,
@@ -45,6 +45,7 @@ def template(app, networking_stack, data_bucket, api_gateway, env):
         vpc=networking_stack.vpc,
         rds_security_group=networking_stack.rds_security_group,
         db_secret_name="test-secrets",  # noqa
+        layers=[lambda_layer_stack],
     )
 
     template = Template.from_stack(stack)

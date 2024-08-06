@@ -1,7 +1,11 @@
 """Setup items for the infrastructure tests."""
 
+from pathlib import Path
+
 import pytest
 from aws_cdk import App, Environment
+
+from sds_data_manager.stacks.lambda_layer_stack import LambdaLayerStack
 
 
 @pytest.fixture(scope="module")
@@ -26,3 +30,16 @@ def env(account, region):
 def app():
     """Return the app to test with."""
     return App()
+
+
+@pytest.fixture(scope="module")
+def lambda_layer_stack(app, env):
+    """Return the lambda layer stack."""
+    lambda_code_directory = (
+        Path(__file__).parent.parent.parent / "lambda_layer/python"
+    ).resolve()
+    db_layer_name = "DatabaseDependencies"
+    LambdaLayerStack(
+        scope=app, id=db_layer_name, layer_dependencies_dir=str(lambda_code_directory)
+    )
+    return db_layer_name

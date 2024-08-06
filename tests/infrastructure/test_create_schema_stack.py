@@ -42,7 +42,7 @@ def database_stack(app, networking_stack, env):
 
 
 @pytest.fixture(scope="module")
-def template(app, networking_stack, database_stack, env):
+def template(app, networking_stack, database_stack, lambda_layer_stack, env):
     """Return a template for the create schema stack."""
     # create dynamoDB stack
     stack = CreateSchema(
@@ -53,6 +53,7 @@ def template(app, networking_stack, database_stack, env):
         vpc=networking_stack.vpc,
         vpc_subnets=database_stack.rds_subnet_selection,
         rds_security_group=networking_stack.rds_security_group,
+        layers=[lambda_layer_stack],
     )
     template = Template.from_stack(stack)
 
@@ -87,10 +88,10 @@ def test_create_schema_lambda_function_resource_properties(template):
         "AWS::Lambda::Function",
         props={
             "FunctionName": "create-schema",
-            "Runtime": "python3.9",
+            "Runtime": "python3.12",
             "Handler": "SDSCode.create_schema.lambda_handler",
             "MemorySize": 1000,
-            "Timeout": 10,
+            "Timeout": 60,
             "Role": {
                 "Fn::GetAtt": [
                     Match.string_like_regexp("CreateMetadataSchemaServiceRole*"),
