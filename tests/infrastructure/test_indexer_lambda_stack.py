@@ -58,7 +58,15 @@ def monitoring_stack(app, env):
 
 
 @pytest.fixture(scope="module")
-def template(app, networking_stack, data_bucket, database_stack, monitoring_stack, env):
+def template(
+    app,
+    networking_stack,
+    data_bucket,
+    database_stack,
+    monitoring_stack,
+    lambda_layer_stack,
+    env,
+):
     """Return a template indexer lambda stack."""
     stack = IndexerLambda(
         app,
@@ -70,6 +78,7 @@ def template(app, networking_stack, data_bucket, database_stack, monitoring_stac
         rds_security_group=networking_stack.rds_security_group,
         data_bucket=data_bucket.data_bucket,
         sns_topic=monitoring_stack.sns_topic_notifications,
+        layers=[lambda_layer_stack],
     )
 
     template = Template.from_stack(stack)

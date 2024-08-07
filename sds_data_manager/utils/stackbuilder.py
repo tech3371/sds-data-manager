@@ -21,6 +21,7 @@ from sds_data_manager.stacks import (
     ialirt_processing_stack,
     indexer_lambda_stack,
     instrument_lambdas,
+    lambda_layer_stack,
     monitoring_stack,
     networking_stack,
     sds_api_manager_stack,
@@ -98,7 +99,16 @@ def build_sds(
         database_name="imap",
     )
 
-    indexer_lambda_stack.IndexerLambda(
+    # create Layer for Lambda(s)
+    lambda_code_directory = (
+        Path(__file__).parent.parent.parent / "lambda_layer/python"
+    ).resolve()
+    db_layer_name = "DatabaseDependencies"
+    db_lambda_layer = lambda_layer_stack.LambdaLayerStack(
+        scope=scope, id=db_layer_name, layer_dependencies_dir=str(lambda_code_directory)
+    )
+
+    indexer_lambda = indexer_lambda_stack.IndexerLambda(
         scope=scope,
         construct_id="IndexerLambda",
         env=env,
@@ -108,9 +118,11 @@ def build_sds(
         rds_security_group=networking.rds_security_group,
         data_bucket=data_bucket.data_bucket,
         sns_topic=monitoring.sns_topic_notifications,
+        layers=[db_layer_name],
     )
+    indexer_lambda.add_dependency(db_lambda_layer)
 
-    sds_api_manager_stack.SdsApiManager(
+    sds_api_manager = sds_api_manager_stack.SdsApiManager(
         scope=scope,
         construct_id="SdsApiManager",
         api=api,
@@ -119,7 +131,9 @@ def build_sds(
         vpc=networking.vpc,
         rds_security_group=networking.rds_security_group,
         db_secret_name=db_secret_name,
+        layers=[db_layer_name],
     )
+    sds_api_manager.add_dependency(db_lambda_layer)
 
     # create EFS
     efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
@@ -157,7 +171,7 @@ def build_sds(
         env=env,
     ).instrument_queue
 
-    instrument_lambdas.BatchStarterLambda(
+    batch_starter_lambda = instrument_lambdas.BatchStarterLambda(
         scope,
         "BatchStarterLambda",
         data_bucket=data_bucket.data_bucket,
@@ -167,10 +181,12 @@ def build_sds(
         subnets=rds_stack.rds_subnet_selection,
         vpc=networking.vpc,
         sqs_queue=instrument_sqs,
+        layers=[db_layer_name],
         env=env,
     )
+    batch_starter_lambda.add_dependency(db_lambda_layer)
 
-    create_schema_stack.CreateSchema(
+    create_schema = create_schema_stack.CreateSchema(
         scope,
         "CreateSchemaStack",
         env=env,
@@ -178,7 +194,9 @@ def build_sds(
         vpc=networking.vpc,
         vpc_subnets=rds_stack.rds_subnet_selection,
         rds_security_group=networking.rds_security_group,
+        layers=[db_layer_name],
     )
+    create_schema.add_dependency(db_lambda_layer)
 
     # create lambda that mounts EFS and writes data to EFS
     efs_stack.EFSWriteLambda(
