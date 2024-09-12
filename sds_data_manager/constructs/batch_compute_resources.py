@@ -8,7 +8,6 @@ resources utilizing Fargate as the compute environment. The resources include:
   - Batch job queue and job definition.
 """
 
-from aws_cdk import Fn, Stack
 from aws_cdk import aws_batch as batch
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecr as ecr
@@ -17,10 +16,10 @@ from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
-from sds_data_manager.stacks.efs_stack import EFSStack
+from sds_data_manager.constructs.efs_construct import EFSConstruct
 
 
-class FargateBatchResources(Stack):
+class FargateBatchResources(Construct):
     """Fargate Batch compute env with named Job Queue, and Job Definition."""
 
     def __init__(
@@ -32,8 +31,7 @@ class FargateBatchResources(Stack):
         data_bucket: s3.Bucket,
         repo: ecr.Repository,
         db_secret_name: str,
-        efs_instance: EFSStack,
-        account_name: str,
+        efs_instance: EFSConstruct,
         batch_max_vcpus=10,
         job_vcpus=0.25,
         job_memory=2048,
@@ -59,11 +57,6 @@ class FargateBatchResources(Stack):
             RDS secret name for secret manager access
         efs_instance: efs.Filesystem
             EFS stack object
-        account_name: str
-            account name such as 'dev' or 'prod' or user specified.
-            account_name is used as ECR's tag.
-            This value can be overwritten by command line input and can
-            be accessed from the cdk.json file.
         batch_max_vcpus : int, Optional
             Maximum number of virtual CPUs per compute instance.
         job_vcpus : int, Optional
@@ -189,16 +182,11 @@ class FargateBatchResources(Stack):
                     {
                         "name": efs_instance.volume_name,
                         "efsVolumeConfiguration": {
-                            "fileSystemId": Fn.import_value(
-                                efs_instance.efs_fs_id_name
-                            ),
+                            "fileSystemId": efs_instance.efs.file_system_id,
                             "rootDirectory": "/",
                             "transitEncryption": "ENABLED",
                             "transitEncryptionPort": 2049,
                             "authorizationConfig": {
-                                "accessPointId": Fn.import_value(
-                                    efs_instance.spice_access_point_id_name
-                                ),
                                 "iam": "ENABLED",
                             },
                         },

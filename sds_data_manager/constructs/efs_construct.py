@@ -1,10 +1,8 @@
-"""Configure the EFS stack."""
+"""Configure the EFS."""
 
 from aws_cdk import (
-    CfnOutput,
     Duration,
-    Fn,
-    Stack,
+    Environment,
     aws_iam,
     aws_lambda,
 )
@@ -16,7 +14,7 @@ from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 
-class EFSStack(Stack):
+class EFSConstruct(Construct):
     """Elastic File System for storing various software and data.
 
     This file system can be mounted by multiple resources. It
@@ -42,7 +40,7 @@ class EFSStack(Stack):
         vpc: ec2.Vpc,
         **kwargs,
     ) -> None:
-        """Construct the EFS stack.
+        """Construct the EFS.
 
         Parameters
         ----------
@@ -60,11 +58,9 @@ class EFSStack(Stack):
 
         # Initialize EFS related information that other resources
         # will need to access EFS or mount EFS.
-        self.volume_name = "EFS"
+        self.volume_name = "SPICE-EFS"
         self.efs_path = "/data"
         self.efs_spice_path = "/data/spice"
-        self.spice_access_point_id_name = "spice-access-point-id"
-        self.efs_fs_id_name = "efs-filesystem-id"
 
         # Define EFS security group, ports are added in EC2 stack
         self.efs_security_group = ec2.SecurityGroup(
@@ -112,34 +108,19 @@ class EFSStack(Stack):
             posix_user=efs.PosixUser(gid="1000", uid="1000"),
         )
 
-        # Export the access point value to avoid a circular dependency between
-        # the EFS stack and API/Lambda stack
-        # https://github.com/aws/aws-cdk/issues/18759
-        CfnOutput(
-            self,
-            "efs-access-pt-id",
-            export_name=self.spice_access_point_id_name,
-            value=self.spice_access_point.access_point_id,
-        )
 
-        CfnOutput(
-            self,
-            "efs-fs-id",
-            export_name=self.efs_fs_id_name,
-            value=self.efs.file_system_id,
-        )
-
-
-class EFSWriteLambda(Stack):
+class EFSWriteLambda(Construct):
     """Create some Lambdas that write to the EFS file system."""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
+        code: aws_lambda.Code,
+        env: Environment,
         vpc: ec2.Vpc,
         data_bucket: s3.Bucket,
-        efs_instance: efs.FileSystem,
+        efs_construct: EFSConstruct,
         **kwargs,
     ) -> None:
         """Construct the EFS lambdas.
@@ -150,12 +131,16 @@ class EFSWriteLambda(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        code : aws_lambda.Code
+            Lambda code bundle
+        env : Environment
+            Account and region
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
         data_bucket : obj
             The data bucket
-        efs_instance : obj
-            The EFS filesystem instance
+        efs_construct : obj
+            The EFS filesystem construct
         kwargs : dict
             Keyword arguments
 
@@ -186,48 +171,27 @@ class EFSWriteLambda(Stack):
             assumed_by=aws_iam.ServicePrincipal("lambda.amazonaws.com"),
         )
 
-        # Create a security group that allows network access to mount the EFS
-        self.efs_spice_ingest_sg = ec2.SecurityGroup(
-            self,
-            "LambdaEFSSecurityGroup",
-            vpc=vpc,
-            description="Allow calls to internet",
-            allow_all_outbound=True,
-            security_group_name="LambdaEFSSecurityGroup",
-        )
-
-        # NOTE: Workaround to overcome EFS circular dependency when mounting
-        # a filesystem
-        # https://github.com/aws/aws-cdk/issues/18759
-        spice_access_point_id = Fn.import_value(efs_instance.spice_access_point_id_name)
-
         # This access point is used by other resources to read from EFS
         lambda_mount_path = "/mnt/spice"
-        lambda_efs_access = aws_lambda.FileSystem(
-            arn=f"arn:aws:elasticfilesystem:{self.region}:{self.account}:access-point/{spice_access_point_id}",
-            local_mount_path=lambda_mount_path,
-        )
-
-        lambda_code = aws_lambda.Code.from_asset(
-            "sds_data_manager/lambda_code/efs_lambda"
-        )
 
         self.efs_spice_ingest_lambda = aws_lambda.Function(
             self,
             "EFSWriteLambda",
             function_name="efs-write-lambda",
-            runtime=aws_lambda.Runtime.PYTHON_3_11,
-            code=lambda_code,
+            # Allow access to the EFS over NFS port
+            allow_all_outbound=True,
+            runtime=aws_lambda.Runtime.PYTHON_3_12,
+            code=code,
             handler="lambda_function.lambda_handler",
             role=efs_lambda_role,
             description="Lambda that write data to the EFS",
             # Access to the EFS requires to be within the VPC
             vpc=vpc,
             # Mount EFS access point to /mnt/data within the lambda
-            filesystem=lambda_efs_access,
+            filesystem=aws_lambda.FileSystem.from_efs_access_point(
+                efs_construct.spice_access_point, lambda_mount_path
+            ),
             timeout=Duration.minutes(1),
-            # Allow access to the EFS over NFS port
-            security_groups=[self.efs_spice_ingest_sg],
             architecture=aws_lambda.Architecture.ARM_64,
             environment={
                 "EFS_MOUNT_PATH": lambda_mount_path,

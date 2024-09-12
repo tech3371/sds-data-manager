@@ -1,13 +1,13 @@
-"""Configure the IAlirt bucket stack."""
+"""Configure the IAlirt bucket."""
 
 import aws_cdk as cdk
-from aws_cdk import RemovalPolicy, Stack
+from aws_cdk import RemovalPolicy
 from aws_cdk import aws_s3 as s3
 from constructs import Construct
 
 
-class IAlirtBucketStack(Stack):
-    """Stack for IAlirt Ingest Bucket."""
+class IAlirtBucketConstruct(Construct):
+    """Construct for IAlirt Ingest Bucket."""
 
     def __init__(
         self,
@@ -30,7 +30,7 @@ class IAlirtBucketStack(Stack):
             Keyword arguments
 
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
         # Get the current account number so we can use it in the bucket names
         account = env.account
 

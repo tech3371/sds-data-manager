@@ -1,24 +1,22 @@
-"""Configure the SDS API Manager stack."""
-
-from pathlib import Path
+"""Configure the SDS API Manager."""
 
 import aws_cdk as cdk
-from aws_cdk import Stack
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
-from .api_gateway_stack import ApiGateway
+from .api_gateway_construct import ApiGateway
 
 
-class SdsApiManager(Stack):
-    """Stack for API Management."""
+class SdsApiManager(Construct):
+    """Construct for API Management."""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
+        code: lambda_.Code,
         api: ApiGateway,
         env: cdk.Environment,
         data_bucket,
@@ -28,7 +26,7 @@ class SdsApiManager(Stack):
         layers: list,
         **kwargs,
     ) -> None:
-        """Initialize the SdsApiManagerStack.
+        """Initialize the SdsApiManagerConstruct.
 
         Parameters
         ----------
@@ -36,6 +34,8 @@ class SdsApiManager(Stack):
             Parent construct
         construct_id : str
             A unique string identifier for this construct
+        code : lambda_.Code
+            Lambda code bundle
         api : obj
             The APIGateway stack
         env : obj
@@ -53,7 +53,7 @@ class SdsApiManager(Stack):
         kwargs : dict
             Keyword arguments
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
         # Get the current region
         region = env.region
 
@@ -72,23 +72,12 @@ class SdsApiManager(Stack):
             ],
         )
 
-        lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
-
-        api_layers = [
-            lambda_.LayerVersion.from_layer_version_arn(
-                self, "Layer", cdk.Fn.import_value(layer)
-            )
-            for layer in layers
-        ]
-
-        lambda_raw_code = lambda_.Code.from_asset(str(lambda_code_directory))
-
         # upload API lambda
         upload_api_lambda = lambda_.Function(
             self,
             id="UploadAPILambda",
             function_name="upload-api-handler",
-            code=lambda_raw_code,
+            code=code,
             handler="SDSCode.upload_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
@@ -100,7 +89,7 @@ class SdsApiManager(Stack):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
-            layers=api_layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
         upload_api_lambda.add_to_role_policy(s3_write_policy)
@@ -119,7 +108,7 @@ class SdsApiManager(Stack):
             self,
             id="QueryAPILambda",
             function_name="query-api-handler",
-            code=lambda_raw_code,
+            code=code,
             handler="SDSCode.query_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
@@ -131,7 +120,7 @@ class SdsApiManager(Stack):
                 "REGION": region,
                 "SECRET_NAME": db_secret_name,
             },
-            layers=api_layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
@@ -146,14 +135,14 @@ class SdsApiManager(Stack):
             self,
             id="DownloadAPILambda",
             function_name="download-api-handler",
-            code=lambda_raw_code,
+            code=code,
             handler="SDSCode.download_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             environment={
                 "S3_BUCKET": data_bucket.bucket_name,
             },
-            layers=api_layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
@@ -170,7 +159,7 @@ class SdsApiManager(Stack):
             self,
             id="universal-spin-table-api-handler",
             function_name="universal-spin-table-api-handler",
-            code=lambda_raw_code,
+            code=code,
             handler="SDSCode.spin_table_api.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
@@ -181,7 +170,7 @@ class SdsApiManager(Stack):
             environment={
                 "SECRET_NAME": db_secret_name,
             },
-            layers=api_layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 

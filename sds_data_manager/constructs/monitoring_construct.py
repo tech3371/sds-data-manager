@@ -1,4 +1,4 @@
-"""Configure the monitoring stack.
+"""Configure the monitoring.
 
 Currently sets up an integration with Slack to send notifications to a channel.
 This is done through an SNS Topic and AWS Chatbot.
@@ -12,11 +12,11 @@ Choosing the channel and permissions as you go through the steps.
 More monitoring integrations can be added here in the future.
 """
 
-from aws_cdk import Stack, aws_sns
+from aws_cdk import aws_sns
 from constructs import Construct
 
 
-class MonitoringStack(Stack):
+class MonitoringConstruct(Construct):
     """Define the monitoring stack components."""
 
     def __init__(
@@ -25,7 +25,7 @@ class MonitoringStack(Stack):
         construct_id: str,
         **kwargs,
     ) -> None:
-        """Stack for monitoring resources within AWS.
+        """Construct for monitoring resources within AWS.
 
         Parameters
         ----------

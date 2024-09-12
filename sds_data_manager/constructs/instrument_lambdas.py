@@ -1,9 +1,6 @@
 """Module containing constructs for instrumenting Lambda functions."""
 
-from pathlib import Path
-
-import aws_cdk as cdk
-from aws_cdk import Duration, Stack
+from aws_cdk import Duration, Environment
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda as lambda_
@@ -13,19 +10,20 @@ from aws_cdk import aws_sqs as sqs
 from aws_cdk.aws_lambda_event_sources import SqsEventSource
 from constructs import Construct
 
-from sds_data_manager.stacks.database_stack import SdpDatabase
+from sds_data_manager.constructs.database_construct import SdpDatabase
 
 
-class BatchStarterLambda(Stack):
+class BatchStarterLambda(Construct):
     """Generic Construct with customizable runtime code."""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
+        env: Environment,
         data_bucket: s3.Bucket,
-        code_path: str or Path,
-        rds_stack: SdpDatabase,
+        code: lambda_.Code,
+        rds_construct: SdpDatabase,
         rds_security_group: ec2.SecurityGroup,
         subnets: ec2.SubnetSelection,
         vpc: ec2.Vpc,
@@ -41,11 +39,13 @@ class BatchStarterLambda(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
+        env : Environment
+            Account and region
         data_bucket: s3.Bucket
             S3 bucket
-        code_path : str or Path
-            Path to the Lambda code directory
-        rds_stack: SdpDatabase
+        code : lambda_.Code
+            Lambda code bundle
+        rds_construct: SdpDatabase
             Database stack
         rds_security_group : ec2.SecurityGroup
             RDS security group
@@ -67,23 +67,16 @@ class BatchStarterLambda(Stack):
         # TODO: if we need more variables change so we can pass as input
         lambda_environment = {
             "S3_BUCKET": f"{data_bucket.bucket_name}",
-            "SECRET_NAME": rds_stack.rds_creds.secret_name,
-            "ACCOUNT": f"{self.account}",
-            "REGION": f"{self.region}",
+            "SECRET_NAME": rds_construct.rds_creds.secret_name,
+            "ACCOUNT": f"{env.account}",
+            "REGION": f"{env.region}",
         }
-
-        batch_starter_layers = [
-            lambda_.LayerVersion.from_layer_version_arn(
-                self, "Layer", cdk.Fn.import_value(layer)
-            )
-            for layer in layers
-        ]
 
         self.instrument_lambda = lambda_.Function(
             self,
             "BatchStarterLambda",
             function_name="BatchStarterLambda",
-            code=lambda_.Code.from_asset(code_path),
+            code=code,
             handler="SDSCode.batch_starter.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             environment=lambda_environment,
@@ -93,7 +86,7 @@ class BatchStarterLambda(Stack):
             vpc_subnets=subnets,
             security_groups=[rds_security_group],
             allow_public_subnet=True,
-            layers=batch_starter_layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 
@@ -111,7 +104,7 @@ class BatchStarterLambda(Stack):
         data_bucket.grant_read_write(self.instrument_lambda)
 
         rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", rds_stack.secret_name
+            self, "rds_secret", rds_construct.secret_name
         )
         rds_secret.grant_read(grantee=self.instrument_lambda)
 

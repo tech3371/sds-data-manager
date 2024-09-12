@@ -3,30 +3,31 @@
 from pathlib import Path
 
 import imap_data_access
-from aws_cdk import App, Environment
+from aws_cdk import App, Environment, Stack
+from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_rds as rds
 
-from sds_data_manager.stacks import (
-    api_gateway_stack,
-    backup_bucket_stack,
+from sds_data_manager.constructs import (
+    api_gateway_construct,
+    backup_bucket_construct,
     batch_compute_resources,
-    create_schema_stack,
-    data_bucket_stack,
-    database_stack,
-    domain_stack,
-    ecr_stack,
-    efs_stack,
-    ialirt_bucket_stack,
-    ialirt_ingest_lambda_stack,
-    ialirt_processing_stack,
-    indexer_lambda_stack,
+    data_bucket_construct,
+    database_construct,
+    ecr_construct,
+    efs_construct,
+    ialirt_bucket_construct,
+    ialirt_ingest_lambda_construct,
+    ialirt_processing_construct,
+    indexer_lambda_construct,
     instrument_lambdas,
-    lambda_layer_stack,
-    monitoring_stack,
-    networking_stack,
-    sds_api_manager_stack,
-    sqs_stack,
+    lambda_layer_construct,
+    monitoring_construct,
+    networking_construct,
+    route53_hosted_zone,
+    sds_api_manager_construct,
+    sqs_construct,
 )
 
 
@@ -47,50 +48,109 @@ def build_sds(
         Account configuration (domain_name and other account specific configurations)
 
     """
-    data_bucket = data_bucket_stack.DataBucketStack(
-        scope=scope, construct_id="DataBucket", env=env
-    )
-
-    networking = networking_stack.NetworkingStack(scope, "Networking", env=env)
-
-    monitoring = monitoring_stack.MonitoringStack(
-        scope=scope,
-        construct_id="MonitoringStack",
-        env=env,
+    networking_stack = Stack(scope, "NetworkingStack", env=env)
+    networking = networking_construct.NetworkingConstruct(
+        networking_stack, "Networking"
     )
 
     domain = None
     domain_name = account_config.get("domain_name", None)
-    account_name = account_config["account_name"]
-    if domain_name is not None:
-        domain = domain_stack.DomainStack(
-            scope,
-            "DomainStack",
-            domain_name=domain_name,
-            account_name=account_name,
-            env=env,
+    us_east_env = Environment(account=env.account, region="us-east-1")
+    hosted_zone_stack = Stack(scope, "HostedZoneCertificateStack", env=us_east_env)
+    if account_config["account_name"] == "prod":
+        # This is for the root level account So it should be the base url
+        # e.g."imap-mission.com"
+        domain = route53_hosted_zone.DomainConstruct(
+            hosted_zone_stack,
+            "HostedZoneConstruct",
+            domain_name,
+            create_new_hosted_zone=True,
+        )
+        domain.setup_cf_and_lambda_authorizer(allowed_ip="128.138.131.13")  # LASP IPs
+    elif domain_name is not None:
+        # This is for the subaccounts, so it should be the subdomain url
+        # e.g. "dev.imap-mission.com"
+        domain = route53_hosted_zone.DomainConstruct(
+            hosted_zone_stack,
+            "HostedZoneConstruct",
+            domain_name,
+            create_new_hosted_zone=True,
         )
 
-    api = api_gateway_stack.ApiGateway(
-        scope,
-        "ApiGateway",
-        domain_stack=domain,
-        env=env,
+    sdc_stack = Stack(scope, "SDCStack", cross_region_references=True, env=env)
+
+    root_certificate = None
+    if domain is not None:
+        root_certificate = acm.Certificate(
+            sdc_stack,
+            "DomainRegionCertificate",
+            domain_name=f"*.{domain_name}",  # *.imap-mission.com
+            subject_alternative_names=[domain_name],  # imap-mission.com
+            validation=acm.CertificateValidation.from_dns(
+                hosted_zone=domain.hosted_zone
+            ),
+        )
+
+    # Adding this endpoint so that lambda within
+    # this VPC can perform boto3.client("events")
+    # or boto3.client("batch") operations
+    networking.vpc.add_interface_endpoint(
+        "EventBridgeEndpoint",
+        service=ec2.InterfaceVpcEndpointAwsService.EVENTBRIDGE,
+    )
+    networking.vpc.add_interface_endpoint(
+        "BatchJobEndpoint", service=ec2.InterfaceVpcEndpointAwsService.BATCH
+    )
+
+    # The lambda is in the same private security group as the RDS, but
+    # it needs to access the secrets manager, so we add this endpoint.
+    networking.vpc.add_interface_endpoint(
+        "SecretManagerEndpoint",
+        service=ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+        subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+        private_dns_enabled=True,
+    )
+
+    data_bucket = data_bucket_construct.DataBucketConstruct(
+        scope=sdc_stack, construct_id="DataBucket", env=env
+    )
+
+    monitoring = monitoring_construct.MonitoringConstruct(
+        scope=sdc_stack,
+        construct_id="MonitoringConstruct",
+    )
+
+    api = api_gateway_construct.ApiGateway(
+        scope=sdc_stack,
+        construct_id="ApiGateway",
+        domain_construct=domain,
+        certificate=root_certificate,
     )
     api.deliver_to_sns(monitoring.sns_topic_notifications)
+
+    # create Code asset and Layer for Lambda(s)
+    layer_code_directory = (
+        Path(__file__).parent.parent.parent / "lambda_layer/python"
+    ).resolve()
+    lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
+
+    lambda_code = lambda_.Code.from_asset(str(lambda_code_directory))
+    db_lambda_layer = lambda_layer_construct.LambdaLayerConstruct(
+        scope=sdc_stack,
+        id="DatabaseDependencies",
+        layer_dependencies_dir=str(layer_code_directory),
+    ).layer
 
     # Get RDS properties from account_config
     rds_size = account_config.get("rds_size", "SMALL")
     rds_class = account_config.get("rds_class", "BURSTABLE3")
-    rds_storage = account_config.get("rds_stack", 200)
+    rds_storage = account_config.get("rds_construct", 200)
     db_secret_name = "sdp-database-cred"  # noqa
-    rds_stack = database_stack.SdpDatabase(
-        scope,
-        "RDS",
-        description="IMAP SDP database.",
-        env=env,
+    # Create an RDS instance and a Lambda function to automatically create the schema
+    rds_construct = database_construct.SdpDatabase(
+        scope=sdc_stack,
+        construct_id="RDS",
         vpc=networking.vpc,
-        rds_security_group=networking.rds_security_group,
         engine_version=rds.PostgresEngineVersion.VER_15_6,
         instance_size=ec2.InstanceSize[rds_size],
         instance_class=ec2.InstanceClass[rds_class],
@@ -98,61 +158,51 @@ def build_sds(
         username="imap_user",
         secret_name=db_secret_name,
         database_name="imap",
+        code=lambda_code,
+        layers=[db_lambda_layer],
     )
 
-    # create Layer for Lambda(s)
-    lambda_code_directory = (
-        Path(__file__).parent.parent.parent / "lambda_layer/python"
-    ).resolve()
-    db_layer_name = "DatabaseDependencies"
-    db_lambda_layer = lambda_layer_stack.LambdaLayerStack(
-        scope=scope, id=db_layer_name, layer_dependencies_dir=str(lambda_code_directory)
-    )
-
-    indexer_lambda = indexer_lambda_stack.IndexerLambda(
-        scope=scope,
+    indexer_lambda_construct.IndexerLambda(
+        scope=sdc_stack,
         construct_id="IndexerLambda",
-        env=env,
+        code=lambda_code,
         db_secret_name=db_secret_name,
         vpc=networking.vpc,
-        vpc_subnets=rds_stack.rds_subnet_selection,
-        rds_security_group=networking.rds_security_group,
+        vpc_subnets=rds_construct.rds_subnet_selection,
+        rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
         sns_topic=monitoring.sns_topic_notifications,
-        layers=[db_layer_name],
+        layers=[db_lambda_layer],
     )
-    indexer_lambda.add_dependency(db_lambda_layer)
 
-    sds_api_manager = sds_api_manager_stack.SdsApiManager(
-        scope=scope,
+    sds_api_manager_construct.SdsApiManager(
+        scope=sdc_stack,
         construct_id="SdsApiManager",
+        code=lambda_code,
         api=api,
         env=env,
         data_bucket=data_bucket.data_bucket,
         vpc=networking.vpc,
-        rds_security_group=networking.rds_security_group,
+        rds_security_group=rds_construct.rds_security_group,
         db_secret_name=db_secret_name,
-        layers=[db_layer_name],
+        layers=[db_lambda_layer],
     )
-    sds_api_manager.add_dependency(db_lambda_layer)
 
     # create EFS
-    efs_instance = efs_stack.EFSStack(scope, "EFSStack", networking.vpc, env=env)
-
-    lambda_code_directory = Path(__file__).parent.parent / "lambda_code"
-    lambda_code_directory_str = str(lambda_code_directory.resolve())
+    efs_instance = efs_construct.EFSConstruct(
+        scope=sdc_stack, construct_id="EFSConstruct", vpc=networking.vpc
+    )
 
     # This valid instrument list is from imap-data-access package
     for instrument in imap_data_access.VALID_INSTRUMENTS:
-        ecr = ecr_stack.EcrStack(
-            scope,
-            f"{instrument}Ecr",
-            env=env,
+        ecr = ecr_construct.EcrConstruct(
+            scope=sdc_stack,
+            construct_id=f"{instrument}Ecr",
             instrument_name=f"{instrument}",
         )
 
         batch_compute_resources.FargateBatchResources(
-            scope,
+            scope=sdc_stack,
             construct_id=f"{instrument}BatchJob",
             vpc=networking.vpc,
             processing_step_name=instrument,
@@ -160,92 +210,81 @@ def build_sds(
             repo=ecr.container_repo,
             db_secret_name=db_secret_name,
             efs_instance=efs_instance,
-            account_name=account_name,
-            env=env,
         )
 
     # Create SQS pipeline for each instrument and add it to instrument_sqs
-    instrument_sqs = sqs_stack.SqsStack(
-        scope,
-        "SqsStack",
+    instrument_sqs = sqs_construct.SqsConstruct(
+        scope=sdc_stack,
+        construct_id="SqsConstruct",
         instrument_names=imap_data_access.VALID_INSTRUMENTS,
-        env=env,
     ).instrument_queue
 
-    batch_starter_lambda = instrument_lambdas.BatchStarterLambda(
-        scope,
-        "BatchStarterLambda",
+    instrument_lambdas.BatchStarterLambda(
+        scope=sdc_stack,
+        construct_id="BatchStarterLambda",
+        env=env,
         data_bucket=data_bucket.data_bucket,
-        code_path=lambda_code_directory_str,
-        rds_stack=rds_stack,
-        rds_security_group=networking.rds_security_group,
-        subnets=rds_stack.rds_subnet_selection,
+        code=lambda_code,
+        rds_construct=rds_construct,
+        rds_security_group=rds_construct.rds_security_group,
+        subnets=rds_construct.rds_subnet_selection,
         vpc=networking.vpc,
         sqs_queue=instrument_sqs,
-        layers=[db_layer_name],
-        env=env,
+        layers=[db_lambda_layer],
     )
-    batch_starter_lambda.add_dependency(db_lambda_layer)
 
-    create_schema = create_schema_stack.CreateSchema(
-        scope,
-        "CreateSchemaStack",
-        env=env,
-        db_secret_name=db_secret_name,
-        vpc=networking.vpc,
-        vpc_subnets=rds_stack.rds_subnet_selection,
-        rds_security_group=networking.rds_security_group,
-        layers=[db_layer_name],
-    )
-    create_schema.add_dependency(db_lambda_layer)
-
-    # Create lambda that mounts EFS and writes data to EFS.
-    efs_stack.EFSWriteLambda(
-        scope=scope,
+    # Create lambda that mounts EFS and writes data to EFS
+    efs_construct.EFSWriteLambda(
+        scope=sdc_stack,
         construct_id="EFSWriteLambda",
+        code=lambda_code,
+        env=env,
         vpc=networking.vpc,
         data_bucket=data_bucket.data_bucket,
-        efs_instance=efs_instance,
-        env=env,
+        efs_construct=efs_instance,
     )
 
-    # I-ALiRT IOIS ECR
-    ialirt_ecr = ecr_stack.EcrStack(
-        scope,
-        "IalirtEcr",
-        env=env,
-        instrument_name="IalirtEcr",
-    )
-
-    # I-ALiRT IOIS S3 bucket
-    ialirt_bucket = ialirt_bucket_stack.IAlirtBucketStack(
-        scope=scope, construct_id="IAlirtBucket", env=env
-    )
-
-    # All traffic to I-ALiRT is directed to listed container ports
-    ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
-    container_ports = {"Primary": 8080, "Secondary": 80}
-
-    for primary_or_secondary in ialirt_ports:
-        ialirt_processing_stack.IalirtProcessing(
-            scope,
-            f"IalirtProcessing{primary_or_secondary}",
-            env=env,
-            vpc=networking.vpc,
-            repo=ialirt_ecr.container_repo,
-            processing_name=primary_or_secondary,
-            ialirt_ports=ialirt_ports[primary_or_secondary],
-            container_port=container_ports[primary_or_secondary],
-            ialirt_bucket=ialirt_bucket.ialirt_bucket,
+    # TODO: Add I-ALiRT Stack to the deployment
+    #       We are skipping this deployment for now because it is currently
+    #       dependent on SDC Stack resources and requires a manual intervention
+    #       to deploy. We can add this stack back in to deployments after we
+    #       fix those updates.
+    if False:
+        ialirt_stack = Stack(scope, "IalirtStack", env=env)
+        # I-ALiRT IOIS ECR
+        ialirt_ecr = ecr_construct.EcrConstruct(
+            scope=ialirt_stack,
+            construct_id="IalirtEcr",
+            instrument_name="IalirtEcr",
         )
 
-    # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
-    ialirt_ingest_lambda_stack.IalirtIngestLambda(
-        scope=scope,
-        construct_id="IalirtIngestLambda",
-        env=env,
-        ialirt_bucket=ialirt_bucket.ialirt_bucket,
-    )
+        # I-ALiRT IOIS S3 bucket
+        ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
+            scope=ialirt_stack, construct_id="IAlirtBucket", env=env
+        )
+
+        # All traffic to I-ALiRT is directed to listed container ports
+        ialirt_ports = {"Primary": [8080, 8081], "Secondary": [80]}
+        container_ports = {"Primary": 8080, "Secondary": 80}
+
+        for primary_or_secondary in ialirt_ports:
+            ialirt_processing_construct.IalirtProcessing(
+                scope=ialirt_stack,
+                construct_id=f"IalirtProcessing{primary_or_secondary}",
+                vpc=networking.vpc,
+                repo=ialirt_ecr.container_repo,
+                processing_name=primary_or_secondary,
+                ialirt_ports=ialirt_ports[primary_or_secondary],
+                container_port=container_ports[primary_or_secondary],
+                ialirt_bucket=ialirt_bucket.ialirt_bucket,
+            )
+
+        # I-ALiRT IOIS ingest lambda (facilitates s3 to dynamodb)
+        ialirt_ingest_lambda_construct.IalirtIngestLambda(
+            scope=ialirt_stack,
+            construct_id="IalirtIngestLambda",
+            ialirt_bucket=ialirt_bucket.ialirt_bucket,
+        )
 
 
 def build_backup(scope: App, env: Environment, source_account: str):
@@ -261,10 +300,10 @@ def build_backup(scope: App, env: Environment, source_account: str):
         Account number for source bucket for replication
 
     """
+    backup_stack = Stack(scope, "BackupStack", env=env)
     # This is the S3 bucket used by upload_api_lambda
-    backup_bucket_stack.BackupBucket(
-        scope,
+    backup_bucket_construct.BackupBucket(
+        backup_stack,
         "BackupBucket",
         source_account=source_account,
-        env=env,
     )

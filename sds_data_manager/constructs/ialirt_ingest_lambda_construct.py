@@ -1,9 +1,9 @@
-"""Configure the ialirt ingest lambda stack."""
+"""Configure the ialirt ingest lambda construct."""
 
 import pathlib
 
 import aws_cdk as cdk
-from aws_cdk import RemovalPolicy, Stack, aws_dynamodb, aws_s3
+from aws_cdk import RemovalPolicy, aws_dynamodb, aws_s3
 from aws_cdk import aws_dynamodb as ddb
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
@@ -13,14 +13,13 @@ from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from constructs import Construct
 
 
-class IalirtIngestLambda(Stack):
-    """Stack for ialirt ingest lambda."""
+class IalirtIngestLambda(Construct):
+    """Construct for ialirt ingest lambda."""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
-        env: cdk.Environment,
         ialirt_bucket: aws_s3.Bucket,
         **kwargs,
     ) -> None:
@@ -32,15 +31,13 @@ class IalirtIngestLambda(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        env : obj
-            Environment.
         ialirt_bucket : aws_s3.Bucket
             The data bucket.
         kwargs : dict
             Keyword arguments.
 
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
+        super().__init__(scope, construct_id, **kwargs)
 
         # Create DynamoDB Table
         self.packet_data_table = self.create_dynamodb_table()

@@ -1,9 +1,6 @@
-"""Configure the indexer lambda stack."""
-
-from pathlib import Path
+"""Configure the indexer lambda."""
 
 import aws_cdk as cdk
-from aws_cdk import Stack
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
@@ -13,14 +10,14 @@ from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
 
-class IndexerLambda(Stack):
-    """Stack for indexer lambda."""
+class IndexerLambda(Construct):
+    """Construct for indexer lambda."""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
-        env: cdk.Environment,
+        code: lambda_.Code,
         db_secret_name: str,
         vpc: ec2.Vpc,
         vpc_subnets,
@@ -30,7 +27,7 @@ class IndexerLambda(Stack):
         layers: list,
         **kwargs,
     ) -> None:
-        """IndexerLambda Stack.
+        """IndexerLambda Construct.
 
         Parameters
         ----------
@@ -38,8 +35,8 @@ class IndexerLambda(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        env : obj
-            The environment
+        code : aws_lambda.Code
+            Lambda code bundle
         db_secret_name : str
             The DB secret name
         vpc : obj
@@ -59,22 +56,13 @@ class IndexerLambda(Stack):
             Keyword arguments
 
         """
-        super().__init__(scope, construct_id, env=env, **kwargs)
-
-        indexer_layers = [
-            lambda_.LayerVersion.from_layer_version_arn(
-                self, "Layer", cdk.Fn.import_value(layer)
-            )
-            for layer in layers
-        ]
-
-        lambda_code_directory = (Path(__file__).parent.parent / "lambda_code").resolve()
+        super().__init__(scope, construct_id, **kwargs)
 
         indexer_lambda = lambda_.Function(
             self,
             id="IndexerLambda",
             function_name="file-indexer",
-            code=lambda_.Code.from_asset(str(lambda_code_directory)),
+            code=code,
             handler="SDSCode.indexer.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
@@ -88,7 +76,7 @@ class IndexerLambda(Stack):
                 "S3_BUCKET": data_bucket.bucket_name,
                 "SECRET_NAME": db_secret_name,
             },
-            layers=indexer_layers,
+            layers=layers,
             architecture=lambda_.Architecture.ARM_64,
         )
 

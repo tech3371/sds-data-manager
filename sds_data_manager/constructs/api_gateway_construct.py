@@ -1,4 +1,4 @@
-"""Configure the API Gateway Stack.
+"""Configure the API Gateway Construct.
 
 Sets up api gateway, creates routes, and creates methods that are linked to the
 lambda function.
@@ -6,35 +6,31 @@ lambda function.
 An example of the format of the url: https://api.prod.imap-mission.com/query
 """
 
-from pathlib import Path
-from typing import Optional
-
-from aws_cdk import Duration, Stack, aws_sns
+from aws_cdk import Duration, aws_sns
 from aws_cdk import aws_apigateway as apigw
+from aws_cdk import aws_certificatemanager as acm
 from aws_cdk import aws_cloudwatch as cloudwatch
 from aws_cdk import aws_cloudwatch_actions as cloudwatch_actions
-from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_lambda as lambda_
-from aws_cdk import aws_lambda_python_alpha as lambda_alpha_
 from aws_cdk import aws_route53 as route53
 from aws_cdk import aws_route53_targets as targets
-from aws_cdk import aws_secretsmanager as secrets
 from constructs import Construct
 
-from sds_data_manager.stacks.domain_stack import DomainStack
+from sds_data_manager.constructs.route53_hosted_zone import DomainConstruct
 
 
-class ApiGateway(Stack):
-    """Stack for creating an API Gateway."""
+class ApiGateway(Construct):
+    """Construct for creating an API Gateway."""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
-        domain_stack: DomainStack = None,
+        domain_construct: DomainConstruct = None,
+        certificate: acm.Certificate = None,
         **kwargs,
     ) -> None:
-        """Construct the API Gateway Stack.
+        """Construct the API Gateway Construct.
 
         Parameters
         ----------
@@ -42,8 +38,10 @@ class ApiGateway(Stack):
             Parent construct.
         construct_id : str
             A unique string identifier for this construct.
-        domain_stack : DomainStack, Optional
-            Custom domain, hosted zone, and certificate
+        domain_construct : DomainConstruct, Optional
+            Custom domain, hosted zone
+        certificate : Certificate
+            SSL certificate for the custom domain (in the same region)
         kwargs : dict
             Keyword arguments
 
@@ -60,12 +58,12 @@ class ApiGateway(Stack):
         )
 
         # Add a custom domain to the API if we have one
-        if domain_stack is not None:
+        if domain_construct is not None:
             custom_domain = apigw.DomainName(
                 self,
                 "RestAPI-DomainName",
-                domain_name=f"api.{domain_stack.domain_name}",
-                certificate=domain_stack.certificate,
+                domain_name=f"api.{domain_construct.domain_name}",
+                certificate=certificate,
                 endpoint_type=apigw.EndpointType.REGIONAL,
             )
 
@@ -81,8 +79,8 @@ class ApiGateway(Stack):
             route53.ARecord(
                 self,
                 "RestAPI-AliasRecord",
-                zone=domain_stack.hosted_zone,
-                record_name=f"api.{domain_stack.domain_name}",
+                zone=domain_construct.hosted_zone,
+                record_name=f"api.{domain_construct.domain_name}",
                 target=route53.RecordTarget.from_alias(
                     targets.ApiGatewayDomain(custom_domain)
                 ),
@@ -162,72 +160,3 @@ class ApiGateway(Stack):
 
         # Create a new method that is linked to the Lambda function
         resource.add_method(http_method, apigw.LambdaIntegration(lambda_function))
-
-
-class APILambda(Stack):
-    """Generic Stack to create API handler Lambda."""
-
-    def __init__(
-        self,
-        scope: Construct,
-        construct_id: str,
-        lambda_name: str,
-        code_path: Path,
-        lambda_handler: str,
-        timeout: Duration,
-        rds_security_group: ec2.SecurityGroup,
-        db_secret_name: str,
-        vpc: ec2.Vpc,
-        environment: Optional[dict] = None,
-        **kwargs,
-    ):
-        """Lambda Constructor.
-
-        Parameters
-        ----------
-        scope : Construct
-            Parent construct.
-        construct_id : str
-            A unique string identifier for this construct.
-        lambda_name : str
-            Lambda name
-        code_path : Path
-            Path to the Lambda code directory
-        lambda_handler : str
-            Lambda handler's function name
-        timeout : Duration
-            Lambda timeout
-        rds_security_group : ec2.SecurityGroup
-            RDS security group
-        db_secret_name : str
-            RDS secret name for secret manager access
-        vpc : ec2.Vpc
-            VPC into which to put the resources that require networking.
-        environment: dict
-            Lambda's environment variables.
-        kwargs : dict
-            Keyword arguments
-
-        """
-        super().__init__(scope, construct_id, **kwargs)
-
-        self.lambda_function = lambda_alpha_.PythonFunction(
-            self,
-            id=lambda_name,
-            function_name=lambda_name,
-            entry=str(code_path.parent / "SDSCode"),  # This gives folder path
-            index=str(code_path.name),  # This gives file name
-            handler=lambda_handler,  # This points to function inside the file
-            runtime=lambda_.Runtime.PYTHON_3_11,
-            timeout=timeout,
-            memory_size=512,
-            environment=environment,
-            vpc=vpc,
-            security_groups=[rds_security_group],
-            allow_public_subnet=True,
-        )
-
-        rds_secret = secrets.Secret.from_secret_name_v2(
-            self, "rds_secret", db_secret_name
-        )
-        rds_secret.grant_read(grantee=self.lambda_function)

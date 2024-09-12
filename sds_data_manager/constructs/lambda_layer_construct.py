@@ -1,18 +1,17 @@
-"""CDK stack to create a Lambda Layer."""
+"""CDK construct to create a Lambda Layer."""
 
 import aws_cdk as cdk
-from aws_cdk import Stack
 from aws_cdk import aws_lambda as lambda_
 from constructs import Construct
 
 
-class LambdaLayerStack(Stack):
-    """Lambda Layer Stack."""
+class LambdaLayerConstruct(Construct):
+    """Lambda Layer Construct."""
 
     def __init__(
         self, scope: Construct, id: str, layer_dependencies_dir: str, **kwargs
     ) -> None:
-        """Create layer stack.
+        """Create layer.
 
         In layer code directory, there should exist a requirements.txt file
         which is used to install the dependencies for the lambda layer.
@@ -46,13 +45,9 @@ class LambdaLayerStack(Stack):
             ),
         )
 
-        layer = lambda_.LayerVersion(
+        self.layer = lambda_.LayerVersion(
             self,
             id=f"{id}-Layer",
             code=code_bundle,
             compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
         )
-
-        # Output the layer ARN that other lambda functions can import and use
-        layer_arn = layer.layer_version_arn
-        cdk.CfnOutput(self, f"{id}-Arn", export_name=id, value=layer_arn)
