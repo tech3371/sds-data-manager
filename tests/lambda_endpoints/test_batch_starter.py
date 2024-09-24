@@ -238,6 +238,15 @@ def test_pre_processing_dependency(session):
     assert downstream_dependency[0]["descriptor"] == "norm-mago"
 
 
+def test_duplicate_dependencies(session):
+    """Tests the unique constraint in the dependency table."""
+    _populate_dependency_table(session)
+
+    with pytest.raises(IntegrityError):
+        # Duplicate dependencies should raise an error
+        _populate_dependency_table(session)
+
+
 def test_get_file(session):
     """Tests the get_file function."""
     _populate_file_catalog(session)
