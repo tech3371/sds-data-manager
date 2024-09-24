@@ -180,6 +180,7 @@ class PreProcessingDependency(Base):
     __tablename__ = "preprocessing_dependency"
     __table_args__ = (
         UniqueConstraint(
+            "id",
             "primary_instrument",
             "primary_data_level",
             "primary_descriptor",
