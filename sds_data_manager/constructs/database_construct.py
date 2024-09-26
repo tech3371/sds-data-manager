@@ -149,9 +149,21 @@ class SdpDatabase(Construct):
         res_provider = cr.Provider(
             self, "crProvider", on_event_handler=schema_create_lambda
         )
+
+        # Setting 'properties' provides a mechanism to re-trigger the
+        # `schema_create_lambda` during CDK deployment after initial deployment.
+        # This ensures that the schema is updated automatically whenever
+        # there are changes in the dependency config. Before, the Lambda
+        # function was only triggered on stack creation or deletion,
+        # but not during updates. Since the service token remains unchanged,
+        # the 'Update' event wouldn't trigger the `db_custom_resource`.
         db_custom_resource = CustomResource(
-            self, "CustomResource-DB-Schema", service_token=res_provider.service_token
+            self,
+            "CustomResource-DB-Schema",
+            service_token=res_provider.service_token,
+            properties={"last_dependency_update": "09/26/2024"},
         )
+
         # Add an explicit dependency on the RDS instance because we need the secret
         # populated with the DB credentials before we can create the schema.
         db_custom_resource.node.add_dependency(db)
