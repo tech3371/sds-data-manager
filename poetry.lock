@@ -735,12 +735,12 @@ files = [
 
 [[package]]
 name = "imap-data-access"
-version = "0.10.0"
+version = "0.10.1"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 files = [
-    {file = "imap_data_access-0.10.0.tar.gz", hash = "sha256:1b05b03dd465f10af4137c8fa8061626cc350751df32c47bbac728e95038ad5f"},
+    {file = "imap_data_access-0.10.1.tar.gz", hash = "sha256:54a65d2a220fe82bba08290c4d8fa5cb3aa58ff587230d2f4b2f544ef1bb0f67"},
 ]
 
 [package.extras]
@@ -1967,4 +1967,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "a981e52ee4ff3b91b242f4b8f05de0834467dc04eb219dcc127b51fcca648830"
+content-hash = "fc232f6df87dd13d389f444e9a14aa0195326bb141b9da103598f7ecf246c6a1"
