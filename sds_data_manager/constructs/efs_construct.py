@@ -184,7 +184,7 @@ class EFSWriteLambda(Construct):
             allow_all_outbound=True,
             runtime=aws_lambda.Runtime.PYTHON_3_12,
             code=code,
-            handler="lambda_function.lambda_handler",
+            handler="efs_lambda.lambda_function.lambda_handler",
             role=efs_lambda_role,
             description="Lambda that write data to the EFS",
             # Access to the EFS requires to be within the VPC
@@ -215,8 +215,6 @@ class EFSWriteLambda(Construct):
                     "object": {
                         "key": [
                             {"prefix": "spice/"},
-                            {"suffix": "ah.a"},
-                            {"suffix": ".bsp"},
                         ]
                     },
                 },
