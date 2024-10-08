@@ -40,17 +40,18 @@ class IalirtIngestLambda(Construct):
         super().__init__(scope, construct_id, **kwargs)
 
         # Create DynamoDB Table
-        self.packet_data_table = self.create_dynamodb_table()
+        self.packet_data_table = self.create_ingest_dynamodb_table()
+        self.algorithm_data_table = self.create_algorithm_dynamodb_table()
 
         # Create Lambda Function
         self.ialirt_ingest_lambda = self.create_lambda_function(
-            ialirt_bucket, self.packet_data_table
+            ialirt_bucket, self.packet_data_table, self.algorithm_data_table
         )
 
         # Create Event Rule
         self.create_event_rule(ialirt_bucket, self.ialirt_ingest_lambda)
 
-    def create_dynamodb_table(self) -> aws_dynamodb.Table:
+    def create_ingest_dynamodb_table(self) -> aws_dynamodb.Table:
         """Create and return the DynamoDB table."""
         table = ddb.Table(
             self,
@@ -91,8 +92,54 @@ class IalirtIngestLambda(Construct):
         )
         return table
 
+    def create_algorithm_dynamodb_table(self) -> aws_dynamodb.Table:
+        """Create and return the algorithm data product table."""
+        table = ddb.Table(
+            self,
+            "IalirtAlgorithmDataTable",
+            table_name="ialirt-algorithm-table",
+            # Change to RemovalPolicy.RETAIN to keep the table after stack deletion.
+            # TODO: change to RETAIN in production.
+            removal_policy=RemovalPolicy.DESTROY,
+            # Restore data to any point in time within the last 35 days.
+            # TODO: change to True in production.
+            point_in_time_recovery=False,
+            # Partition key (PK) = instrument product_name.
+            partition_key=ddb.Attribute(
+                name="product_name",
+                type=ddb.AttributeType.STRING,
+            ),
+            # Sort key (SK) = Mission Elapsed Time (MET).
+            sort_key=ddb.Attribute(
+                name="met",
+                type=ddb.AttributeType.NUMBER,
+            ),
+            # Define the read and write capacity units.
+            # TODO: change to provisioned capacity mode in production.
+            billing_mode=ddb.BillingMode.PAY_PER_REQUEST,  # On-Demand capacity mode.
+        )
+
+        # Add a GSI for ingest time.
+        table.add_global_secondary_index(
+            index_name="insert_time",
+            # Partition key (PK) = instrument product_name.
+            partition_key=ddb.Attribute(
+                name="product_name", type=ddb.AttributeType.STRING
+            ),
+            # Sort key (SK) = Insert Time (ISO).
+            sort_key=ddb.Attribute(
+                name="insert_time",
+                type=ddb.AttributeType.STRING,
+            ),
+            projection_type=ddb.ProjectionType.ALL,
+        )
+        return table
+
     def create_lambda_function(
-        self, ialirt_bucket: aws_s3.Bucket, packet_data_table: aws_dynamodb.Table
+        self,
+        ialirt_bucket: aws_s3.Bucket,
+        packet_data_table: aws_dynamodb.Table,
+        algorithm_data_table: aws_dynamodb.Table,
     ) -> lambda_alpha_.PythonFunction:
         """Create and return the Lambda function."""
         lambda_role = iam.Role(
@@ -135,12 +182,14 @@ class IalirtIngestLambda(Construct):
             memory_size=1000,
             role=lambda_role,
             environment={
-                "TABLE_NAME": packet_data_table.table_name,
+                "INGEST_TABLE": packet_data_table.table_name,
+                "ALGORITHM_TABLE": algorithm_data_table.table_name,
                 "S3_BUCKET": ialirt_bucket.bucket_name,
             },
         )
 
         packet_data_table.grant_read_write_data(ialirt_ingest_lambda)
+        algorithm_data_table.grant_read_write_data(ialirt_ingest_lambda)
 
         # The resource is deleted when the stack is deleted.
         ialirt_ingest_lambda.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
