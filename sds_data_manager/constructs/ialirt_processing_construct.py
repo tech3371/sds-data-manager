@@ -7,14 +7,14 @@ https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbou
 https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
-from aws_cdk import CfnOutput
+from aws_cdk import CfnOutput, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
-from aws_cdk import aws_ecr as ecr
 from aws_cdk import aws_ecs as ecs
 from aws_cdk import aws_elasticloadbalancingv2 as elbv2
 from aws_cdk import aws_iam as iam
 from aws_cdk import aws_s3 as s3
+from aws_cdk import aws_secretsmanager as secretsmanager
 from constructs import Construct
 
 
@@ -26,11 +26,11 @@ class IalirtProcessing(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
-        repo: ecr.Repository,
         processing_name: str,
         ialirt_ports: list[int],
         container_port: int,
         ialirt_bucket: s3.Bucket,
+        secret_name: str,
         **kwargs,
     ) -> None:
         """Construct the i-alirt processing stack.
@@ -43,8 +43,6 @@ class IalirtProcessing(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
-        repo : ecr.Repository
-            ECR repository containing the Docker image.
         processing_name : str
             Name of the processing stack.
         ialirt_ports : list[int]
@@ -53,6 +51,8 @@ class IalirtProcessing(Construct):
             Port to be used by the container.
         ialirt_bucket: s3.Bucket
             S3 bucket
+        secret_name : str,
+            Database secret_name for Secrets Manager
         kwargs : dict
             Keyword arguments
 
@@ -62,8 +62,8 @@ class IalirtProcessing(Construct):
         self.ports = ialirt_ports
         self.container_port = container_port
         self.vpc = vpc
-        self.repo = repo
         self.s3_bucket_name = ialirt_bucket.bucket_name
+        self.secret_name = secret_name
 
         # Add a security group in which network load balancer will reside
         self.create_load_balancer_security_group(processing_name)
@@ -132,6 +132,11 @@ class IalirtProcessing(Construct):
             self, f"IalirtCluster{processing_name}", vpc=self.vpc
         )
 
+        # Retrieve the secret from Secrets Manager.
+        nexus_secret = secretsmanager.Secret.from_secret_name_v2(
+            self, f"NexusCredentials{processing_name}", secret_name=self.secret_name
+        )
+
         # Add IAM role and policy for S3 access
         task_role = iam.Role(
             self,
@@ -141,11 +146,42 @@ class IalirtProcessing(Construct):
 
         task_role.add_to_policy(
             iam.PolicyStatement(
-                actions=["s3:GetObject", "s3:ListBucket", "s3:PutObject"],
+                actions=[
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:PutObject",
+                    "secretsmanager:GetSecretValue",
+                ],
                 resources=[
                     f"arn:aws:s3:::{self.s3_bucket_name}",
                     f"arn:aws:s3:::{self.s3_bucket_name}/*",
+                    nexus_secret.secret_arn,
                 ],
+            )
+        )
+
+        # Required for pulling images from Nexus.
+        # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/private-auth.html
+        execution_role = iam.Role(
+            self,
+            f"IalirtTaskExecutionRole{processing_name}",
+            assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "service-role/AmazonECSTaskExecutionRolePolicy",
+                ),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "SecretsManagerReadWrite"
+                ),
+            ],
+        )
+
+        # Grant Secrets Manager access for Nexus credentials.
+        execution_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["secretsmanager:GetSecretValue"],
+                resources=[nexus_secret.secret_arn],
             )
         )
 
@@ -157,14 +193,16 @@ class IalirtProcessing(Construct):
             f"IalirtTaskDef{processing_name}",
             network_mode=ecs.NetworkMode.AWS_VPC,
             task_role=task_role,
+            execution_role=execution_role,
         )
 
         # Adds a container to the ECS task definition
         # Logging is configured to use AWS CloudWatch Logs.
         container = task_definition.add_container(
             f"IalirtContainer{processing_name}",
-            image=ecs.ContainerImage.from_ecr_repository(
-                self.repo, f"latest-{processing_name.lower()}"
+            image=ecs.ContainerImage.from_registry(
+                f"lasp-registry.colorado.edu/ialirt/ialirt-{processing_name.lower()}:latest",
+                credentials=nexus_secret,
             ),
             # Allowable values:
             # https://docs.aws.amazon.com/cdk/api/v2/docs/
@@ -218,6 +256,8 @@ class IalirtProcessing(Construct):
             vpc=self.vpc,
             desired_capacity=1,
         )
+
+        auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
 
         # integrates ECS with EC2 Auto Scaling Groups
         # to manage the scaling and provisioning of the underlying
