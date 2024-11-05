@@ -60,9 +60,11 @@ hi, l1b, 45sensor-de, hi, l1c, 45sensor-pset, HARD, DOWNSTREAM
 # <---- HIT Dependencies ---->
 
 hit, l0, raw, hit, l1a, all, HARD, DOWNSTREAM
-
-hit, l1a, sci, hit, l1b, sci, HARD, DOWNSTREAM
-hit, l1a, hk, hit, l1b, hk, HARD, DOWNSTREAM
+hit, l0, raw, hit, l1b, hk, HARD, DOWNSTREAM
+hit, l1a, count-rates, hit, l1b, all, HARD, DOWNSTREAM
+hit, l1b, standard-rates, hit, l2, standard-fluxes, HARD, DOWNSTREAM
+hit, l1b, summed-rates, hit, l2, summed-fluxes, HARD, DOWNSTREAM
+hit, l1b, sectored-rates, hit, l2, sectored-fluxes, HARD, DOWNSTREAM
 
 # <---- IDEX Dependencies ---->
 
