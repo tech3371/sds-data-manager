@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode import upload_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import upload_api
 
 
 @pytest.fixture(autouse=True)

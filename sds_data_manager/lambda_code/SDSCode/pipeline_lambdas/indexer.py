@@ -8,8 +8,8 @@ from datetime import datetime
 import boto3
 from imap_data_access import ScienceFilePath
 
-from .database import database as db
-from .database import models
+from ..database import database as db
+from ..database import models
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 # Logger setup

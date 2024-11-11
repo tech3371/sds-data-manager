@@ -77,7 +77,7 @@ class BatchStarterLambda(Construct):
             "BatchStarterLambda",
             function_name="BatchStarterLambda",
             code=code,
-            handler="SDSCode.batch_starter.lambda_handler",
+            handler="SDSCode.pipeline_lambdas.batch_starter.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             environment=lambda_environment,
             memory_size=512,

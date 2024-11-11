@@ -82,7 +82,7 @@ def test_create_schema(template):
         props={
             "FunctionName": "create-schema",
             "Runtime": "python3.12",
-            "Handler": "SDSCode.create_schema.lambda_handler",
+            "Handler": "SDSCode.pipeline_lambdas.create_schema.lambda_handler",
             "MemorySize": 1000,
             "Timeout": 60,
             "Role": {

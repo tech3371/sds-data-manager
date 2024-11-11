@@ -7,9 +7,9 @@ import pytest
 from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 
-from sds_data_manager.lambda_code.SDSCode import indexer
 from sds_data_manager.lambda_code.SDSCode.database import models
-from sds_data_manager.lambda_code.SDSCode.indexer import (
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import indexer
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.indexer import (
     send_event_from_indexer,
 )
 

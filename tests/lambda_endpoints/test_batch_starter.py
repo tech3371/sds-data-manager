@@ -7,17 +7,17 @@ import pytest
 from imap_data_access import ScienceFilePath
 from sqlalchemy.exc import IntegrityError
 
-from sds_data_manager.lambda_code.SDSCode import batch_starter
-from sds_data_manager.lambda_code.SDSCode.batch_starter import (
-    get_downstream_dependencies,
-    get_file,
-    is_job_in_processing_table,
-    lambda_handler,
-)
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     ProcessingJob,
     ScienceFiles,
+)
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import batch_starter
+from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
+    get_downstream_dependencies,
+    get_file,
+    is_job_in_processing_table,
+    lambda_handler,
 )
 
 from .conftest import POSTGRES_AVAILABLE

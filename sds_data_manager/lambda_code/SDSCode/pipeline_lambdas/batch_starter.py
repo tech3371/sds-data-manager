@@ -9,9 +9,9 @@ from imap_data_access import ScienceFilePath
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from ..database import database as db
+from ..database import models
 from . import dependency_config
-from .database import database as db
-from .database import models
 
 # Logger setup
 logger = logging.getLogger(__name__)

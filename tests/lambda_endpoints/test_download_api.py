@@ -1,6 +1,6 @@
 """Tests for the Download API."""
 
-from sds_data_manager.lambda_code.SDSCode import download_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import download_api
 
 
 def test_object_exists(s3_client):

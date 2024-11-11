@@ -6,8 +6,8 @@ import logging
 
 from sqlalchemy import select
 
-from .database import database as db
-from .database import models
+from ..database import database as db
+from ..database import models
 
 # Logger setup
 logger = logging.getLogger(__name__)

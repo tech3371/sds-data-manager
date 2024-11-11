@@ -63,7 +63,7 @@ class IndexerLambda(Construct):
             id="IndexerLambda",
             function_name="file-indexer",
             code=code,
-            handler="SDSCode.indexer.lambda_handler",
+            handler="SDSCode.pipeline_lambdas.indexer.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(1),
             memory_size=1000,
