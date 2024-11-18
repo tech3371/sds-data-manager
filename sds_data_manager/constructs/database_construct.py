@@ -126,7 +126,7 @@ class SdpDatabase(Construct):
             id="CreateMetadataSchema",
             function_name="create-schema",
             code=code,
-            handler="SDSCode.create_schema.lambda_handler",
+            handler="SDSCode.pipeline_lambdas.create_schema.lambda_handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.seconds(60),
             memory_size=1000,

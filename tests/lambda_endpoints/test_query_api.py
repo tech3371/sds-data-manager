@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from sds_data_manager.lambda_code.SDSCode import query_api
+from sds_data_manager.lambda_code.SDSCode.api_lambdas import query_api
 from sds_data_manager.lambda_code.SDSCode.database import models
 
 
