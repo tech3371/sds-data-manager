@@ -174,7 +174,7 @@ class EFSWriteLambda(Construct):
         )
 
         # This access point is used by other resources to read from EFS
-        lambda_mount_path = "/mnt/spice"
+        spice_mount_path = "/mnt/spice"
 
         self.efs_spice_ingest_lambda = aws_lambda.Function(
             self,
@@ -191,12 +191,12 @@ class EFSWriteLambda(Construct):
             vpc=vpc,
             # Mount EFS access point to /mnt/data within the lambda
             filesystem=aws_lambda.FileSystem.from_efs_access_point(
-                efs_construct.spice_access_point, lambda_mount_path
+                efs_construct.spice_access_point, spice_mount_path
             ),
             timeout=Duration.minutes(1),
             architecture=aws_lambda.Architecture.ARM_64,
             environment={
-                "EFS_MOUNT_PATH": lambda_mount_path,
+                "EFS_SPICE_MOUNT_PATH": spice_mount_path,
             },
         )
 
