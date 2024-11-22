@@ -6,6 +6,7 @@ from pathlib import Path
 
 import boto3
 import pandas as pd
+from imap_processing.spice.time import met_to_j2000ns
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -112,6 +113,10 @@ def produce_sdc_maintained_files(s3_bucket: str, s3_key: str):
     )
     print(file_start_sc_time)
     print(file_end_sc_time)
+    file_start_time_j2000 = met_to_j2000ns(file_start_sc_time)
+    file_end_time_j2000 = met_to_j2000ns(file_end_sc_time)
+    print(file_start_time_j2000)
+    print(file_end_time_j2000)
     # Write start and end date in this format - yyyymmddTHHMMSS
     # round up the end time and round down the start time so that we
     # query enough data for the user input
