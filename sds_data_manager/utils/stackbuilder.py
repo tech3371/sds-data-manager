@@ -16,6 +16,7 @@ from sds_data_manager.constructs import (
     data_bucket_construct,
     database_construct,
     efs_construct,
+    ialirt_api_manager_construct,
     ialirt_bucket_construct,
     ialirt_ingest_lambda_construct,
     ialirt_processing_construct,
@@ -257,11 +258,41 @@ def build_sds(
         efs_construct=efs_instance,
     )
 
-    ialirt_stack = Stack(scope, "IalirtStack", env=env)
+    ialirt_stack = Stack(scope, "IalirtStack", cross_region_references=True, env=env)
 
     # I-ALiRT IOIS S3 bucket
     ialirt_bucket = ialirt_bucket_construct.IAlirtBucketConstruct(
         scope=ialirt_stack, construct_id="IAlirtBucket", env=env
+    )
+
+    ialirt_lambda_layer = lambda_layer_construct.IMAPLambdaLayer(
+        scope=ialirt_stack,
+        id="IAlirtDependencies",
+        layer_dependencies_dir=str(layer_code_directory),
+    )
+
+    ialirt_monitoring = monitoring_construct.MonitoringConstruct(
+        scope=ialirt_stack,
+        construct_id="IAlirtMonitoringConstruct",
+    )
+
+    ialirt_api = api_gateway_construct.ApiGateway(
+        scope=ialirt_stack,
+        construct_id="IAlirtApiGateway",
+        domain_construct=domain,
+        certificate=root_certificate,
+    )
+    ialirt_api.deliver_to_sns(ialirt_monitoring.sns_topic_notifications)
+
+    ialirt_api_manager_construct.IalirtApiManager(
+        scope=ialirt_stack,
+        construct_id="IAlirtApiManager",
+        code=lambda_.Code.from_asset(str(Path(__file__).parent.parent / "lambda_code")),
+        api=ialirt_api,
+        env=env,
+        data_bucket=ialirt_bucket.ialirt_bucket,
+        vpc=networking.vpc,
+        layers=[ialirt_lambda_layer],
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
