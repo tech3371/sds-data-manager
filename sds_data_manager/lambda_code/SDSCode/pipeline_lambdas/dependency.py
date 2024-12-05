@@ -1,5 +1,6 @@
 """Dependency tracking module."""
 
+import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -276,7 +277,8 @@ class DependencyConfig:
             return False
         if node[1] not in self.data_type.valid_type:
             return False
-        # TODO: Add descriptor validation once we define all data products
+        # TODO: Add descriptor validation once we define all data product's
+        # data descriptor.
         return True
 
 
@@ -302,8 +304,18 @@ def get_dependencies(node, dependency_type, relationship):
     dependencies : list
         List of dictionary containing the dependency information.
     """
-    dependencies = (
-        DependencyConfig().dependencies[relationship][dependency_type].get(node, [])
+    # Load the dependencies
+    try:
+        dependency_config = DependencyConfig()
+    except Exception as e:
+        logger.error(f"Error loading dependencies: {e!s}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Error loading dependencies"}),
+        }
+
+    dependencies = dependency_config.dependencies[relationship][dependency_type].get(
+        node, []
     )
     # Add keys for a dict-like representation
     dependencies = [
@@ -335,7 +347,8 @@ def lambda_hander(event, context):
     Returns
     -------
     dependencies : list of dict
-        Dictionary containing the dependencies.
+        statusCode and body containing list of dictionary containing
+        the dependencies.
         [
             {
                 "data_source": "hit",
@@ -356,9 +369,14 @@ def lambda_hander(event, context):
     """
     logger.info(f"Event: {event}")
 
-    # TODO: add reprocessing dependencies
-    return get_dependencies(
-        (event["data_source"], event["data_type"], event["descriptor"]),
-        event["dependency_type"],
-        event["relationship"],
-    )
+    # TODO: add reprocessing dependencies are handled here
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            get_dependencies(
+                (event["data_source"], event["data_type"], event["descriptor"]),
+                event["dependency_type"],
+                event["relationship"],
+            )
+        ),
+    }

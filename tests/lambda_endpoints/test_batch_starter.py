@@ -1,5 +1,6 @@
 """Tests the batch starter."""
 
+import json
 from datetime import datetime
 from unittest.mock import Mock, patch
 
@@ -163,11 +164,26 @@ def test_lambda_handler(
     # Different return response for each call to the lambda invoke
     lambda_client_mock.side_effect = [
         # Downstream dependencies call by the first lambda invoke
-        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
+        {
+            "statusCode": 200,
+            "body": json.dumps(
+                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
+            ),
+        },
         # Upstream dependencies called by the second lambda invoke
-        [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}],
+        {
+            "statusCode": 200,
+            "body": json.dumps(
+                [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}]
+            ),
+        },
         # Downstream dependencies call by the first lambda invoke
-        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
+        {
+            "statusCode": 200,
+            "body": json.dumps(
+                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
+            ),
+        },
     ]
 
     events = {
@@ -203,11 +219,31 @@ def test_lambda_handler_multiple_events(lambda_client_mock, session):
     # Mock invoke to return different responses for each event
     lambda_client_mock.side_effect = [
         # dependencies call by the first event
-        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
-        [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}],
+        {
+            "statusCode": 200,
+            "body": json.dumps(
+                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
+            ),
+        },
+        {
+            "statusCode": 200,
+            "body": json.dumps(
+                [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}]
+            ),
+        },
         # dependencies call by the second event
-        [{"data_source": "swe", "data_type": "l1b", "descriptor": "sci"}],
-        [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}],
+        {
+            "statusCode": 200,
+            "body": json.dumps(
+                [{"data_source": "swe", "data_type": "l1b", "descriptor": "sci"}]
+            ),
+        },
+        {
+            "statusCode": 200,
+            "body": json.dumps(
+                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
+            ),
+        },
     ]
 
     multiple_events = {

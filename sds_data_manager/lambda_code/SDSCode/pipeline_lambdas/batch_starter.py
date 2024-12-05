@@ -169,11 +169,20 @@ def try_to_submit_job(session, job_info, start_date, version):
         "relationship": "HARD",
     }
 
-    upstream_dependencies = LAMBDA_CLIENT.invoke(
+    invoke_response = LAMBDA_CLIENT.invoke(
         FunctionName="dependency-lambda",
         InvocationType="RequestResponse",
         Payload=json.dumps(dependency_event_msg),
     )
+
+    upstream_dependencies = json.loads(invoke_response["body"])
+
+    if invoke_response["statusCode"] != 200:
+        logger.error(
+            "Dependency lambda invocation failed with status"
+            f" code: {upstream_dependencies}"
+        )
+        return {"statusCode": 500, "body": "Dependency lambda invocation failed"}
 
     for upstream_dependency in upstream_dependencies:
         upstream_source = upstream_dependency["data_source"]
@@ -356,11 +365,20 @@ def lambda_handler(events: dict, context):
 
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
-        potential_jobs = LAMBDA_CLIENT.invoke(
+        invoke_response = LAMBDA_CLIENT.invoke(
             FunctionName="dependency-lambda",
             InvocationType="RequestResponse",
             Payload=json.dumps(dependency_event_msg),
         )
+
+        potential_jobs = json.loads(invoke_response["body"])
+
+        if invoke_response["statusCode"] != 200:
+            logger.error(
+                "Dependency lambda invocation failed with"
+                f" status code: {potential_jobs}"
+            )
+            return {"statusCode": 500, "body": "Dependency lambda invocation failed"}
 
         logger.info(f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}")
 
