@@ -331,7 +331,7 @@ def get_dependencies(node, dependency_type, relationship):
     return dependencies
 
 
-def lambda_hander(event, context):
+def lambda_handler(event, context):
     """Lambda handler for dependency tracking.
 
     Parameters
