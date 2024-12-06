@@ -179,8 +179,7 @@ def try_to_submit_job(session, job_info, start_date, version):
 
     if invoke_response["statusCode"] != 200:
         logger.error(
-            "Dependency lambda invocation failed with status"
-            f" code: {upstream_dependencies}"
+            f"Dependency lambda invocation failed with {upstream_dependencies}"
         )
         return {"statusCode": 500, "body": "Dependency lambda invocation failed"}
 
@@ -297,7 +296,36 @@ def try_to_submit_job(session, job_info, start_date, version):
 
 
 def lambda_handler(events: dict, context):
-    """Lambda handler."""
+    """Lambda handler.
+
+    This lambda is triggered by different events.
+    1. Event of a new science or ancillary file arrival from indexer lambda.
+        Example event:
+            {
+                "DetailType": "Processed File",
+                "Source": "imap.lambda",
+                "Detail": {
+                    "object": {
+                        "key": str,
+                        "instrument": str,
+                    }
+                }
+            }
+        TODO: We will need to add checks for ancillary files.
+    2. Event of a new spice file arrival from spice indexer lambda.
+        TODO: This will be implemented in the future.
+    3. Event of a new science reprocessing.
+        TODO: This will be implemented in the future.
+    4. Event of bulk processing of science in normal processing.
+        TODO: This will be implemented in the future.
+
+    Parameters
+    ----------
+    events : dict
+        Event input
+    context : LambdaContext
+        Lambda context object
+    """
     logger.info(f"Events: {events}")
     logger.info(f"Context: {context}")
 
@@ -317,8 +345,9 @@ def lambda_handler(events: dict, context):
         }
 
         # TODO: decide how we want to set start date and version
-        # for SPICE or ancillary files and may be sciece files
-        # during reprocessing.
+        # for SPICE or ancillary files or sciece files
+        # during reprocessing or bulk processing. Should we bring back
+        # end_date?
         start_date = ""
         version = ""
 
@@ -326,20 +355,9 @@ def lambda_handler(events: dict, context):
 
         # Try to create a SPICE file first
         file_obj = None
-        try:
-            file_obj = imap_data_access.SPICEFilePath(filename)
-            # Temporarily way to identify SPICE files
-            # TODO: Update event message once
-            # imap-data-access is updated
-            dependency_event_msg.update({"data_type": "spice"})
-
-        except imap_data_access.SPICEFilePath.InvalidSPICEFileError:
-            # Not a SPICE file, continue on to science files
-            pass
 
         try:
-            # file_obj will be None if it's not a SPICE file
-            file_obj = file_obj or imap_data_access.ScienceFilePath(filename)
+            file_obj = imap_data_access.ScienceFilePath(filename)
             components = ScienceFilePath.extract_filename_components(filename)
             start_date = components["start_date"]
             version = components["version"]
@@ -358,10 +376,8 @@ def lambda_handler(events: dict, context):
             return {"statusCode": 400, "body": str(e)}
 
         # TODO: add ancillary file handling here
-
-        # TODO: remove this if statement once SPICE files are handled
-        if dependency_event_msg["data_type"] == "spice":
-            continue
+        if file_obj is None:
+            raise ValueError(f"File handling {filename} is not implemented yet")
 
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
@@ -374,10 +390,7 @@ def lambda_handler(events: dict, context):
         potential_jobs = json.loads(invoke_response["body"])
 
         if invoke_response["statusCode"] != 200:
-            logger.error(
-                "Dependency lambda invocation failed with"
-                f" status code: {potential_jobs}"
-            )
+            logger.error(f"Dependency lambda invocation failed with {potential_jobs}")
             return {"statusCode": 500, "body": "Dependency lambda invocation failed"}
 
         logger.info(f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}")
