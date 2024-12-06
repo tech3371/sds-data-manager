@@ -353,7 +353,7 @@ def lambda_handler(events: dict, context):
 
         # TODO: How to handle repointing
 
-        # Try to create a SPICE file first
+        # Try to create a science file first
         file_obj = None
 
         try:
@@ -391,7 +391,7 @@ def lambda_handler(events: dict, context):
 
         if invoke_response["statusCode"] != 200:
             logger.error(f"Dependency lambda invocation failed with {potential_jobs}")
-            return {"statusCode": 500, "body": "Dependency lambda invocation failed"}
+            raise ValueError("Dependency lambda invocation failed")
 
         logger.info(f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}")
 

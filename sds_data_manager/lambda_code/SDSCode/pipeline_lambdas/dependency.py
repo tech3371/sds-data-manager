@@ -15,7 +15,11 @@ logger.setLevel(logging.INFO)
 
 @dataclass
 class DataSource:
-    """Valid data sources for dependency tracking."""
+    """Valid data sources for dependency tracking.
+
+    Valid data sources includes valid instruments names
+    from imap_data_access and other data sources related to SPICE.
+    """
 
     SC_ATTITUDE: str = "sc_attitude"
     SC_EPHEMERIS: str = "sc_ephemeris"
@@ -28,10 +32,7 @@ class DataSource:
 
     @property
     def valid_source(self) -> list[str]:
-        """Add additional data sources.
-
-        Valid data sources includes valid instruments from imap_data_access,
-        and other data sources related to SPICE.
+        """Add data sources.
 
         Returns
         -------
@@ -53,16 +54,18 @@ class DataSource:
 
 @dataclass
 class DataType:
-    """Valid data types for dependency tracking."""
+    """Valid data types for dependency tracking.
+
+    Valid data types includes valid data levels from imap_data_access
+    and other data types related to SPICE and ancillary data.
+    """
 
     SPICE: str = "spice"
     ANCILLARY: str = "ancillary"
 
     @property
     def valid_type(self) -> list[str]:
-        """Add additional data types.
-
-        In addition to valid data levels, add other SPICE and other data types.
+        """Add data types.
 
         Returns
         -------
@@ -80,6 +83,11 @@ class DataType:
 class DataDescriptor:
     """Valid data descriptors for dependency tracking.
 
+    Every IMAP science data product has its data descriptor.
+    TODO: Include all valid science data descriptors from
+    imap_data_access once it's defined.
+
+    Here, we add descriptors related to SPICE and other data types.
     Valid data descriptors for SPICE and other data types are:
         1. predict - Predicted data
         2. historical - Historical data
@@ -98,15 +106,12 @@ class DataDescriptor:
 
     @property
     def valid_descriptor(self) -> list[str]:
-        """Add other data descriptors.
-
-        Every IMAP science data product has its data descriptor. Here,
-        we add descriptors related to SPICE and other data types.
+        """Add data descriptors.
 
         Returns
         -------
         list[str]
-            list of additional data descriptors.
+            list of valid data descriptors.
         """
         return [
             self.PREDICT,
@@ -136,7 +141,7 @@ class Relationship:
         Returns
         -------
         list[str]
-            list of data relationships.
+            list of valid data relationships.
         """
         return [self.HARD, self.SOFT]
 
@@ -145,9 +150,9 @@ class Relationship:
 class DependencyType:
     """Valid data dependency type for dependency tracking.
 
-    Valid data directions are:
+    Valid data dependency types are:
         1. UPSTREAM - Processed product to start current product's process
-        2. DOWNSTREAM - future file that needs current file to start it's process
+        2. DOWNSTREAM - future file that needs current file to start its process
     """
 
     UPSTREAM: str = "UPSTREAM"
@@ -155,12 +160,12 @@ class DependencyType:
 
     @property
     def valid_dependency_type(self) -> list[str]:
-        """Add data directions.
+        """Add data dependency types.
 
         Returns
         -------
         list[str]
-            list of data directions.
+            list of valid data dependency types.
         """
         return [self.UPSTREAM, self.DOWNSTREAM]
 
@@ -178,8 +183,8 @@ class DependencyConfig:
         dependencies["HARD"]["DOWNSTREAM"][('hit', 'l0', 'raw')]
         where ('hit', 'l0', 'raw') is the parent node.
 
-    Example output of above query:
-        [('hit', 'l1a', 'all'), ('hit', 'l1b', 'hk')]
+        Example output of above call:
+            [('hit', 'l1a', 'all'), ('hit', 'l1b', 'hk')]
     """
 
     def __init__(self):
@@ -271,11 +276,13 @@ class DependencyConfig:
             True if node is valid, False otherwise.
         """
         if len(node) != 3:
-            logger.debug("Missing source, type, or descriptor")
+            logger.debug("Missing data source, data type, or descriptor")
             return False
         if node[0] not in self.data_source.valid_source:
+            logger.debug(f"Invalid data source: {node[0]}")
             return False
         if node[1] not in self.data_type.valid_type:
+            logger.debug(f"Invalid data type: {node[1]}")
             return False
         # TODO: Add descriptor validation once we define all data product's
         # data descriptor.
@@ -286,8 +293,8 @@ def get_dependencies(node, dependency_type, relationship):
     """Lookup the dependencies for the given ``node``.
 
     A ``node`` is an identifier of the data product, which can be an
-    (instrument, data_level, descriptor) tuple, SPICE file identifiers,
-    or ancillary data file identifiers.
+    (data_source, data_type, descriptor) tuple, science file identifiers,
+    or SPICE file identifiers, or ancillary data file identifiers.
 
     Parameters
     ----------
@@ -297,7 +304,8 @@ def get_dependencies(node, dependency_type, relationship):
         Whether it's UPSTREAM or DOWNSTREAM dependency.
     relationship : str
         Whether it's HARD or SOFT dependency.
-        HARD means it's required and SOFT means it's nice to have.
+        HARD means data is required for pipeline and SOFT
+        means data is optiona for pipeline.
 
     Returns
     -------
@@ -309,10 +317,7 @@ def get_dependencies(node, dependency_type, relationship):
         dependency_config = DependencyConfig()
     except Exception as e:
         logger.error(f"Error loading dependencies: {e!s}")
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": "Error loading dependencies"}),
-        }
+        return None
 
     dependencies = dependency_config.dependencies[relationship][dependency_type].get(
         node, []
@@ -369,14 +374,20 @@ def lambda_hander(event, context):
     """
     logger.info(f"Event: {event}")
 
+    dependencies = get_dependencies(
+        (event["data_source"], event["data_type"], event["descriptor"]),
+        event["dependency_type"],
+        event["relationship"],
+    )
+
+    if dependencies is None:
+        return {
+            "statusCode": 500,
+            "body": "Failed to load dependencies",
+        }
+
     # TODO: add reprocessing dependencies are handled here
     return {
         "statusCode": 200,
-        "body": json.dumps(
-            get_dependencies(
-                (event["data_source"], event["data_type"], event["descriptor"]),
-                event["dependency_type"],
-                event["relationship"],
-            )
-        ),
+        "body": json.dumps(dependencies),
     }
