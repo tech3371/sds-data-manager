@@ -103,6 +103,15 @@ class BatchStarterLambda(Construct):
                 "*",
             ],
         )
+        lambda_invoke_policy = iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=["lambda:InvokeFunction"],
+            resources=[
+                f"arn:aws:lambda:{env.region}:{env.account}:function:{dependency_lambda_name}"
+            ],  # Scope to the target Lambda
+        )
+        self.instrument_lambda.add_to_role_policy(lambda_invoke_policy)
+
         self.instrument_lambda.add_to_role_policy(lambda_policy)
 
         data_bucket.grant_read_write(self.instrument_lambda)
