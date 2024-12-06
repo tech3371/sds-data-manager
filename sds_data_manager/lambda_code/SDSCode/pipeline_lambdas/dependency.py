@@ -305,7 +305,7 @@ def get_dependencies(node, dependency_type, relationship):
     relationship : str
         Whether it's HARD or SOFT dependency.
         HARD means data is required for pipeline and SOFT
-        means data is optiona for pipeline.
+        means data is optional for pipeline.
 
     Returns
     -------
@@ -353,24 +353,24 @@ def lambda_hander(event, context):
     -------
     dependencies : list of dict
         statusCode and body containing list of dictionary containing
-        the dependencies.
-        [
-            {
-                "data_source": "hit",
-                "data_type": "l1a",
-                "descriptor": "all",
-            },
-            {
-                "data_source": "hit",
-                "data_type": "l1b",
-                "descriptor": "hk",
-            },
-            {
-                "data_source": "sc_attitude",
-                "data_type": "spice",
-                "descriptor": "historical",
-            },
-        ]
+        the dependencies information like this:
+            [
+                {
+                    "data_source": "hit",
+                    "data_type": "l1a",
+                    "descriptor": "all",
+                },
+                {
+                    "data_source": "hit",
+                    "data_type": "l1b",
+                    "descriptor": "hk",
+                },
+                {
+                    "data_source": "sc_attitude",
+                    "data_type": "spice",
+                    "descriptor": "historical",
+                },
+            ]
     """
     logger.info(f"Event: {event}")
 
