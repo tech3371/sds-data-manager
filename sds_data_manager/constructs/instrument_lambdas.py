@@ -29,6 +29,7 @@ class BatchStarterLambda(Construct):
         vpc: ec2.Vpc,
         sqs_queue: sqs.Queue,
         layers: list,
+        dependency_lambda_name: str,
         **kwargs,
     ):
         """BatchStarterLambda Constructor.
@@ -57,6 +58,8 @@ class BatchStarterLambda(Construct):
             A FIFO queue to trigger the lambda with.
         layers : list
             List of Lambda layers cdk.cdfnOutput names
+        dependency_lambda_name: str
+            The dependency lambda function name
         kwargs : dict
             Keyword arguments
 
@@ -70,6 +73,7 @@ class BatchStarterLambda(Construct):
             "SECRET_NAME": rds_construct.rds_creds.secret_name,
             "ACCOUNT": f"{env.account}",
             "REGION": f"{env.region}",
+            "DEPENDENCY_LAMBDA_NAME": f"{dependency_lambda_name}",
         }
 
         self.instrument_lambda = lambda_.Function(
@@ -94,7 +98,7 @@ class BatchStarterLambda(Construct):
         # and submit batch job
         lambda_policy = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["events:PutEvents", "batch:SubmitJob"],
+            actions=["events:PutEvents", "batch:SubmitJob", "lambda:InvokeFunction"],
             resources=[
                 "*",
             ],

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from datetime import datetime
 
 import boto3
@@ -20,6 +21,8 @@ logger.setLevel(logging.INFO)
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
 LAMBDA_CLIENT = boto3.client("lambda", region_name="us-west-2")
+
+DEPENDENCY_LAMBDA_NAME = os.getenv("DEPENDENCY_LAMBDA_NAME")
 
 
 def get_file(session, instrument, data_level, descriptor, start_date, version):
@@ -170,7 +173,7 @@ def try_to_submit_job(session, job_info, start_date, version):
     }
 
     invoke_response = LAMBDA_CLIENT.invoke(
-        FunctionName="dependency-lambda",
+        FunctionName=DEPENDENCY_LAMBDA_NAME,
         InvocationType="RequestResponse",
         Payload=json.dumps(dependency_event_msg),
     )
@@ -379,14 +382,18 @@ def lambda_handler(events: dict, context):
         if file_obj is None:
             raise ValueError(f"File handling {filename} is not implemented yet")
 
+        logger.info(
+            f"Invoking dependency lambda with this input: {dependency_event_msg}"
+        )
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
         invoke_response = LAMBDA_CLIENT.invoke(
-            FunctionName="dependency-lambda",
+            FunctionName=DEPENDENCY_LAMBDA_NAME,
             InvocationType="RequestResponse",
             Payload=json.dumps(dependency_event_msg),
         )
 
+        logger.info(f"Dependency lambda invocation response: {invoke_response}")
         potential_jobs = json.loads(invoke_response["body"])
 
         if invoke_response["statusCode"] != 200:
