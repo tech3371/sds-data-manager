@@ -1,6 +1,5 @@
 """Tests the batch starter."""
 
-import json
 from datetime import datetime
 from unittest.mock import Mock, patch
 
@@ -151,40 +150,11 @@ def test_get_file(session):
     assert record is None
 
 
-@patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.LAMBDA_CLIENT.invoke"
-)
 def test_lambda_handler(
-    lambda_client_mock,
     session,
 ):
     """Tests ``lambda_handler`` function."""
     _populate_file_catalog(session)
-
-    # Different return response for each call to the lambda invoke
-    lambda_client_mock.side_effect = [
-        # Downstream dependencies call by the first lambda invoke
-        {
-            "statusCode": 200,
-            "body": json.dumps(
-                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
-            ),
-        },
-        # Upstream dependencies called by the second lambda invoke
-        {
-            "statusCode": 200,
-            "body": json.dumps(
-                [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}]
-            ),
-        },
-        # Downstream dependencies call by the first lambda invoke
-        {
-            "statusCode": 200,
-            "body": json.dumps(
-                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
-            ),
-        },
-    ]
 
     events = {
         "Records": [
@@ -208,43 +178,11 @@ def test_lambda_handler(
         mock_batch_client.submit_job.assert_called_once()
 
 
-@patch(
-    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter.LAMBDA_CLIENT.invoke"
-)
-def test_lambda_handler_multiple_events(lambda_client_mock, session):
+def test_lambda_handler_multiple_events(session):
     """Tests ``lambda_handler`` function with multiple events."""
     _populate_file_catalog(session)
 
     # Test Multiple Events:
-    # Mock invoke to return different responses for each event
-    lambda_client_mock.side_effect = [
-        # dependencies call by the first event
-        {
-            "statusCode": 200,
-            "body": json.dumps(
-                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
-            ),
-        },
-        {
-            "statusCode": 200,
-            "body": json.dumps(
-                [{"data_source": "swe", "data_type": "l0", "descriptor": "raw"}]
-            ),
-        },
-        # dependencies call by the second event
-        {
-            "statusCode": 200,
-            "body": json.dumps(
-                [{"data_source": "swe", "data_type": "l1b", "descriptor": "sci"}]
-            ),
-        },
-        {
-            "statusCode": 200,
-            "body": json.dumps(
-                [{"data_source": "swe", "data_type": "l1a", "descriptor": "sci"}]
-            ),
-        },
-    ]
 
     multiple_events = {
         "Records": [

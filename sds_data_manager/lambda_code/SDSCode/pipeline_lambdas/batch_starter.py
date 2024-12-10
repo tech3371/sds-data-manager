@@ -2,7 +2,6 @@
 
 import json
 import logging
-import os
 from datetime import datetime
 
 import boto3
@@ -14,15 +13,15 @@ from sqlalchemy.exc import IntegrityError
 from ..database import database as db
 from ..database import models
 
+# import dependency
+from ..pipeline_lambdas import dependency
+
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 # Create a batch client
 BATCH_CLIENT = boto3.client("batch", region_name="us-west-2")
-LAMBDA_CLIENT = boto3.client("lambda", region_name="us-west-2")
-
-DEPENDENCY_LAMBDA_NAME = os.getenv("DEPENDENCY_LAMBDA_NAME")
 
 
 def get_file(session, instrument, data_level, descriptor, start_date, version):
@@ -172,15 +171,12 @@ def try_to_submit_job(session, job_info, start_date, version):
         "relationship": "HARD",
     }
 
-    invoke_response = LAMBDA_CLIENT.invoke(
-        FunctionName=DEPENDENCY_LAMBDA_NAME,
-        InvocationType="RequestResponse",
-        Payload=json.dumps(dependency_event_msg),
-    )
+    # TODO: update this once dependency lambda is ready
+    dependency_response = dependency.lambda_handler(dependency_event_msg, None)
 
-    upstream_dependencies = json.loads(invoke_response["body"])
+    upstream_dependencies = json.loads(dependency_response["body"])
 
-    if invoke_response["statusCode"] != 200:
+    if dependency_response["statusCode"] != 200:
         logger.error(
             f"Dependency lambda invocation failed with {upstream_dependencies}"
         )
@@ -387,16 +383,13 @@ def lambda_handler(events: dict, context):
         )
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
-        invoke_response = LAMBDA_CLIENT.invoke(
-            FunctionName=DEPENDENCY_LAMBDA_NAME,
-            InvocationType="RequestResponse",
-            Payload=json.dumps(dependency_event_msg),
-        )
+        # TODO: figure out dependency lambda
+        dependency_response = dependency.lambda_handler(dependency_event_msg, None)
 
-        logger.info(f"Dependency lambda invocation response: {invoke_response}")
-        potential_jobs = json.loads(invoke_response["body"])
+        logger.info(f"Dependency lambda invocation response: {dependency_response}")
+        potential_jobs = json.loads(dependency_response["body"])
 
-        if invoke_response["statusCode"] != 200:
+        if dependency_response["statusCode"] != 200:
             logger.error(f"Dependency lambda invocation failed with {potential_jobs}")
             raise ValueError("Dependency lambda invocation failed")
 

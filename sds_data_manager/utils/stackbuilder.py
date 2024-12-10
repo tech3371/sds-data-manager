@@ -15,7 +15,6 @@ from sds_data_manager.constructs import (
     backup_bucket_construct,
     data_bucket_construct,
     database_construct,
-    dependency_lambda_construct,
     efs_construct,
     ialirt_api_manager_construct,
     ialirt_bucket_construct,
@@ -234,10 +233,7 @@ def build_sds(
         instrument_names=imap_data_access.VALID_INSTRUMENTS,
     ).instrument_queue
 
-    # Create lambda that builds dependencies
-    dependency_lambda_name = "DependencyLambda"
-
-    batch_starter_lambda = instrument_lambdas.BatchStarterLambda(
+    instrument_lambdas.BatchStarterLambda(
         scope=sdc_stack,
         construct_id="BatchStarterLambda",
         env=env,
@@ -249,19 +245,6 @@ def build_sds(
         vpc=networking.vpc,
         sqs_queue=instrument_sqs,
         layers=[db_lambda_layer],
-        dependency_lambda_name=dependency_lambda_name,
-    )
-
-    dependency_lambda_construct.DependencyLambda(
-        scope=sdc_stack,
-        construct_id="DependencyLambda",
-        function_name=dependency_lambda_name,
-        code=lambda_code,
-        rds_security_group=rds_construct.rds_security_group,
-        subnets=rds_construct.rds_subnet_selection,
-        vpc=networking.vpc,
-        layers=[db_lambda_layer],
-        batch_start_lambda=batch_starter_lambda.instrument_lambda,
     )
 
     # Create lambda that mounts EFS and writes data to EFS
