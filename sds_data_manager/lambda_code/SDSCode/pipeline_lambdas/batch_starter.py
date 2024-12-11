@@ -177,10 +177,8 @@ def try_to_submit_job(session, job_info, start_date, version):
     upstream_dependencies = json.loads(dependency_response["body"])
 
     if dependency_response["statusCode"] != 200:
-        logger.error(
-            f"Dependency lambda invocation failed with {upstream_dependencies}"
-        )
-        return {"statusCode": 500, "body": "Dependency lambda invocation failed"}
+        logger.error(f"Dependency query failed with {upstream_dependencies}")
+        return {"statusCode": 500, "body": "Dependency query failed"}
 
     for upstream_dependency in upstream_dependencies:
         upstream_source = upstream_dependency["data_source"]
@@ -378,20 +376,18 @@ def lambda_handler(events: dict, context):
         if file_obj is None:
             raise ValueError(f"File handling {filename} is not implemented yet")
 
-        logger.info(
-            f"Invoking dependency lambda with this input: {dependency_event_msg}"
-        )
+        logger.info(f"Sending this event to dependency query: {dependency_event_msg}")
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
         # TODO: figure out dependency lambda
         dependency_response = dependency.lambda_handler(dependency_event_msg, None)
 
-        logger.info(f"Dependency lambda invocation response: {dependency_response}")
+        logger.info(f"Dependency query response: {dependency_response}")
         potential_jobs = json.loads(dependency_response["body"])
 
         if dependency_response["statusCode"] != 200:
-            logger.error(f"Dependency lambda invocation failed with {potential_jobs}")
-            raise ValueError("Dependency lambda invocation failed")
+            logger.error(f"Dependency query failed with {potential_jobs}")
+            raise ValueError("Dependency query failed")
 
         logger.info(f"Potential jobs found [{len(potential_jobs)}]: {potential_jobs}")
 
