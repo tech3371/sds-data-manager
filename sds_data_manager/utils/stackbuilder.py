@@ -15,6 +15,7 @@ from sds_data_manager.constructs import (
     backup_bucket_construct,
     data_bucket_construct,
     database_construct,
+    dependency_lambda_construct,
     efs_construct,
     ialirt_api_manager_construct,
     ialirt_bucket_construct,
@@ -245,6 +246,15 @@ def build_sds(
         vpc=networking.vpc,
         sqs_queue=instrument_sqs,
         layers=[db_lambda_layer],
+    )
+
+    dependency_lambda_construct.DependencyLambda(
+        scope=sdc_stack,
+        construct_id="DependencyLambda",
+        function_name="DependencyLambda",
+        code=lambda_code,
+        layers=[db_lambda_layer],
+        api=api,
     )
 
     # Create lambda that mounts EFS and writes data to EFS
