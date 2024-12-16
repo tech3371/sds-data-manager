@@ -171,7 +171,7 @@ def try_to_submit_job(session, job_info, start_date, version):
         "relationship": "HARD",
     }
 
-    # TODO: update this once dependency lambda is ready
+    # TODO: call dependency lambda when it's implemented
     dependency_response = dependency.lambda_handler(dependency_event_msg, None)
 
     upstream_dependencies = json.loads(dependency_response["body"])
@@ -233,29 +233,46 @@ def try_to_submit_job(session, job_info, start_date, version):
         f"Wrote job INPROGRESS to Processing Jobs Table with id: {processing_job.id}"
     )
 
+    # TODO: change the upstream dependency keys as needed in the future based
+    # on needs. Right now, we are keeping same as before to reduce complexity.
     # FYI, upstream_dependencies in the command below should contain these keys:
-    #   'data_source',
-    #   'data_type',
+    #   'instrument',
+    #   'data_level',
     #   'descriptor',
     #   'start_date',
     #   'version'
     # Example list of upstream_dependencies in the command below:
     # [
     #   {
-    #     'data_source': 'swe',
-    #     'data_type': 'l1b',
+    #     'instrument': 'swe',
+    #     'data_level': 'l1b',
     #     'descriptor': 'sci',
     #     'start_date': '20231212',
     #     'version': 'v001',
     #   },
     #   {
-    #     'data_source': 'sc_attitude',
-    #     'data_type': 'spice',
+    #     'instrument': 'sc_attitude',
+    #     'data_level': 'spice',
     #     'descriptor': 'historical',
     #     'start_date': '20231212',
     #     'version': '01',
     #   },
     # ]
+
+    # Reformat the upstream dependencies from dependency call to match
+    # what batch job expects. Change 'data_source' to 'instrument' and
+    # 'data_type' to 'data_level'.
+    upstream_dependencies = [
+        {
+            "instrument": dep["data_source"],
+            "data_level": dep["data_type"],
+            "descriptor": dep["descriptor"],
+            "start_date": dep["start_date"],
+            "version": dep["version"],
+        }
+        for dep in upstream_dependencies
+    ]
+
     batch_command = [
         "--instrument",
         instrument,
@@ -379,7 +396,7 @@ def lambda_handler(events: dict, context):
         logger.info(f"Sending this event to dependency query: {dependency_event_msg}")
         # Potential jobs are the instruments that depend on the current file,
         # which are the downstream dependencies.
-        # TODO: figure out dependency lambda
+        # TODO: call dependency lambda when it's implemented
         dependency_response = dependency.lambda_handler(dependency_event_msg, None)
 
         logger.info(f"Dependency query response: {dependency_response}")
