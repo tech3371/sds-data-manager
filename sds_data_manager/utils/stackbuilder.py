@@ -24,6 +24,7 @@ from sds_data_manager.constructs import (
     instrument_lambdas,
     lambda_layer_construct,
     monitoring_construct,
+    monitoring_lambda_construct,
     networking_construct,
     processing_construct,
     route53_hosted_zone,
@@ -185,8 +186,14 @@ def build_sds(
         vpc_subnets=rds_construct.rds_subnet_selection,
         rds_security_group=rds_construct.rds_security_group,
         data_bucket=data_bucket.data_bucket,
-        sns_topic=monitoring.sns_topic_notifications,
         layers=[db_lambda_layer],
+    )
+
+    monitoring_lambda_construct.MonitoringLambda(
+        scope=sdc_stack,
+        construct_id="MonitoringLambda",
+        code=lambda_code,
+        sns_topic=monitoring.sns_topic_notifications,
     )
 
     sds_api_manager_construct.SdsApiManager(
