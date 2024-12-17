@@ -205,6 +205,29 @@ def test_lambda_handler_multiple_events(session):
         assert mock_batch_client.submit_job.call_count == 2
 
 
+def test_spice_file():
+    """Tests ``lambda_handler`` function with spice file."""
+    events = {
+        "Records": [
+            {
+                "body": '{"detail": '
+                '{"object": {"key": "imap_yyyy_doy_yyyy_doy.spin.csv"}}'
+                "}"
+            }
+        ]
+    }
+
+    context = {"context": "sample_context"}
+
+    # Test that value error is raised for SPICE file right now.
+    # TODO: undo this and add correct tests when it's implemented.
+    with pytest.raises(
+        ValueError,
+        match="File handling imap_yyyy_doy_yyyy_doy.spin.csv is not implemented yet",
+    ):
+        lambda_handler(events, context)
+
+
 def test_is_job_in_status_table(session):
     """Test the ``is_job_in_status_table`` function."""
     _populate_processing_table(session)

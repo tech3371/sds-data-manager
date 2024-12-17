@@ -1,6 +1,9 @@
 """Test data dependency functions."""
 
 import json
+from unittest.mock import patch
+
+import pytest
 
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import dependency
 
@@ -44,3 +47,37 @@ def test_lambda_handler_no_dependencies():
 
     assert response["statusCode"] == 200
     assert response["body"] == "[]"
+
+
+@patch(
+    "sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.dependency.get_dependencies"
+)
+def test_lambda_handler_invalid_dependency_type(mock_get_dependencies):
+    """Test lambda_handler when invalid dependency type is provided."""
+    event = {
+        "data_source": "jim",
+        "data_type": "l0",
+        "descriptor": "raw",
+        "dependency_type": "INVALID",
+        "relationship": "HARD",
+    }
+    mock_get_dependencies.return_value = None
+
+    response = dependency.lambda_handler(event, None)
+
+    assert response["statusCode"] == 500
+    assert response["body"] == "Failed to load dependencies"
+
+
+@patch.object(dependency.DependencyConfig, "_load_dependencies")
+def test_dependency_class(mock_load_dependencies):
+    """Test DependencyConfig class."""
+    # Set side effect to return value error of product not having
+    # valid source, type, and descriptor.
+    msg = "Data product must have: (source, type, descriptor)"
+    mock_load_dependencies.side_effect = ValueError(msg)
+
+    with pytest.raises(
+        ValueError, match="Data product must have: \\(source, type, descriptor\\)"
+    ):
+        dependency.DependencyConfig()

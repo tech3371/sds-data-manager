@@ -387,7 +387,7 @@ def lambda_handler(events: dict, context):
             # No science file type matched, return an error with the
             # exception message indicating how to fix it to the user
             logger.error(str(e))
-            return {"statusCode": 400, "body": str(e)}
+            pass
 
         # TODO: add ancillary file handling here
         if file_obj is None:
