@@ -1,11 +1,16 @@
 """Lambda function to send a formatted SNS notification when a Batch job fails."""
 
+import logging
 import os
 
 import boto3
 
-sns_client = boto3.client("sns")
-logs_client = boto3.client("logs")
+SNS_CLIENT = boto3.client("sns")
+LOGS_CLIENT = boto3.client("logs")
+
+# Logger setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
@@ -23,11 +28,13 @@ def lambda_handler(event, context):
     context : obj
         The context object for the lambda function
     """
+    logger.info("Received event: %s", event)
     # Extract relevant details from the event
     detail = event.get("detail", {})
 
     job_name = detail.get("jobName", "Unknown")
     job_id = detail.get("jobId", "Unknown")
+
     log_stream_name = (
         detail.get("attempts", [{}])[0].get("container", {}).get("logStreamName", None)
     )
@@ -39,7 +46,7 @@ def lambda_handler(event, context):
     if log_stream_name:
         log_group_name = "/aws/batch/job"
         try:
-            response = logs_client.get_log_events(
+            response = LOGS_CLIENT.get_log_events(
                 logGroupName=log_group_name, logStreamName=log_stream_name, limit=10
             )
             logs = [event["message"] for event in response.get("events", [])]
@@ -58,10 +65,10 @@ def lambda_handler(event, context):
     {''.join(logs) if logs else 'No logs available'}
     """
 
-    print(f"Formatted Message: {formatted_message}")
+    logger.info(f"Formatted Message: {formatted_message}")
 
     # Send the formatted message to the SNS topic
-    sns_client.publish(
+    SNS_CLIENT.publish(
         TopicArn=os.environ["SNS_TOPIC_ARN"],
         Subject=f"Batch Job Failure: {job_name}",
         Message=formatted_message,

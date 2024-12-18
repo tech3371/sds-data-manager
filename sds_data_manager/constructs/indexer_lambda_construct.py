@@ -46,9 +46,6 @@ class IndexerLambda(Construct):
             The RDS security group
         data_bucket : obj
             The data bucket
-        sns_topic : aws_sns.Topic
-            SNS Topic for sending notifications so that external
-            resources can subscribe to for alerts.
         layers : list
             List of Lambda layers cdk.cdfnOutput names
         kwargs : dict
