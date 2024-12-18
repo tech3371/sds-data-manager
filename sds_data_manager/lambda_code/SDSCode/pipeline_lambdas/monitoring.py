@@ -29,11 +29,16 @@ def lambda_handler(event, context):
         The context object for the lambda function
     """
     logger.info("Received event: %s", event)
+
+    if event.get("source") != "aws.batch":
+        logger.error("Function only supports AWS Batch events")
+        return {"statusCode": 400, "body": "Bad Request"}
+
     # Extract relevant details from the event
     detail = event.get("detail", {})
 
-    job_name = detail.get("jobName", "Unknown")
-    job_id = detail.get("jobId", "Unknown")
+    job_name = detail.get("jobName")
+    job_id = detail.get("jobId")
 
     log_stream_name = (
         detail.get("attempts", [{}])[0].get("container", {}).get("logStreamName", None)
