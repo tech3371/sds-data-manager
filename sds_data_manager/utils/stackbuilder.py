@@ -304,15 +304,14 @@ def build_sds(
     )
 
     # All traffic to I-ALiRT is directed to listed container ports
-    ports = {"Primary": [1234, 1235], "Secondary": [1236]}
+    ialirt_ports = [1234, 1235]
     ialirt_secret_name = "nexus-credentials"  # noqa
 
     ialirt_processing_construct.IalirtProcessing(
         scope=ialirt_stack,
         construct_id="IalirtProcessing",
         vpc=networking.vpc,
-        primary_ports=ports["Primary"],
-        secondary_ports=ports["Secondary"],
+        ports=ialirt_ports,
         ialirt_bucket=ialirt_bucket.ialirt_bucket,
         secret_name=ialirt_secret_name,
     )

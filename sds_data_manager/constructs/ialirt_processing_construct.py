@@ -26,8 +26,7 @@ class IalirtProcessing(Construct):
         scope: Construct,
         construct_id: str,
         vpc: ec2.Vpc,
-        primary_ports: list[int],
-        secondary_ports: list[int],
+        ports: list[int],
         ialirt_bucket: s3.Bucket,
         secret_name: str,
         **kwargs,
@@ -42,9 +41,7 @@ class IalirtProcessing(Construct):
             A unique string identifier for this construct.
         vpc : ec2.Vpc
             VPC into which to put the resources that require networking.
-        primary_ports : list[int]
-            List of ports to listen on for incoming traffic and used by container.
-        secondary_ports : list[int]
+        ports : list[int]
             List of ports to listen on for incoming traffic and used by container.
         ialirt_bucket: s3.Bucket
             S3 bucket
@@ -56,8 +53,7 @@ class IalirtProcessing(Construct):
         """
         super().__init__(scope, construct_id, **kwargs)
 
-        self.primary_ports = primary_ports
-        self.secondary_ports = secondary_ports
+        self.ports = ports
         self.vpc = vpc
         self.s3_bucket_name = ialirt_bucket.bucket_name
         self.secret_name = secret_name
@@ -86,7 +82,7 @@ class IalirtProcessing(Construct):
         )
 
         # Only allow traffic from the NLB security group
-        for port in self.primary_ports + self.secondary_ports:
+        for port in self.ports:
             self.ecs_security_group.add_ingress_rule(
                 peer=ec2.Peer.security_group_id(
                     self.load_balancer_security_group.security_group_id
@@ -108,7 +104,7 @@ class IalirtProcessing(Construct):
         # Allow inbound and outbound traffic from a specific port and IP.
         # IPs: LASP IP, BlueNet (tlm relay)
         ip_ranges = ["128.138.131.0/24", "198.118.1.14/32"]
-        for port in self.primary_ports + self.secondary_ports:
+        for port in self.ports:
             for ip_range in ip_ranges:
                 self.load_balancer_security_group.add_ingress_rule(
                     # TODO: allow IP addresses from partners
@@ -185,17 +181,9 @@ class IalirtProcessing(Construct):
         # Specifies the networking mode as AWS_VPC.
         # ECS tasks in AWS_VPC mode can be registered with
         # Network Load Balancers (NLB).
-        primary_task_definition = ecs.Ec2TaskDefinition(
+        task_definition = ecs.Ec2TaskDefinition(
             self,
-            "IalirtTaskDefPrimary",
-            network_mode=ecs.NetworkMode.AWS_VPC,
-            task_role=task_role,
-            execution_role=execution_role,
-        )
-
-        secondary_task_definition = ecs.Ec2TaskDefinition(
-            self,
-            "IalirtTaskDefSecondary",
+            "IalirtTaskDef",
             network_mode=ecs.NetworkMode.AWS_VPC,
             task_role=task_role,
             execution_role=execution_role,
@@ -203,28 +191,10 @@ class IalirtProcessing(Construct):
 
         # Adds a container to the ECS task definition
         # Logging is configured to use AWS CloudWatch Logs.
-        primary_container = primary_task_definition.add_container(
-            "IalirtContainerPrimary",
+        container = task_definition.add_container(
+            "IalirtContainer",
             image=ecs.ContainerImage.from_registry(
-                "lasp-registry.colorado.edu/ialirt/ialirt-primary:latest",
-                credentials=nexus_secret,
-            ),
-            # Allowable values:
-            # https://docs.aws.amazon.com/cdk/api/v2/docs/
-            # aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
-            memory_limit_mib=512,
-            cpu=256,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirtprimary"),
-            environment={"S3_BUCKET": self.s3_bucket_name},
-            # Ensure the ECS task is running in privileged mode,
-            # which allows the container to use FUSE.
-            privileged=True,
-        )
-
-        secondary_container = secondary_task_definition.add_container(
-            "IalirtContainerSecondary",
-            image=ecs.ContainerImage.from_registry(
-                "lasp-registry.colorado.edu/ialirt/ialirt-secondary:latest",
+                "lasp-registry.colorado.edu/ialirt/ialirt:latest",
                 credentials=nexus_secret,
             ),
             # Allowable values:
@@ -242,42 +212,22 @@ class IalirtProcessing(Construct):
         # Map ports to container
         # NLB needs to know which port on the EC2 instances
         # it should forward the traffic to
-        for port in self.primary_ports:
+        for port in self.ports:
             port_mapping = ecs.PortMapping(
                 container_port=port,
                 host_port=port,
                 protocol=ecs.Protocol.TCP,
             )
-            primary_container.add_port_mappings(port_mapping)
-
-        for port in self.secondary_ports:
-            port_mapping = ecs.PortMapping(
-                container_port=port,
-                host_port=port,
-                protocol=ecs.Protocol.TCP,
-            )
-            secondary_container.add_port_mappings(port_mapping)
+            container.add_port_mappings(port_mapping)
 
         # ECS Service is a configuration that
         # ensures application can run and maintain
         # instances of a task definition.
-        self.primary_ecs_service = ecs.Ec2Service(
+        self.ecs_service = ecs.Ec2Service(
             self,
-            "IalirtServicePrimary",
+            "IalirtService",
             cluster=self.ecs_cluster,
-            task_definition=primary_task_definition,
-            security_groups=[self.ecs_security_group],
-            desired_count=1,
-            vpc_subnets=ec2.SubnetSelection(
-                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
-            ),
-        )
-
-        self.secondary_ecs_service = ecs.Ec2Service(
-            self,
-            "IalirtServiceSecondary",
-            cluster=self.ecs_cluster,
-            task_definition=secondary_task_definition,
+            task_definition=task_definition,
             security_groups=[self.ecs_security_group],
             desired_count=1,
             vpc_subnets=ec2.SubnetSelection(
@@ -326,7 +276,7 @@ class IalirtProcessing(Construct):
         # Allow inbound traffic from the Network Load Balancer
         # to the security groups associated with the EC2 instances
         # within the Auto Scaling Group.
-        for port in self.primary_ports + self.secondary_ports:
+        for port in self.ports:
             auto_scaling_group.connections.allow_from(
                 self.load_balancer, ec2.Port.tcp(port)
             )
@@ -345,21 +295,21 @@ class IalirtProcessing(Construct):
         )
 
         # Create a listener for each port specified
-        for port in self.primary_ports:
+        for port in self.ports:
             listener = self.load_balancer.add_listener(
-                f"ListenerPrimary{port}",
+                f"Listener{port}",
                 port=port,
                 protocol=elbv2.Protocol.TCP,
             )
 
             # Register the ECS service as a target for the listener
             listener.add_targets(
-                f"TargetPrimary{port}",
+                f"Target{port}",
                 port=port,
                 # Specifies the container and port to route traffic to.
                 targets=[
-                    self.primary_ecs_service.load_balancer_target(
-                        container_name="IalirtContainerPrimary",
+                    self.ecs_service.load_balancer_target(
+                        container_name="IalirtContainer",
                         container_port=port,
                     )
                 ],
@@ -372,38 +322,10 @@ class IalirtProcessing(Construct):
                 ),
             )
 
-        # Create a listener for each port specified
-        for port in self.secondary_ports:
-            listener = self.load_balancer.add_listener(
-                f"ListenerSecondary{port}",
-                port=port,
-                protocol=elbv2.Protocol.TCP,
+            # This simply prints the DNS name of the
+            # load balancer in the terminal.
+            CfnOutput(
+                self,
+                f"LoadBalancerDNS{port}",
+                value=f"http://{self.load_balancer.load_balancer_dns_name}:{port}",
             )
-
-            # Register the ECS service as a target for the listener
-            listener.add_targets(
-                f"TargetSecondary{port}",
-                port=port,
-                # Specifies the container and port to route traffic to.
-                targets=[
-                    self.secondary_ecs_service.load_balancer_target(
-                        container_name="IalirtContainerSecondary",
-                        container_port=port,
-                    )
-                ],
-                # Configures health checks for the target group
-                # to ensure traffic is routed only to healthy ECS tasks.
-                health_check=elbv2.HealthCheck(
-                    enabled=True,
-                    port=str(port),
-                    protocol=elbv2.Protocol.TCP,
-                ),
-            )
-
-        # This simply prints the DNS name of the
-        # load balancer in the terminal.
-        CfnOutput(
-            self,
-            "LoadBalancerDNS",
-            value=f"http://{self.load_balancer.load_balancer_dns_name}",
-        )
