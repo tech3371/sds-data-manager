@@ -7,7 +7,7 @@ https://docs.aws.amazon.com/AmazonECS/latest/bestpracticesguide/networking-inbou
 https://aws.amazon.com/elasticloadbalancing/features/#Product_comparisons
 """
 
-from aws_cdk import CfnOutput, RemovalPolicy
+from aws_cdk import CfnOutput, Duration, RemovalPolicy
 from aws_cdk import aws_autoscaling as autoscaling
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_ecs as ecs
@@ -202,7 +202,7 @@ class IalirtProcessing(Construct):
             # aws-cdk-lib.aws_ecs.TaskDefinition.html#cpu
             memory_limit_mib=512,
             cpu=256,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirtsecondary"),
+            logging=ecs.LogDrivers.aws_logs(stream_prefix="Ialirt"),
             environment={"S3_BUCKET": self.s3_bucket_name},
             # Ensure the ECS task is running in privileged mode,
             # which allows the container to use FUSE.
@@ -230,6 +230,7 @@ class IalirtProcessing(Construct):
             task_definition=task_definition,
             security_groups=[self.ecs_security_group],
             desired_count=1,
+            health_check_grace_period=Duration.seconds(3600),
             vpc_subnets=ec2.SubnetSelection(
                 subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
             ),
@@ -330,10 +331,16 @@ class IalirtProcessing(Construct):
                 ],
                 # Configures health checks for the target group
                 # to ensure traffic is routed only to healthy ECS tasks.
+                # Port 7568 is a dummy port used by IOIS to check the
+                # health of the container.
                 health_check=elbv2.HealthCheck(
                     enabled=True,
-                    port=str(port),
+                    port=str(7568),
                     protocol=elbv2.Protocol.TCP,
+                    interval=Duration.seconds(60),
+                    timeout=Duration.seconds(30),
+                    unhealthy_threshold_count=5,
+                    healthy_threshold_count=5,
                 ),
             )
 
