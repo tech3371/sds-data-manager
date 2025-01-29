@@ -250,6 +250,10 @@ class IalirtProcessing(Construct):
             machine_image=ecs.EcsOptimizedImage.amazon_linux2(),
             vpc=self.vpc,
             desired_capacity=2,
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PUBLIC,
+                availability_zones=["us-west-2b", "us-west-2c"],
+            ),
         )
 
         auto_scaling_group.apply_removal_policy(RemovalPolicy.DESTROY)
@@ -286,13 +290,19 @@ class IalirtProcessing(Construct):
         """Add a load balancer for a container."""
         # Create the Network Load Balancer and
         # place it in a public subnet.
+        selected_subnets = ec2.SubnetSelection(
+            availability_zones=["us-west-2b", "us-west-2c"],
+            subnet_type=ec2.SubnetType.PUBLIC,
+        )
+
         self.load_balancer = elbv2.NetworkLoadBalancer(
             self,
             "IalirtNLB",
             vpc=self.vpc,
             security_groups=[self.load_balancer_security_group],
             internet_facing=True,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
+            vpc_subnets=selected_subnets,
+            cross_zone_enabled=True,
         )
 
         # Create a listener for each port specified
