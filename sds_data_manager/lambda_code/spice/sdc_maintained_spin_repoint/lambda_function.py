@@ -1,7 +1,6 @@
 """Functions to write SPICE ingested files to EFS."""
 
 import logging
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -17,56 +16,6 @@ spice_mount_path = Path("spice")  # Eg. /mnt/spice
 
 # Create an S3 client
 s3_client = boto3.client("s3")
-
-
-def create_symlink(source_path: Path, destination_path: Path) -> None:
-    """Create a symlink from source_path to destination_path.
-
-    Parameters
-    ----------
-    source_path : str
-        Source path of the symlink
-    destination_path : str
-        Destination path of the symlink
-
-    """
-    # Remove the old symlink
-    destination_path.unlink(missing_ok=True)
-
-    # Create a new symlink pointing to the new file
-    destination_path.symlink_to(source_path)
-
-
-def write_data_to_efs(s3_key: str, s3_bucket: str):
-    """Write data to EFS and create/update symlink.
-
-    Parameters
-    ----------
-    s3_key : str
-        S3 object key
-    s3_bucket : str
-        The S3 bucket
-
-    """
-    # Remove 'spice/' prefix from the s3 key. See key example below.
-    #   Eg. spice/spin/imap_2025_122_2025_122_02.spin.csv
-    # Keep remaining folder path after `spice/` to match the folder structure
-    # defined in imap-data-access library.
-    s3_folder_path = os.path.dirname(s3_key).replace("spice/", "")
-    filename = os.path.basename(s3_key)
-    # Download path to EFS
-    efs_spice_path = spice_mount_path / s3_folder_path
-
-    try:
-        # Create the folder if it does not exist
-        efs_spice_path.mkdir(parents=True, exist_ok=True)
-        # Download file from S3 to the EFS path
-        s3_client.download_file(s3_bucket, s3_key, efs_spice_path / filename)
-        logger.info(f"{s3_key} file downloaded successfully")
-    except Exception as e:
-        logger.error(f"Error downloading file: {e!s}")
-
-    logger.info("File was written to EFS path: %s", efs_spice_path)
 
 
 def produce_sdc_maintained_files(s3_bucket: str, s3_key: str):
@@ -135,6 +84,8 @@ def produce_sdc_maintained_files(s3_bucket: str, s3_key: str):
     sdc_filename = f"imap_{file_start_time}_{file_end_time}_{version}.spin.csv"
     # copy data from input csv to new csv file
     data_df.to_csv(sdc_filename, index=False)
+    # Upload the file to S3
+    s3_client.upload_file(sdc_filename, s3_bucket, f"spice/spin/{sdc_filename}")
 
 
 def lambda_handler(event, context):
@@ -190,7 +141,6 @@ def lambda_handler(event, context):
     s3_key = event["detail"]["object"]["key"]
     logger.info(event)
 
-    # write_data_to_efs(s3_key, s3_bucket)
     produce_sdc_maintained_files(s3_bucket, s3_key)
 
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
