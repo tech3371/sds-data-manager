@@ -28,6 +28,7 @@ from sds_data_manager.constructs import (
     networking_construct,
     processing_construct,
     route53_hosted_zone,
+    sdc_spin_repoint_construct,
     sds_api_manager_construct,
     sqs_construct,
     website_hosting,
@@ -148,6 +149,16 @@ def build_sds(
         scope=sdc_stack,
         id="DatabaseDependencies",
         layer_dependencies_dir=str(layer_code_directory),
+    )
+
+    # Lambda to generate SDC maintained spin and repointing files
+    sdc_spin_repoint_construct.SDCSpinRepoint(
+        scope=sdc_stack,
+        construct_id="SDCSpinRepoint",
+        env=env,
+        data_bucket=data_bucket.data_bucket,
+        code=lambda_code,
+        layers=[db_lambda_layer],
     )
 
     # Get RDS properties from account_config

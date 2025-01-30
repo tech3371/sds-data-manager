@@ -1,4 +1,4 @@
-"""Functions to write SPICE ingested files to EFS."""
+"""Functions to generate SDC Spin and Repointing files."""
 
 import logging
 from datetime import datetime
@@ -144,32 +144,3 @@ def lambda_handler(event, context):
     produce_sdc_maintained_files(s3_bucket, s3_key)
 
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
-
-
-if __name__ == "__main__":
-    event = {
-        "version": "0",
-        "id": "3ee8fb2e-856d-790d-1d81-f77e1f3c0987",
-        "detail-type": "Object Created",
-        "source": "aws.s3",
-        "account": "449431850278",
-        "time": "2023-10-25T23:53:17Z",
-        "region": "us-west-2",
-        "resources": ["arn:aws:s3:::sds-data-449431850278"],
-        "detail": {
-            "version": "0",
-            "bucket": {"name": "sds-data-449431850278"},
-            "object": {
-                "key": "spice/spin/imap_2025_122_2025_122_02.spin.csv",
-                "size": 8,
-                "etag": "fd33e2e8ad3cb1bdd3ea8f5633fcf5c7",
-                "version-id": "w9eElv_lFFeEbifMabOBHjtJl9Ori_At",
-                "sequencer": "006539AA6D7936ACF5",
-            },
-            "request-id": "5V837ESMXGRD39D2",
-            "requester": "449431850278",
-            "source-ip-address": "128.138.64.30",
-            "reason": "PutObject",
-        },
-    }
-    lambda_handler(event, None)
