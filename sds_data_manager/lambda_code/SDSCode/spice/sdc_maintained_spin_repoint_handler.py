@@ -1,91 +1,119 @@
 """Functions to generate SDC Spin and Repointing files."""
 
 import logging
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
 import boto3
+import botocore
 import pandas as pd
 from imap_processing.spice.time import met_to_utc
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Define the paths
-spice_mount_path = Path("spice")  # Eg. /mnt/spice
-
+session = boto3.Session(profile_name="imap-sdc")
 # Create an S3 client
-s3_client = boto3.client("s3")
+S3_CLIENT = session.client("s3")
+
+SDC_SPIN_S3_PATH = "spice/sdc/spin"  # os.getenv("SDC_SPIN_S3_PATH")
+SDC_REPOINTING_S3_PATH = "spice/sdc/repointing"  # os.getenv("SDC_REPOINTING_S3_PATH")
+
+BUCKET_NAME = "sds-data-449431850278"  # os.getenv("S3_BUCKET")
 
 
-def produce_sdc_maintained_files(s3_bucket: str, s3_key: str):
-    """Produce SDC maintained files.
+def _file_exists(s3_key_path):
+    """Check if a file exists in the SDS storage bucket at this key."""
+    try:
+        S3_CLIENT.head_object(Bucket=BUCKET_NAME, Key=s3_key_path)
+        # If the head_object operation succeeds, that means there
+        # is a file already at the specified path, so return a 409
+        return True
+    except botocore.exceptions.ClientError:
+        # No file exists
+        return False
+
+
+def produce_sdc_spin_file(s3_bucket: str, s3_key: str):
+    """Produce SDC maintained spin file.
 
     Parameters
     ----------
-    s3_bucket : str
+    s3_bucket : S3 data bucket
         S3 bucket
     s3_key : str
-        S3 key
+        S3 key or filepath. Filepath of spin data.
     """
-    # take in the s3 key and bucket
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        # get filename from s3_key
+        filename = s3_key.split("/")[-1]
+        # Read version from filename for later use
+        version = filename.split("_")[-1].split(".")[0]
+        tmp_filepath = tmp_dir + "/" + filename
+        # Download data from S3
+        S3_CLIENT.download_file(s3_bucket, s3_key, tmp_filepath)
 
-    # Download s3 file in temporary directory
-    # with tempfile.TemporaryDirectory() as tmpdir:
-    #     tmpfile = Path(tmpdir) / "tmpfile"
-    #     s3_client.download_file(s3_bucket, s3_key, tmpfile)
+        # read csv file
+        data_df = pd.read_csv(tmp_filepath)
 
-    #     # Read the csv file
-    #     with open(tmpfile, "r") as f:
-    #         # Read the first line
-    #         first_line = f.readline()
+        # find the start time and end date and time
+        # of the data in the file.
+        min_start_time = data_df[
+            data_df["spin_start_sec"] == data_df["spin_start_sec"].min()
+        ]
+        max_start_time = data_df[
+            data_df["spin_start_sec"] == data_df["spin_start_sec"].max()
+        ]
 
-    # read csv file and find the start time and end date and time
-    # of the data in the file.
-    key = "imap_2025_122_2025_122_01.spin.csv"
-    data_df = pd.read_csv(key)
-    version = key.split("_")[-1].split(".")[0]
-    # find earliest time and get the row
-    min_start_time = data_df[
-        data_df["spin_start_sec"] == data_df["spin_start_sec"].min()
-    ]
-    max_start_time = data_df[
-        data_df["spin_start_sec"] == data_df["spin_start_sec"].max()
-    ]
+        # combine S/C start time sec and subsec to get the start
+        # time
+        file_start_sc_time = (
+            min_start_time["spin_start_sec"].values[0]
+            + min_start_time["spin_start_subsec"].values[0] / 1e3
+        )
+        # combine S/C end time and spin period to get the end time.
+        file_end_sc_time = (
+            max_start_time["spin_start_sec"].values[0]
+            + max_start_time["spin_start_subsec"].values[0] / 1e3
+            + max_start_time["spin_period_sec"].values[0]
+        )
 
-    # Write start and end date in this format - yyyymmddTHHMMSS
-    # round up the end time and round down the start time so that we
-    # query enough data for the user input
-    # yyyymmddTHHMMSS
-    # Eg. for SDC maintained spin file.
-    # imap_yyyymmmTHHMMSS_yyyymmmTHHMMSS_##.spin.csv
+        # TODO: should we do this and if so how?
+        # round up the end time and round down the start time so that we
+        # query enough data for the user input time range.
 
-    # start time is the first spin start time.
-    file_start_sc_time = (
-        min_start_time["spin_start_sec"].values[0]
-        + min_start_time["spin_start_subsec"].values[0] / 1e3
-    )
-    # end time is last spin start time + spin period.
-    file_end_sc_time = (
-        max_start_time["spin_start_sec"].values[0]
-        + max_start_time["spin_start_subsec"].values[0] / 1e3
-        + max_start_time["spin_period_sec"].values[0]
-    )
+        # Write start and end date in this format - YYYYmmddTHHMMSS. This
+        # will be used to create the new file name.
+        #   Eg. for SDC maintained spin file.
+        #   imap_YYYYmmddTHHMMSS_YYYYmmddTHHMMSS_##.spin.csv
+        # Convert S/C time to UTC
+        file_start_time_utc = met_to_utc(file_start_sc_time, precision=6)
+        file_end_time_utc = met_to_utc(file_end_sc_time, precision=6)
 
-    file_start_time_utc = met_to_utc(file_start_sc_time, precision=6)
-    file_end_time_utc = met_to_utc(file_end_sc_time, precision=6)
+        # Format date to YYYYmmddTHHMMSS
+        file_start_time_obj = datetime.strptime(
+            file_start_time_utc, "%Y-%m-%dT%H:%M:%S.%f"
+        )
+        file_end_time_obj = datetime.strptime(file_end_time_utc, "%Y-%m-%dT%H:%M:%S.%f")
+        file_start_time = file_start_time_obj.strftime("%Y%m%dT%H%M%S")
+        file_end_time = file_end_time_obj.strftime("%Y%m%dT%H%M%S")
 
-    # Format date to yyyymmddTHHMMSS
-    file_start_time_obj = datetime.strptime(file_start_time_utc, "%Y-%m-%dT%H:%M:%S.%f")
-    file_end_time_obj = datetime.strptime(file_end_time_utc, "%Y-%m-%dT%H:%M:%S.%f")
-    file_start_time = file_start_time_obj.strftime("%Y%m%dT%H%M%S")
-    file_end_time = file_end_time_obj.strftime("%Y%m%dT%H%M%S")
+        sdc_filename = f"imap_{file_start_time}_{file_end_time}_{version}.spin.csv"
 
-    sdc_filename = f"imap_{file_start_time}_{file_end_time}_{version}.spin.csv"
-    # copy data from input csv to new csv file
-    data_df.to_csv(sdc_filename, index=False)
-    # Upload the file to S3
-    s3_client.upload_file(sdc_filename, s3_bucket, f"spice/spin/{sdc_filename}")
+        # copy data from input csv to new csv file
+        data_df.to_csv(sdc_filename, index=False)
+        upload_s3_path = f"{SDC_SPIN_S3_PATH}/{sdc_filename}"
+        if _file_exists(upload_s3_path):
+            logger.info(f"{sdc_filename} already exists.")
+            return
+        # Upload the file to S3
+        S3_CLIENT.upload_file(sdc_filename, s3_bucket, upload_s3_path)
+
+
+def append_data_to_repointing_file():
+    """Append data to the repointing file."""
+    pass
 
 
 def lambda_handler(event, context):
@@ -141,6 +169,47 @@ def lambda_handler(event, context):
     s3_key = event["detail"]["object"]["key"]
     logger.info(event)
 
-    produce_sdc_maintained_files(s3_bucket, s3_key)
+    file_path = Path(s3_key)
+    all_suffixes = file_path.suffixes  # Returns ['.spin', '.csv']
+    file_extension = "".join(all_suffixes)  # Returns '.spin.csv'
+    # If suffix is spin.csv, then calculate start time using spin data.
+    if file_extension == ".spin.csv":
+        produce_sdc_spin_file(s3_bucket, s3_key)
+    elif file_extension == ".repoint.csv":
+        # Append data to the repointing file
+        append_data_to_repointing_file(s3_bucket, s3_key)
 
     return {"statusCode": 200, "body": "File downloaded and moved successfully"}
+
+
+if __name__ == "__main__":
+    events = [
+        {
+            "detail-type": "Object Created",
+            "source": "aws.s3",
+            "account": "449431850278",
+            "region": "us-west-2",
+            "detail": {
+                "version": "0",
+                "bucket": {"name": "sds-data-449431850278"},
+                "object": {
+                    "key": "spice/spin/imap_2025_122_2025_122_01.spin.csv",
+                },
+            },
+        },
+        {
+            "detail-type": "Object Created",
+            "source": "aws.s3",
+            "account": "449431850278",
+            "region": "us-west-2",
+            "detail": {
+                "version": "0",
+                "bucket": {"name": "sds-data-449431850278"},
+                "object": {
+                    "key": "spice/repointing/imap_2025_230_2025_230_01.repoint.csv",
+                },
+            },
+        },
+    ]
+    for event in events:
+        lambda_handler(event, None)

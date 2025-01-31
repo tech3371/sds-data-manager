@@ -1,4 +1,4 @@
-"""Module containing constructs for SDC maintained Spin and Repoint Lambda functions."""
+"""Module containing constructs for SDC maintained Spin and Repointing files."""
 
 from aws_cdk import Duration, Environment
 from aws_cdk import aws_iam as iam
