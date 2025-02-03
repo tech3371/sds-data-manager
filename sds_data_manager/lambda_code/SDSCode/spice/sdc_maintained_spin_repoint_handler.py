@@ -18,7 +18,7 @@ session = boto3.Session(profile_name="imap-sdc")
 S3_CLIENT = session.client("s3")
 
 SDC_SPIN_S3_PATH = "spice/sdc/spin"  # os.getenv("SDC_SPIN_S3_PATH")
-SDC_REPOINTING_S3_PATH = "spice/sdc/repointing"  # os.getenv("SDC_REPOINTING_S3_PATH")
+SDC_REPOINTING_S3_PATH = "spice/sdc/repoint"  # os.getenv("SDC_REPOINTING_S3_PATH")
 
 BUCKET_NAME = "sds-data-449431850278"  # os.getenv("S3_BUCKET")
 
@@ -113,6 +113,8 @@ def produce_sdc_spin_file(s3_bucket: str, s3_key: str):
 
 def append_data_to_repointing_file():
     """Append data to the repointing file."""
+    # with tempfile.TemporaryDirectory() as tmp_dir:
+    #     # download repointing file
     pass
 
 
@@ -206,7 +208,7 @@ if __name__ == "__main__":
                 "version": "0",
                 "bucket": {"name": "sds-data-449431850278"},
                 "object": {
-                    "key": "spice/repointing/imap_2025_230_2025_230_01.repoint.csv",
+                    "key": "spice/repoint/imap_2025_230_2025_230_01.repoint.csv",
                 },
             },
         },
