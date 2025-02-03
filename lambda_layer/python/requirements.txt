@@ -157,11 +157,11 @@ greenlet==3.0.3 ; python_version >= "3.9" and python_version < "4" and (platform
 idna==3.6 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca \
     --hash=sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f
-imap-data-access==0.11.0 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:f778876415633223069160e8ff764d33aaa9cbdbc803a5ba0ab99bba59d240e9
-imap-processing==0.9.0 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:8ff89e1e1115c5b755be3ecf8942a19af67333a332ef7e1b263bee698c27581e \
-    --hash=sha256:d2a0b520dd22a701db20aed1b66f3fc5ed99f57160acb126f9d8b2756bcfd0bd
+imap-data-access==0.12.0 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:a8504771542ad1e28823be78fe04fc04f5de53af993ee80fee84a4d85951c628
+imap-processing==0.10.0 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:02561464008b725cc77fab77543e7551bb2bd88a3bfcd925017541e9caa3b3e0 \
+    --hash=sha256:0c7673a1941039994764c4fbd6e7c26fc7b3166dcd818f71238f86ed4bfbeb84
 lxml==5.3.0 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:01220dca0d066d1349bd6a1726856a78f7929f3878f7e2ee83c296c69495309e \
     --hash=sha256:02ced472497b8362c8e902ade23e3300479f4f43e45f4105c85ef43b8db85229 \
@@ -530,8 +530,8 @@ pyyaml==6.0.1 ; python_version >= "3.9" and python_version < "4" \
 requests==2.31.0 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f \
     --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1
-sammi-cdf==0.1.2 ; python_version >= "3.9" and python_version < "4" \
-    --hash=sha256:bbf963ff573fe7180b54a67bce5f43386ba49ed2af5d733589e2e5649a1b2f15
+sammi-cdf==1.0.0 ; python_version >= "3.9" and python_version < "4" \
+    --hash=sha256:dec77b2d2ae45dae32540f7db7b74b4444d22e73ce3e0e346342f36360f02f89
 six==1.16.0 ; python_version >= "3.9" and python_version < "4" \
     --hash=sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926 \
     --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254

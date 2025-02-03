@@ -754,12 +754,12 @@ files = [
 
 [[package]]
 name = "imap-data-access"
-version = "0.11.0"
+version = "0.12.0"
 description = "IMAP SDC Data Access"
 optional = false
 python-versions = "*"
 files = [
-    {file = "imap_data_access-0.11.0.tar.gz", hash = "sha256:f778876415633223069160e8ff764d33aaa9cbdbc803a5ba0ab99bba59d240e9"},
+    {file = "imap_data_access-0.12.0.tar.gz", hash = "sha256:a8504771542ad1e28823be78fe04fc04f5de53af993ee80fee84a4d85951c628"},
 ]
 
 [package.extras]
@@ -768,13 +768,13 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "imap-processing"
-version = "0.9.0"
+version = "0.10.0"
 description = "IMAP Science Operations Center Processing"
 optional = false
 python-versions = "<4,>=3.9"
 files = [
-    {file = "imap_processing-0.9.0-py3-none-any.whl", hash = "sha256:8ff89e1e1115c5b755be3ecf8942a19af67333a332ef7e1b263bee698c27581e"},
-    {file = "imap_processing-0.9.0.tar.gz", hash = "sha256:d2a0b520dd22a701db20aed1b66f3fc5ed99f57160acb126f9d8b2756bcfd0bd"},
+    {file = "imap_processing-0.10.0-py3-none-any.whl", hash = "sha256:02561464008b725cc77fab77543e7551bb2bd88a3bfcd925017541e9caa3b3e0"},
+    {file = "imap_processing-0.10.0.tar.gz", hash = "sha256:0c7673a1941039994764c4fbd6e7c26fc7b3166dcd818f71238f86ed4bfbeb84"},
 ]
 
 [package.dependencies]
@@ -782,7 +782,7 @@ cdflib = ">=1.3.1,<2.0.0"
 imap-data-access = ">=0.10.1"
 numpy = "<=3"
 pyyaml = ">=6.0.1,<7.0.0"
-sammi-cdf = ">=0.1.2,<0.2.0"
+sammi-cdf = ">=1.0,<2.0"
 space_packet_parser = ">=5.0.1,<6.0.0"
 spiceypy = ">=6.0.0"
 xarray = ">=2023.0.0"
@@ -1839,12 +1839,12 @@ crt = ["botocore[crt] (>=1.33.2,<2.0a.0)"]
 
 [[package]]
 name = "sammi-cdf"
-version = "0.1.2"
+version = "1.0.0"
 description = "A Python package to support metadata attriubte management for Space Weather data processing pipelines."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "sammi_cdf-0.1.2.tar.gz", hash = "sha256:bbf963ff573fe7180b54a67bce5f43386ba49ed2af5d733589e2e5649a1b2f15"},
+    {file = "sammi_cdf-1.0.0.tar.gz", hash = "sha256:dec77b2d2ae45dae32540f7db7b74b4444d22e73ce3e0e346342f36360f02f89"},
 ]
 
 [package.dependencies]
@@ -1854,7 +1854,7 @@ pyyaml = ">=5.3.1"
 dev = ["black (==24.1.1)", "coverage (>=5.0.3)", "coverage[toml] (==7.4.1)", "flake8 (==7.0.0)", "pytest (==8.0.0)", "pytest-astropy (==0.11.0)", "pytest-cov (==4.1.0)"]
 docs = ["sphinx (==7.2.6)", "sphinx-automodapi (==0.16.0)", "sphinx-copybutton (==0.5.2)"]
 style = ["black (==24.1.1)", "flake8 (==7.0.0)", "rstcheck (==6.2.0)"]
-test = ["coverage[toml] (==7.4.1)", "pytest (==8.0.0)", "pytest-astropy (==0.11.0)", "pytest-cov (==4.1.0)"]
+test = ["coverage[toml] (==7.4.1)", "pytest (==8.0.0)", "pytest-astropy (==0.11.0)", "pytest-cov (==4.1.0)", "requests-mock (==1.12.1)"]
 
 [[package]]
 name = "setuptools"
@@ -2325,4 +2325,4 @@ doc = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4"
-content-hash = "22c647cd933a38db8f09b353b6446c7aab57431dc98dfc00c6423d6b5cc87fb0"
+content-hash = "52bafdb4b1cfc8a8554dc9459fe67e1f623cdfde4c35391691a54317bb76edca"
