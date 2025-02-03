@@ -18,7 +18,7 @@ session = boto3.Session(profile_name="imap-sdc")
 S3_CLIENT = session.client("s3")
 
 SDC_SPIN_S3_PATH = "spice/sdc/spin"  # os.getenv("SDC_SPIN_S3_PATH")
-SDC_REPOINTING_S3_PATH = "spice/sdc/repoint"  # os.getenv("SDC_REPOINTING_S3_PATH")
+SDC_REPOINT_S3_PATH = "spice/sdc/repoint"  # os.getenv("SDC_REPOINT_S3_PATH")
 
 BUCKET_NAME = "sds-data-449431850278"  # os.getenv("S3_BUCKET")
 
@@ -44,6 +44,7 @@ def produce_sdc_spin_file(s3_bucket: str, s3_key: str):
         S3 bucket
     s3_key : str
         S3 key or filepath. Filepath of spin data.
+        Eg. spice/spin/imap_2025_122_2025_122_01.spin.csv
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
         # get filename from s3_key
@@ -111,11 +112,28 @@ def produce_sdc_spin_file(s3_bucket: str, s3_key: str):
         S3_CLIENT.upload_file(sdc_filename, s3_bucket, upload_s3_path)
 
 
-def append_data_to_repointing_file():
-    """Append data to the repointing file."""
-    # with tempfile.TemporaryDirectory() as tmp_dir:
-    #     # download repointing file
-    pass
+def append_data_to_repoint_file(s3_key: str):
+    """Append data to the repoint file."""
+    repoint_file = "repoint.csv"
+    s3_path = f"{SDC_REPOINT_S3_PATH}/{repoint_file}"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        sdc_repoint_path = tmp_dir + "/" + repoint_file
+        try:
+            # Download repoint file
+            S3_CLIENT.download_file(BUCKET_NAME, s3_path, sdc_repoint_path)
+        except botocore.exceptions.ClientError:
+            # Create new repoint file if it doesn't exist
+            pass
+
+        repoint_filename = s3_key.split("/")[-1]
+        repoint_local_path = tmp_dir + "/" + repoint_filename
+        S3_CLIENT.download_file(BUCKET_NAME, s3_key, repoint_local_path)
+        # Read repoint files
+        new_repoint_df = pd.read_csv(repoint_local_path)
+        sdc_repoint_df = pd.read_csv(sdc_repoint_path)
+        # Compare and write only new data to the repoint file
+        new_data = new_repoint_df[~new_repoint_df.isin(sdc_repoint_df)].dropna()
+        print(new_data)
 
 
 def lambda_handler(event, context):
@@ -174,14 +192,20 @@ def lambda_handler(event, context):
     file_path = Path(s3_key)
     all_suffixes = file_path.suffixes  # Returns ['.spin', '.csv']
     file_extension = "".join(all_suffixes)  # Returns '.spin.csv'
-    # If suffix is spin.csv, then calculate start time using spin data.
+    # Produce SDC maintained spin file
     if file_extension == ".spin.csv":
         produce_sdc_spin_file(s3_bucket, s3_key)
+        return {
+            "statusCode": 200,
+            "body": f"SDC spin file produced successfully for {s3_key}",
+        }
+    # Append data to the repoint file
     elif file_extension == ".repoint.csv":
-        # Append data to the repointing file
-        append_data_to_repointing_file(s3_bucket, s3_key)
-
-    return {"statusCode": 200, "body": "File downloaded and moved successfully"}
+        append_data_to_repoint_file(s3_bucket, s3_key)
+        return {
+            "statusCode": 200,
+            "body": f"Appended data from {s3_key} to repoint file successfully",
+        }
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ class SDCSpinRepoint(Construct):
             "ACCOUNT": f"{env.account}",
             "REGION": f"{env.region}",
             "SDC_SPIN_S3_PATH": "spice/sdc/spin",
-            "SDC_REPOINTING_S3_PATH": "spice/sdc/repoint",
+            "SDC_REPOINT_S3_PATH": "spice/sdc/repoint",
         }
 
         self._lambda = lambda_.Function(
