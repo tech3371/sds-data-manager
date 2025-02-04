@@ -20,13 +20,13 @@ S3_CLIENT = session.client("s3")
 SDC_SPIN_S3_PATH = "spice/sdc/spin"  # os.getenv("SDC_SPIN_S3_PATH")
 SDC_REPOINT_S3_PATH = "spice/sdc/repoint"  # os.getenv("SDC_REPOINT_S3_PATH")
 
-BUCKET_NAME = "sds-data-449431850278"  # os.getenv("S3_BUCKET")
+S3_BUCKET = "sds-data-449431850278"  # os.getenv("S3_BUCKET")
 
 
 def _file_exists(s3_key_path):
     """Check if a file exists in the SDS storage bucket at this key."""
     try:
-        S3_CLIENT.head_object(Bucket=BUCKET_NAME, Key=s3_key_path)
+        S3_CLIENT.head_object(Bucket=S3_BUCKET, Key=s3_key_path)
         # If the head_object operation succeeds, that means there
         # is a file already at the specified path, so return a 409
         return True
@@ -35,7 +35,7 @@ def _file_exists(s3_key_path):
         return False
 
 
-def produce_sdc_spin_file(s3_bucket: str, s3_key: str):
+def produce_sdc_spin_file(s3_key: str):
     """Produce SDC maintained spin file.
 
     Parameters
@@ -53,7 +53,7 @@ def produce_sdc_spin_file(s3_bucket: str, s3_key: str):
         version = filename.split("_")[-1].split(".")[0]
         tmp_filepath = tmp_dir + "/" + filename
         # Download data from S3
-        S3_CLIENT.download_file(s3_bucket, s3_key, tmp_filepath)
+        S3_CLIENT.download_file(S3_BUCKET, s3_key, tmp_filepath)
 
         # read csv file
         data_df = pd.read_csv(tmp_filepath)
@@ -109,28 +109,30 @@ def produce_sdc_spin_file(s3_bucket: str, s3_key: str):
             logger.info(f"{sdc_filename} already exists.")
             return
         # Upload the file to S3
-        S3_CLIENT.upload_file(sdc_filename, s3_bucket, upload_s3_path)
+        # S3_CLIENT.upload_file(sdc_filename, s3_bucket, upload_s3_path)
 
 
 def append_data_to_repoint_file(s3_key: str):
     """Append data to the repoint file."""
-    repoint_file = "repoint.csv"
-    s3_path = f"{SDC_REPOINT_S3_PATH}/{repoint_file}"
+    main_repoint_file = "repoint.csv"
+    sdc_repoint_s3_path = f"{SDC_REPOINT_S3_PATH}/{main_repoint_file}"
     with tempfile.TemporaryDirectory() as tmp_dir:
-        sdc_repoint_path = tmp_dir + "/" + repoint_file
         try:
+            sdc_repoint_path = tmp_dir + "/" + main_repoint_file
             # Download repoint file
-            S3_CLIENT.download_file(BUCKET_NAME, s3_path, sdc_repoint_path)
+            S3_CLIENT.download_file(S3_BUCKET, sdc_repoint_s3_path, sdc_repoint_path)
+            sdc_repoint_df = pd.read_csv(sdc_repoint_path)
         except botocore.exceptions.ClientError:
-            # Create new repoint file if it doesn't exist
+            # Create new repoint file if it doesn't exist.
+            # Start with an empty dataframe
+            sdc_repoint_df = pd.DataFrame()
             pass
 
-        repoint_filename = s3_key.split("/")[-1]
-        repoint_local_path = tmp_dir + "/" + repoint_filename
-        S3_CLIENT.download_file(BUCKET_NAME, s3_key, repoint_local_path)
+        new_repoint_filename = s3_key.split("/")[-1]
+        new_repoint_local_path = tmp_dir + "/" + new_repoint_filename
+        S3_CLIENT.download_file(S3_BUCKET, s3_key, new_repoint_local_path)
         # Read repoint files
-        new_repoint_df = pd.read_csv(repoint_local_path)
-        sdc_repoint_df = pd.read_csv(sdc_repoint_path)
+        new_repoint_df = pd.read_csv(new_repoint_local_path)
         # Compare and write only new data to the repoint file
         new_data = new_repoint_df[~new_repoint_df.isin(sdc_repoint_df)].dropna()
         print(new_data)
@@ -185,7 +187,6 @@ def lambda_handler(event, context):
 
     """
     # Retrieve the S3 bucket and key from the event
-    s3_bucket = event["detail"]["bucket"]["name"]
     s3_key = event["detail"]["object"]["key"]
     logger.info(event)
 
@@ -194,14 +195,14 @@ def lambda_handler(event, context):
     file_extension = "".join(all_suffixes)  # Returns '.spin.csv'
     # Produce SDC maintained spin file
     if file_extension == ".spin.csv":
-        produce_sdc_spin_file(s3_bucket, s3_key)
+        produce_sdc_spin_file(s3_key)
         return {
             "statusCode": 200,
             "body": f"SDC spin file produced successfully for {s3_key}",
         }
     # Append data to the repoint file
     elif file_extension == ".repoint.csv":
-        append_data_to_repoint_file(s3_bucket, s3_key)
+        append_data_to_repoint_file(s3_key)
         return {
             "statusCode": 200,
             "body": f"Appended data from {s3_key} to repoint file successfully",

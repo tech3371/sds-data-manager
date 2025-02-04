@@ -31,6 +31,11 @@
       "domain_name": "imap-mission.com",
       "region": "us-west-2"
     },
+    "tenzin": {
+      "account": "015968673247",
+      "domain_name": "tenzin.imap-mission.com",
+      "region": "us-west-2"
+    },
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/core:stackRelativeExports": true,
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
