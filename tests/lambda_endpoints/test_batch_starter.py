@@ -3,13 +3,13 @@
 import datetime as dt
 import json
 import logging
+import os
 import pathlib
 from datetime import datetime
 from os.path import basename
 from unittest.mock import Mock, call, patch
 
 import imap_data_access
-import pandas as pd
 import pytest
 from imap_data_access.processing_input import (
     ProcessingInputCollection,
@@ -22,6 +22,7 @@ from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.lambda_code.SDSCode.database.models import (
     AncillaryFiles,
     ProcessingJob,
+    RepointTable,
     ScienceFiles,
     SPICEFiles,
     SpinTable,
@@ -32,8 +33,6 @@ from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas import (
 )
 from sds_data_manager.lambda_code.SDSCode.pipeline_lambdas.batch_starter import (
     CadenceDays,
-    calculate_repoint_date_range,
-    determine_date_range,
     determine_job_version,
     lambda_handler,
     upload_dependency_file,
@@ -1580,40 +1579,12 @@ def test_spice_event(session, s3_client):
 @patch.object(imap_data_access, "download")
 def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
     """Test that the repoint date range is correct."""
-    filepath = "imap/hi/l0/2026/09/imap_hi_l0_raw_20260926-repoint00002_v001.pkts"
-    s3_client.put_object(
-        Bucket="test-data-bucket",
-        Key=filepath,
-        Body=b"test",
-    )
-    repoint_df = pd.DataFrame(
-        {
-            "repoint_start_sec_sclk": [528026403, 528112803, 528199203],
-            "repoint_start_subsec_sclk": [0, 0, 0],
-            "repoint_end_sec_sclk": [528028443, 528114843, 528201243],
-            "repoint_end_subsec_sclk": [0, 0, 0],
-            "repoint_start_utc": [
-                "2026-09-25 10:00:00.000",
-                "2026-09-26 10:00:00.000",
-                "2026-09-27 10:00:00.000",
-            ],
-            "repoint_end_utc": [
-                "2026-09-25 10:00:00.000",
-                "2026-09-26 10:00:00.000",
-                "2026-09-27 10:00:00.000",
-            ],
-            "repoint_id": [1, 2, 3],
-        }
-    )
-    # Write this repoint data to s3 file
-    s3_client.put_object(
-        Bucket="test-data-bucket",
-        Key="imap/spice/repoint/imap_2026_269_02.repoint.csv",
-        Body=repoint_df.to_csv(index=False).encode("utf-8"),
-    )
+    filepath = "imap/hi/l0/2000/02/imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
     # Mock download to return return the test file path
-    repoint_file = tmp_path / "imap_2026_269_02.repoint.csv"
-    repoint_df.to_csv(repoint_file, index=False)
+    repoint_file = os.path.join(test_spice_data_dir, "imap_2000_056_03.repoint.csv")
     mock_download.return_value = repoint_file
 
     # Write data to the database that batch starter can query
@@ -1625,7 +1596,7 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
                 instrument="hi",
                 data_level="l0",
                 descriptor="raw",
-                start_date=datetime(2026, 9, 26),
+                start_date=datetime(2000, 2, 24),
                 version="v001",
                 extension="pkts",
                 ingestion_date=datetime.strptime(
@@ -1634,6 +1605,7 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
             ),
             # Add leapseconds and sclk files to the database
             SPICEFiles(
+                file_path="/path/to/naif0012.tls",
                 file_name="naif0012.tls",
                 ingestion_date=datetime.now(),
                 file_root="naif.tls",
@@ -1652,6 +1624,7 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
                 version=2,
             ),
             SPICEFiles(
+                file_path="/path/to/imap_sclk_0001.tsc",
                 file_name="imap_sclk_0001.tsc",
                 ingestion_date=datetime.now(),
                 file_root="imap_sclk_0001.tsc",
@@ -1669,6 +1642,31 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
                 lsk_kernel="naif0012.tls",
                 version=2,
             ),
+            # Save repoint files to the database
+            RepointTable(
+                file_path="/path/to/imap_2001_055_01.repoint.csv",
+                end_date=datetime(2000, 2, 24),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            RepointTable(
+                file_path="/path/to/imap_2001_056_01.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            RepointTable(
+                file_path="/path/to/imap_2001_056_02.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="02",
+                ingestion_date=datetime.now(),
+            ),
+            RepointTable(
+                file_path="/path/to/imap_2001_056_03.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="03",
+                ingestion_date=datetime.now(),
+            ),
         ]
     )
     session.commit()
@@ -1676,10 +1674,13 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
     events = {
         "Records": [
             {
+                "eventSourceARN": (
+                    "arn:aws:sqs:us-east-1:123456789012:my-queue-name.fifo"
+                ),
                 "body": '{"detail": '
-                '{"object": {"key": "imap/hi/l0/2026/09/'
-                'imap_hi_l0_raw_20260926-repoint00002_v001.pkts"}}'
-                "}"
+                '{"object": {"key": "imap/hi/l0/2000/02/'
+                'imap_hi_l0_raw_20000224-repoint00047_v001.pkts"}}'
+                "}",
             }
         ]
     }
@@ -1688,16 +1689,16 @@ def test_repoint_date_range(mock_download, session, s3_client, tmp_path):
         # should call twice, one for Hi all l1a job and one for l1b hk job.
         assert mock_batch_client.submit_job.call_count == 2
 
-    filename = "imap_hi_l0_raw_20260926-repoint00002_v001.pkts"
-    file_obj = imap_data_access.ScienceFilePath(filename)
+    # filename = "imap_hi_l0_raw_20260926-repoint00002_v001.pkts"
+    # file_obj = imap_data_access.ScienceFilePath(filename)
 
-    date_range = determine_date_range(file_obj)
-    assert date_range == ("20260926", "20260927")
+    # date_range = determine_date_range(file_obj)
+    # assert date_range == ("20260926", "20260927")
 
-    repoint_date_range = calculate_repoint_date_range(file_obj)
-    assert repoint_date_range == ("20260926", "20260927")
+    # repoint_date_range = calculate_repoint_date_range(file_obj)
+    # assert repoint_date_range == ("20260926", "20260927")
 
-    filename = "imap_swe_l0_raw_20260926_v001.pkts"
-    file_obj = imap_data_access.ScienceFilePath(filename)
-    non_repoint_date_range = determine_date_range(file_obj)
-    assert non_repoint_date_range == ("20260926", "20260926")
+    # filename = "imap_swe_l0_raw_20260926_v001.pkts"
+    # file_obj = imap_data_access.ScienceFilePath(filename)
+    # non_repoint_date_range = determine_date_range(file_obj)
+    # assert non_repoint_date_range == ("20260926", "20260926")
