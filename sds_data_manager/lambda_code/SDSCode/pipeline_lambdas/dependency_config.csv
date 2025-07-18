@@ -565,11 +565,11 @@ spacecraft_clock, spice, historical, spacecraft, l1a, all, HARD_NO_TRIGGER, DOWN
 
 # Pointing kernel
 repoint, repoint, historical, spacecraft, l1a, spice, HARD, DOWNSTREAM
+attitude_history, spice, historical, spacecraft, l1a, spice, HARD, DOWNSTREAM
 leapseconds, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 spacecraft_clock, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 imap_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 science_frames, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
-attitude_history, spice, historical, spacecraft, l1a, spice, HARD_NO_TRIGGER, DOWNSTREAM
 
 # <---- SWAPI Dependencies ---->
 

@@ -693,11 +693,12 @@ def get_upstream_dependency_inputs(
             metakernel_files = json.loads(metakernel_response["body"])
             # If number of kernels doesn't match the number of file types,
             if len(metakernel_files) != len(combined_kernel_sources.split(",")):
-                raise ValueError(
+                logger.info(
                     f"Number of metakernel files {metakernel_files} "
                     "does not match number of file types requested "
                     f"{combined_kernel_sources.split(',')}."
                 )
+                return None
 
             logger.info(
                 f"Found metakernel files: {metakernel_files}. Adding to collection."
