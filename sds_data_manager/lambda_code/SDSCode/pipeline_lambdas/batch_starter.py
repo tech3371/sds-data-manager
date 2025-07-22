@@ -757,6 +757,11 @@ def s3_processing_event(session, events):
         # Determine the start and end dates for the upstream query.
         start_date, end_date = determine_date_range(session, file_obj)
 
+        if isinstance(file_obj, SPICEFilePath) and isinstance(input_obj.source, list):
+            # update data source from list to string
+            input_obj.source = input_obj.source[0]
+            logger.info(f"Updated input_obj.source: {input_obj.source}")
+
         potential_jobs = dependency.get_jobs(
             data_source=input_obj.source,
             descriptor=input_obj.descriptor,

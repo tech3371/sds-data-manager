@@ -1816,3 +1816,225 @@ def test_repoint_date_range(sqs_mock, mock_download, session, s3_client, tmp_pat
             },
             retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
         )
+
+
+patch.object(imap_data_access, "download")
+@patch.object(batch_starter, "SQS_CLIENT")
+@patch.object(dependency, "get_jobs")
+def test_pointing_attitude_job(mock_get_jobs, sqs_mock, mock_download, session, s3_client, tmp_path):
+    """Test that the pointing attitude job is started correctly."""
+    filepath = "imap/hi/l0/2000/02/imap_hi_l0_raw_20000224-repoint00047_v001.pkts"
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
+    # Mock download to return return the test file path
+    repoint_file = os.path.join(test_spice_data_dir, "imap_2000_056_03.repoint.csv")
+    mock_download.return_value = repoint_file
+
+    sqs_mock.delete_message = Mock()
+    sqs_mock.get_queue_url = Mock(return_value="")
+    # Write data to the database that batch starter can query
+    # for dependencies
+    session.add_all(
+        [
+            ScienceFiles(
+                file_path=filepath,
+                instrument="hi",
+                data_level="l0",
+                descriptor="raw",
+                start_date=datetime(2000, 2, 24),
+                version="v001",
+                extension="pkts",
+                ingestion_date=datetime.strptime(
+                    "2024-01-25 23:35:26+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+            ),
+            # Add leapseconds and sclk files to the database
+            SPICEFiles(
+                file_path="/path/to/naif0012.tls",
+                file_name="naif0012.tls",
+                ingestion_date=datetime.now(),
+                file_root="naif.tls",
+                kernel_type="leapseconds",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=2,
+            ),
+            SPICEFiles(
+                file_path="/path/to/imap_sclk_0001.tsc",
+                file_name="imap_sclk_0001.tsc",
+                ingestion_date=datetime.now(),
+                file_root="imap_sclk_0001.tsc",
+                kernel_type="spacecraft_clock",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=2,
+            ),
+            # Save repoint files to the database
+            RepointTable(
+                file_path="/path/to/imap_2000_055_01.repoint.csv",
+                end_date=datetime(2000, 2, 24),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            RepointTable(
+                file_path="/path/to/imap_2000_056_01.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="01",
+                ingestion_date=datetime.now(),
+            ),
+            RepointTable(
+                file_path="/path/to/imap_2000_056_02.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="02",
+                ingestion_date=datetime.now(),
+            ),
+            RepointTable(
+                file_path="/path/to/imap_2000_056_03.repoint.csv",
+                end_date=datetime(2000, 2, 25),
+                version="03",
+                ingestion_date=datetime.now(),
+            ),
+            SPICEFiles(
+                file_path="/path/to/imap_001.tf",
+                file_name="imap_001.tf",
+                ingestion_date=datetime.now(),
+                file_root="imap_.tf",
+                kernel_type="imap_frames",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+            SPICEFiles(
+                file_path="/path/to/imap_science_0001.tf",
+                file_name="imap_science_0001.tf",
+                ingestion_date=datetime.now(),
+                file_root="imap_science_.tf",
+                kernel_type="science_frames",
+                min_date_j2000=86400.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+            SPICEFiles(
+                file_path="path/to/imap_2000_055_2000_056_01.ah.bc",
+                file_name="imap_2000_055_2000_056_01.ah.bc",
+                ingestion_date=datetime.now(),
+                file_root="imap_2000_055_2000_056_.ah.bc",
+                kernel_type="attitude_history",
+                min_date_j2000=86400.1854936,
+                max_date_j2000=4575787269.1854936,
+                file_intervals_j2000=[[86400, 4575787269]],
+                min_date_datetime=datetime(2000, 1, 1),
+                max_date_datetime=datetime(2145, 1, 1),
+                file_intervals_datetime=[["0", "0"]],
+                min_date_sclk="",
+                max_date_sclk="",
+                file_intervals_sclk=[["0", "0"]],
+                sclk_kernel="imap_sclk_0001.tsc",
+                lsk_kernel="naif0012.tls",
+                version=1,
+            ),
+        ]
+    )
+    session.commit()
+
+    def mock_dependency(events, context):
+        logging.info("Processing events: %s", events)
+        if events[]
+
+
+    mock_get_jobs.return_value = mock_dependency
+
+
+    # Test that attitude file ingestion also kicks off pointing attitude job
+    events = {
+        "Records": [
+            {
+                "eventSourceARN": (
+                    "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
+                ),
+                "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+                "body": '{"detail": '
+                '{"object": {"key": "imap/spice/ck/imap_2000_055_2000_056_01.ah.bc"}}'
+                "}",
+            }
+        ]
+    }
+    # Try for different kernel
+    # events = {
+    #     "Records": [
+    #         {
+    #             "eventSourceARN": (
+    #                 "arn:aws:sqs:us-east-1:123456789012:test-queue.fifo"
+    #             ),
+    #             "receiptHandle": "AQEBwJnKyrHigUMZj6rYigCgxlaS3SLy0a...",
+    #             "body": '{"detail": '
+    #             '{"object": {"key": "imap/spice/spk/imap_recon_20250415_20260415_v01.bsp"}}'
+    #             "}",
+    #         }
+    #     ]
+    # }
+
+    with patch.object(batch_starter, "BATCH_CLIENT", Mock()) as mock_batch_client:
+        lambda_handler(events, None)
+        # verify that the function was called once
+        mock_batch_client.submit_job.assert_called_once()
+        mock_batch_client.submit_job.assert_called_with(
+            jobName="spacecraft-l1a-spice-job-3",
+            jobQueue="ProcessingJobQueue",
+            jobDefinition="ProcessingJob-spacecraft",
+            containerOverrides={
+                "command": [
+                    "--instrument",
+                    "spacecraft",
+                    "--data-level",
+                    "l1a",
+                    "--descriptor",
+                    "spice",
+                    "--start-date",
+                    "20000224",
+                    "--version",
+                    "v001",
+                    "--dependency",
+                    "imap_spacecraft_l1a_spice_20000224_v001.json",
+                    "--upload-to-sdc",
+                ]
+            },
+            retryStrategy=batch_starter.BATCH_JOB_RETRY_STRATEGY,
+        )
