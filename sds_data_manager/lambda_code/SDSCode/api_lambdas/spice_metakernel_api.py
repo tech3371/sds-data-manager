@@ -10,6 +10,7 @@ from typing import Optional
 
 import spiceypy
 
+from ..pipeline_lambdas.spice_indexer import furnish_best_spice_file
 from . import spice_query_api
 from .metakernel import MetaKernel
 
@@ -163,6 +164,8 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
     try:
         start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
         end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
+        furnish_best_spice_file("leap_seconds")
+        furnish_best_spice_file("spacecraft_clock")
         start_date = spiceypy.datetime2et(start_date_datetime)
         end_date = spiceypy.datetime2et(end_date_datetime)
     except (TypeError, ValueError):

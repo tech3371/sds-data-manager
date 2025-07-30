@@ -100,6 +100,8 @@ def _insert_test_data(session):
 
 def test_metakernel(session):
     """Tests that metakernel works as predicted."""
+    _insert_test_file(session, "naif0012.tls", [[1, 300]], upload_time=1)
+    _insert_test_file(session, "imap_sclk_0012.tsc", [[1, 300]], upload_time=1)
     _insert_test_data(session)
     result = spice_metakernel_api.lambda_handler(
         {
