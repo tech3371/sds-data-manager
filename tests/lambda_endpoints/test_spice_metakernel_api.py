@@ -4,7 +4,6 @@ import json
 from datetime import datetime, timedelta
 
 import imap_data_access
-import pytest
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 from sds_data_manager.lambda_code.SDSCode.database import models
@@ -141,11 +140,13 @@ def test_metakernel(session):
     """
 
     results = json.loads(result["body"])
-    assert len(results) == 4
-    assert results[0] == "imap_1000_001_1000_300_003.ap.bc"
-    assert results[1] == "imap_1000_065_1000_090_003.ap.bc"
-    assert results[2] == "imap_1000_060_1000_070_003.ap.bc"
-    assert results[3] == "imap_1000_001_1000_100_002.ah.bc"
+    assert len(results) == 6
+    assert results[0] == "naif0012.tls"
+    assert results[1] == "imap_sclk_0012.tsc"
+    assert results[2] == "imap_1000_001_1000_300_003.ap.bc"
+    assert results[3] == "imap_1000_065_1000_090_003.ap.bc"
+    assert results[4] == "imap_1000_060_1000_070_003.ap.bc"
+    assert results[5] == "imap_1000_001_1000_100_002.ah.bc"
 
     """
     If someone focuses the metakernel on a more specific time range, it should go
@@ -164,8 +165,10 @@ def test_metakernel(session):
     )
 
     results = json.loads(result["body"])
-    assert len(results) == 1
-    assert results[0] == "imap_1000_001_1000_300_003.ap.bc"
+    assert len(results) == 3
+    assert results[0] == "naif0012.tls"
+    assert results[1] == "imap_sclk_0012.tsc"
+    assert results[2] == "imap_1000_001_1000_300_003.ap.bc"
 
     result = spice_metakernel_api.lambda_handler(
         {
@@ -180,8 +183,10 @@ def test_metakernel(session):
     )
 
     results = json.loads(result["body"])
-    assert len(results) == 1
-    assert results[0] == "imap_1000_001_1000_100_002.ah.bc"
+    assert len(results) == 3
+    assert results[0] == "naif0012.tls"
+    assert results[1] == "imap_sclk_0012.tsc"
+    assert results[2] == "imap_1000_001_1000_100_002.ah.bc"
 
     """
     Query the gap that two spice files individually cover
@@ -199,9 +204,11 @@ def test_metakernel(session):
     )
 
     results = json.loads(result["body"])
-    assert len(results) == 2
-    assert results[0] == "imap_1000_065_1000_090_003.ap.bc"
-    assert results[1] == "imap_1000_060_1000_070_003.ap.bc"
+    assert len(results) == 4
+    assert results[0] == "naif0012.tls"
+    assert results[1] == "imap_sclk_0012.tsc"
+    assert results[2] == "imap_1000_065_1000_090_003.ap.bc"
+    assert results[3] == "imap_1000_060_1000_070_003.ap.bc"
 
     """
     Metakernel generation tests
@@ -277,17 +284,16 @@ def test_metakernel_filtered_file_types(session):
     assert result["body"] == "No files found."
 
 
-@pytest.mark.skip(reason="Need to fix the spiceypy.datetime2et() call")
 def test_metakernel_string_input(session):
     """Test that string input is allowed, and is converted to a datetime object."""
-    _insert_test_file(session, "naif0012.tls", [[1, 300]], upload_time=1)
-    _insert_test_file(session, "imap_sclk_0012.tsc", [[1, 300]], upload_time=1)
+    _insert_test_file(session, "naif0012.tls", [[0, 4575787269]], upload_time=1)
+    _insert_test_file(session, "imap_sclk_0012.tsc", [[0, 4575787269]], upload_time=1)
     _insert_test_data(session)
 
     result = spice_metakernel_api.lambda_handler(
         {
             "queryStringParameters": {
-                "start_time": "19000101",
+                "start_time": "2000101",
                 "end_time": "20260101",
                 "spice_path": "",
                 "list_files": "True",
