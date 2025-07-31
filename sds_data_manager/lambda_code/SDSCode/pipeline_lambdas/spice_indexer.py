@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import insert
 from ..api_lambdas import spice_metakernel_api
 from ..database import database as db
 from ..database import models
-from ..pipeline_lambdas.indexer import get_file_ingestion_date
+from ..pipeline_lambdas.utils import get_file_ingestion_date
 from .lambda_custom_events import IMAPLambdaPutEvent
 
 logger = logging.getLogger(__name__)
