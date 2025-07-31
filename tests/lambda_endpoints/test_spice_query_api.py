@@ -7,6 +7,7 @@ import pytest
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_query_api
 from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.lambda_code.SDSCode.database.models import SPICEFiles
 
 
 def _insert_ck_test_data(session):
@@ -42,6 +43,61 @@ def _insert_ck_test_data(session):
 
     # Add data to the ScienceFiles table and return the session
     session.add(models.SPICEFiles(**metadata_params))
+    # Add leapseconds and spacecraft clock files
+    session.add_all(
+        [
+            SPICEFiles(
+                file_name="naif0012.tls",
+                file_path="path/to/naif0012.tls",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="naif.tls",
+                kernel_type="leapseconds",
+                min_date_j2000=0,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[0, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2000-01-01T12:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=12,
+            ),
+            SPICEFiles(
+                file_name="imap_sclk_0000.tsc",
+                file_path="path/to/imap_sclk_0000.tsc",
+                ingestion_date=datetime.strptime(
+                    "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_root="imap_sclk_0000.tsc",
+                kernel_type="spacecraft_clock",
+                min_date_j2000=315576066.1839245,
+                max_date_j2000=4575787269.183866,
+                file_intervals_j2000=[[315576066.1839245, 4575787269.183866]],
+                min_date_datetime=datetime.strptime(
+                    "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                max_date_datetime=datetime.strptime(
+                    "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+                ),
+                file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
+                min_date_sclk="1/0000000000:00000",
+                max_date_sclk="1/4285909749:39444",
+                file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+                sclk_kernel="/mnt/data/imap/spice/sclk/imap_sclk_0001.tsc",
+                lsk_kernel="/mnt/data/imap/spice/lsk/naif0012.tls",
+                version=0,
+            ),
+        ]
+    )
     session.commit()
 
 
@@ -159,7 +215,7 @@ def test_start_time_query(session, expected_ck_response):
     event = {"queryStringParameters": {"start_time": "0"}}
 
     returned_query = spice_query_api.lambda_handler(event=event, context={})
-
+    print(returned_query["body"])
     assert returned_query["statusCode"] == 200
     assert returned_query["body"] == expected_ck_response
 
@@ -181,7 +237,7 @@ def test_start_and_end_time_query(session, expected_ck_response):
     event = {"queryStringParameters": {"start_time": "0", "end_time": "1000000000"}}
     _insert_ck_test_data(session)
     returned_query = spice_query_api.lambda_handler(event=event, context={})
-
+    print(returned_query["body"])
     assert returned_query["statusCode"] == 200
     assert returned_query["body"] == expected_ck_response
 
