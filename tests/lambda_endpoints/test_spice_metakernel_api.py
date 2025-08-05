@@ -1,12 +1,15 @@
 """Tests for the SPICE Query API."""
 
 import json
+import os
 from datetime import datetime, timedelta
 
 import imap_data_access
 
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 from sds_data_manager.lambda_code.SDSCode.database import models
+from sds_data_manager.lambda_code.SDSCode.database.models import SPICEFiles
+from tests.lambda_endpoints.conftest import patch
 
 
 def _irrelevant_data():
@@ -284,16 +287,86 @@ def test_metakernel_filtered_file_types(session):
     assert result["body"] == "No files found."
 
 
-def test_metakernel_string_input(session):
+@patch.object(imap_data_access, "download")
+def test_metakernel_string_input(mock_download, session):
     """Test that string input is allowed, and is converted to a datetime object."""
-    _insert_test_file(session, "naif0012.tls", [[0, 4575787269]], upload_time=1)
-    _insert_test_file(session, "imap_sclk_0012.tsc", [[0, 4575787269]], upload_time=1)
     _insert_test_data(session)
+    records = [
+        SPICEFiles(
+            file_name="naif0012.tls",
+            file_path="path/to/naif0012.tls",
+            ingestion_date=datetime.strptime(
+                "2025-04-30 18:24:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="naif.tls",
+            kernel_type="leapseconds",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2000-01-01 12:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2000-01-01T12:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="imap_sclk_0001.tsc",
+            lsk_kernel="naif0012.tls",
+            version=12,
+        ),
+        SPICEFiles(
+            file_name="imap_sclk_0000.tsc",
+            file_path="path/to/imap_sclk_0000.tsc",
+            ingestion_date=datetime.strptime(
+                "2025-04-30 18:24:01+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_root="imap_sclk_0000.tsc",
+            kernel_type="spacecraft_clock",
+            min_date_j2000=0,
+            max_date_j2000=4575787269.183866,
+            file_intervals_j2000=[[0, 4575787269.183866]],
+            min_date_datetime=datetime.strptime(
+                "2010-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            max_date_datetime=datetime.strptime(
+                "2145-01-01 00:00:00+00:00", "%Y-%m-%d %H:%M:%S%z"
+            ),
+            file_intervals_datetime="[[2010-01-01T00:00:00, 2145-01-01T00:00:00]]",
+            min_date_sclk="1/0000000000:00000",
+            max_date_sclk="1/4285909749:39444",
+            file_intervals_sclk="[[1/0000000000:00000, 1/4285909749:39444]]",
+            sclk_kernel="imap_sclk_0001.tsc",
+            lsk_kernel="naif0012.tls",
+            version=0,
+        ),
+    ]
+    session.add_all(records)
+    session.commit()
 
+    # Mock download of leapseconds and spacecraft clock files
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    one_level_up = os.path.abspath(os.path.join(current_path, ".."))
+    test_spice_data_dir = os.path.join(one_level_up, "test-data", "test_spice_files")
+    lsk_test_path = os.path.join(test_spice_data_dir, "naif0012.tls")
+    sclk_test_path = os.path.join(test_spice_data_dir, "imap_sclk_0001.tsc")
+
+    # Mock download to return return the test file path
+    def download_side_effect(path):
+        if path.endswith("naif0012.tls"):
+            return lsk_test_path
+        elif path.endswith("imap_sclk_0001.tsc"):
+            return sclk_test_path
+        else:
+            raise ValueError(f"Unexpected download path: {path}")
+
+    mock_download.side_effect = download_side_effect
     result = spice_metakernel_api.lambda_handler(
         {
             "queryStringParameters": {
-                "start_time": "2000101",
+                "start_time": "20240101",
                 "end_time": "20260101",
                 "spice_path": "",
                 "list_files": "True",

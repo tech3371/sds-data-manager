@@ -164,6 +164,8 @@ def _convert_input_times_to_j2000(start_date_str, end_date_str):
     try:
         start_date_datetime = datetime.datetime.strptime(start_date_str, "%Y%m%d")
         end_date_datetime = datetime.datetime.strptime(end_date_str, "%Y%m%d")
+        print(f"Converting {start_date_datetime} to J2000 seconds")
+        print(f"Converting {end_date_datetime} to J2000 seconds")
         furnish_best_spice_file("leap_seconds")
         furnish_best_spice_file("spacecraft_clock")
         start_date = spiceypy.datetime2et(start_date_datetime)
