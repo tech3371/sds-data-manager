@@ -401,3 +401,64 @@ def test_invalid_param_ancillary_query(session):
 
     assert returned_query["statusCode"] == 400
     assert returned_query["body"] == expected_body
+
+
+def test_public_released_query(session):
+    """Test querying the public released files."""
+    event = {
+        "version": "2.0",
+        "routeKey": "GET /api-key/query",
+        "rawPath": "/api-key/query",
+        "rawQueryString": "table=science&instrument=swe",
+        "headers": {
+            "accept-encoding": "identity",
+            "content-length": "0",
+            "host": "api.dev.imap-mission.com",
+            "user-agent": "python-urllib3/1.26.18",
+            "x-amzn-trace-id": "Root=1-689bc4ed-5160bf977d23ad4729ff00ad",
+            "x-api-key": "test-key",
+            "x-forwarded-for": "128.138.131.243",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+        },
+        "queryStringParameters": {"instrument": "swe", "table": "science"},
+        "requestContext": {
+            "accountId": "449431850278",
+            "apiId": "ylxiee1ond",
+            "authorizer": {"lambda": {"apiKey": ""}},
+            "domainName": "api.dev.imap-mission.com",
+            "domainPrefix": "api",
+            "http": {
+                "method": "GET",
+                "path": "/api-key/query",
+                "protocol": "HTTP/1.1",
+                "sourceIp": "128.138.131.243",
+                "userAgent": "python-urllib3/1.26.18",
+            },
+            "requestId": "PNu1LhSXvHcEJeQ=",
+            "routeKey": "GET /api-key/query",
+            "stage": "$default",
+            "time": "12/Aug/2025:22:49:17 +0000",
+            "timeEpoch": 1755038957507,
+        },
+        "isBase64Encoded": False,
+    }
+
+    # Write a record to table with public released true
+    released_science_records = {
+        "file_path": "test/file/path/imap_swe_l0_raw_20251107_v001.pkts",
+        "instrument": "swe",
+        "data_level": "l0",
+        "descriptor": "raw",
+        "start_date": datetime.datetime.strptime("20251107", "%Y%m%d"),
+        "version": "v001",
+        "extension": "pkts",
+        "ingestion_date": datetime.datetime.strptime(
+            "2025-11-07 10:13:12+00:00", "%Y-%m-%d %H:%M:%S%z"
+        ),
+        "released": True,
+    }
+    print(event)
+
+    session.add(released_science_records)
+    session.commit()
