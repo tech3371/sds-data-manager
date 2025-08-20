@@ -140,6 +140,17 @@ def lambda_handler(event, context):
         "Found [%s] Query Search Results: %s", len(search_results), str(search_results)
     )
 
+    # Now only return public or private data based on request source
+    is_api_key = (
+        event.get("requestContext", {}).get("authorizer", {}).get("apiKey", False)
+    )
+    is_auth_user = (
+        event.get("requestContext", {}).get("authorizer", {}).get("user", False)
+    )
+    if is_api_key or is_auth_user:
+        # If the request is from an API key or an authenticated user, return all results
+        logger.info("Returning all results for API key or authenticated user.")
+
     # Format the response
     response = {
         "statusCode": 200,
