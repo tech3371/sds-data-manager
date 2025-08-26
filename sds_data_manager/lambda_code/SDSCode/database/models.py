@@ -9,7 +9,6 @@ from enum import Enum
 import imap_data_access
 from sqlalchemy import (
     JSON,
-    Boolean,
     Column,
     DateTime,
     Float,
@@ -61,7 +60,16 @@ class Status(Enum):
     FAILED = "FAILED"
 
 
+class Release(Enum):
+    """Enum to store the release status."""
+
+    NOT_RELEASED = 0
+    RELEASED = 1
+    # TODO: we can add more as needed in the future
+
+
 STATUSES = SqlEnum(Status)
+RELEASES = SqlEnum(Release)
 
 
 class Base(DeclarativeBase):
@@ -148,7 +156,7 @@ class ScienceFiles(Base):
     ingestion_date = Column(DateTime(timezone=True))
     cr = Column(Integer, nullable=True)
     crid = Column(String, nullable=True)
-    released = Column(Boolean, nullable=False, default=False)
+    released = Column(RELEASES, nullable=False, default=RELEASES.NOT_RELEASED.value)
 
 
 class SPICEFiles(Base):
@@ -173,7 +181,7 @@ class SPICEFiles(Base):
     sclk_kernel = Column(String)
     lsk_kernel = Column(String)
     version = Column(Integer, nullable=True)
-    released = Column(Boolean, nullable=False, default=True)
+    released = Column(RELEASES, nullable=False, default=RELEASES.RELEASED.value)
 
 
 class AncillaryFiles(Base):
@@ -190,7 +198,7 @@ class AncillaryFiles(Base):
     version = Column(String(4), nullable=False)  # vXXX
     extension = Column(String, nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
-    released = Column(Boolean, nullable=False, default=False)
+    released = Column(RELEASES, nullable=False, default=RELEASES.NOT_RELEASED.value)
 
 
 class SpinFiles(Base):
@@ -204,7 +212,7 @@ class SpinFiles(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
-    released = Column(Boolean, nullable=False, default=True)
+    released = Column(RELEASES, nullable=False, default=RELEASES.RELEASED.value)
 
 
 class PointingTable(Base):
@@ -226,7 +234,7 @@ class RepointFiles(Base):
     end_date = Column(DateTime, nullable=False)
     version = Column(String(2), nullable=False)
     ingestion_date = Column(DateTime(timezone=True))
-    released = Column(Boolean, nullable=False, default=True)
+    released = Column(RELEASES, nullable=False, default=RELEASES.RELEASED.value)
 
 
 class Version(Base):
