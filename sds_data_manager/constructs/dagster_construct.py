@@ -1,21 +1,38 @@
 #!/usr/bin/env python3
 
-from constructs import Construct
+import aws_cdk as cdk
 from aws_cdk import (
     RemovalPolicy,
     Stack,
+)
+from aws_cdk import (
     aws_ec2 as ec2,
-    aws_ecs as ecs,
-    aws_iam as iam,
-    aws_logs as logs,
-    aws_ecs_patterns as ecs_patterns,
+)
+from aws_cdk import (
     aws_ecr as ecr,
 )
-from aws_cdk.aws_ecr_assets import DockerImageAsset, Platform
+from aws_cdk import (
+    aws_ecs as ecs,
+)
+from aws_cdk import (
+    aws_ecs_patterns as ecs_patterns,
+)
+from aws_cdk import (
+    aws_iam as iam,
+)
+from aws_cdk import (
+    aws_logs as logs,
+)
+from aws_cdk import (
+    aws_rds as rds,
+)
+from aws_cdk import (
+    aws_secretsmanager as secretsmanager,
+)
 from aws_cdk.aws_ecr import Repository
-from cdk_ecr_deployment import ECRDeployment, DockerImageName
-
-import aws_cdk as cdk
+from aws_cdk.aws_ecr_assets import DockerImageAsset, Platform
+from cdk_ecr_deployment import DockerImageName, ECRDeployment
+from constructs import Construct
 
 
 class ElasticContainerRegistryStack(Stack):
@@ -38,8 +55,18 @@ class ElasticContainerRegistryStack(Stack):
 class DockerImageStack(Stack):
     """Create the Docker image and push it to ECR."""
 
-    def __init__(self, scope, id, *, image_name, directory, file="Dockerfile", ecr,
-                 docker_tag="latest", **kwargs):
+    def __init__(
+        self,
+        scope,
+        id,
+        *,
+        image_name,
+        directory,
+        file="Dockerfile",
+        ecr,
+        docker_tag="latest",
+        **kwargs,
+    ):
         super().__init__(scope, id, **kwargs)
 
         self.asset = DockerImageAsset(
@@ -60,7 +87,7 @@ class DockerImageStack(Stack):
 
 
 class DagsterEcsStack(Stack):
-    """ECS Fargate stack running the Dagster webserver."""
+    """ECS Fargate stack running the Dagster webserver and daemon."""
 
     def __init__(
         self,
@@ -73,15 +100,61 @@ class DagsterEcsStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
+        # RDS PostgreSQL — Dagster storage backend, created in the same stack to
+        # avoid cross-stack security group reference cycles.
+        rds_security_group = ec2.SecurityGroup(
+            self,
+            "DagsterRdsSecurityGroup",
+            vpc=vpc,
+            description="Security group for Dagster RDS instance",
+            allow_all_outbound=True,
+        )
+
+        db_secret = secretsmanager.Secret(
+            self,
+            "DagsterDatabaseSecret",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                secret_string_template='{"username":"dagster"}',
+                generate_string_key="password",
+                exclude_characters='"@/\\',
+            ),
+        )
+
+        db_instance = rds.DatabaseInstance(
+            self,
+            "DagsterStorageDB",
+            engine=rds.DatabaseInstanceEngine.postgres(
+                version=rds.PostgresEngineVersion.VER_16
+            ),
+            instance_type=ec2.InstanceType.of(
+                ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.XLARGE2
+            ),
+            vpc=vpc,
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_ISOLATED
+            ),
+            credentials=rds.Credentials.from_secret(db_secret),
+            database_name="dagster",
+            security_groups=[rds_security_group],
+            removal_policy=RemovalPolicy.RETAIN,
+        )
+
         # ECS Cluster
         cluster = ecs.Cluster(self, "DagsterCluster", vpc=vpc)
 
-        security_group = ec2.SecurityGroup(
+        ecs_security_group = ec2.SecurityGroup(
             self,
             "DagsterSecurityGroup",
             vpc=vpc,
             description="Security group for Dagster ECS tasks",
             allow_all_outbound=True,
+        )
+
+        # Allow ECS tasks to reach RDS on port 5432.
+        rds_security_group.add_ingress_rule(
+            peer=ecs_security_group,
+            connection=ec2.Port.tcp(5432),
+            description="Dagster ECS tasks to Dagster RDS",
         )
 
         # Execution role for pulling images and writing logs
@@ -107,23 +180,65 @@ class DagsterEcsStack(Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name("AdministratorAccess")
         )
 
+        # DAGSTER_PG_PASSWORD is injected via ECS Secrets Manager integration so it
+        # never appears in plaintext. The execution role is automatically granted
+        # GetSecretValue for any secrets added here.
+        container_secrets = {
+            "DAGSTER_PG_PASSWORD": ecs.Secret.from_secrets_manager(
+                db_secret, "password"
+            )
+        }
+
         dagster_repo = Repository.from_repository_name(
             self, construct_id, repository_name="dagster-image"
         )
         ecr_image = ecs.EcrImage(dagster_repo, "latest")
 
+        # Merge caller-supplied env vars with the RDS host resolved at synth time.
+        # Copy so we can safely append DAGSTER_RUN_BASE_TASK_DEF_ARN below.
+        task_env_vars = {
+            **env_vars,
+            "DAGSTER_PG_HOST": db_instance.db_instance_endpoint_address,
+        }
+
+        # Run task definition — used by the ECS run launcher so Dagster can spin up
+        # per-run containers. Its ARN is forwarded to all services as an env var.
+        run_task_def = ecs.FargateTaskDefinition(
+            self,
+            "DagsterRunBaseTaskDef",
+            cpu=1024,
+            memory_limit_mib=2048,
+            execution_role=execution_role,
+            task_role=task_role,
+        )
+        run_task_def.add_container(
+            "dagster-run",  # Must match the name expected by the ECS run launcher config.
+            image=ecr_image,
+            environment=task_env_vars,
+            secrets=container_secrets,
+            logging=ecs.LogDriver.aws_logs(
+                stream_prefix="DagsterRuns",
+                log_group=logs.LogGroup(
+                    self, "RunLogs", removal_policy=RemovalPolicy.DESTROY
+                ),
+            ),
+        )
+        task_env_vars["DAGSTER_RUN_BASE_TASK_DEF_ARN"] = (
+            run_task_def.task_definition_arn
+        )
+
+        # Dagster Webserver (UI) — Application Load Balanced Fargate Service
         webserver_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
             "DagsterWebserver",
             cluster=cluster,
-            cpu=4096,
-            memory_limit_mib=8192,
+            cpu=512,
+            memory_limit_mib=1024,
             desired_count=1,
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
                 image=ecr_image,
                 command=[
-                    "dagster",
-                    "dev",
+                    "dagster-webserver",
                     "-h",
                     "0.0.0.0",
                     "-p",
@@ -132,7 +247,8 @@ class DagsterEcsStack(Stack):
                     "orchestration/workspace.yaml",
                 ],
                 container_port=3000,
-                environment=env_vars,
+                environment=task_env_vars,
+                secrets=container_secrets,
                 execution_role=execution_role,
                 task_role=task_role,
                 log_driver=ecs.LogDriver.aws_logs(
@@ -147,9 +263,40 @@ class DagsterEcsStack(Stack):
             public_load_balancer=True,
             # Set to False for VPN/Internal access
             open_listener=False,
-            security_groups=[security_group],
+            security_groups=[ecs_security_group],
         )
         webserver_service.load_balancer.connections.allow_from(
             ec2.Peer.ipv4("128.138.131.0/24"),
             ec2.Port.tcp(80),
+        )
+
+        # Dagster Daemon — handles schedules, sensors, and run queue
+        daemon_task_def = ecs.FargateTaskDefinition(
+            self,
+            "DagsterDaemonTask",
+            cpu=16384,
+            memory_limit_mib=32768,
+            execution_role=execution_role,
+            task_role=task_role,
+        )
+        daemon_task_def.add_container(
+            "DaemonContainer",
+            image=ecr_image,
+            command=["dagster-daemon", "run", "-w", "orchestration/workspace.yaml"],
+            environment=task_env_vars,
+            secrets=container_secrets,
+            logging=ecs.LogDriver.aws_logs(
+                stream_prefix="DagsterDaemon",
+                log_group=logs.LogGroup(
+                    self, "DaemonLogs", removal_policy=RemovalPolicy.DESTROY
+                ),
+            ),
+        )
+        ecs.FargateService(
+            self,
+            "DagsterDaemonService",
+            cluster=cluster,
+            task_definition=daemon_task_def,
+            desired_count=1,
+            security_groups=[ecs_security_group],
         )
