@@ -8,7 +8,7 @@ from dagster import AssetKey, AssetExecutionContext, EventRecordsFilter, Dagster
 import imap_data_access
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 
-from ..lambda_code.SDSCode.pipeline_lambdas import VALID_CADENCE_STRS
+FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
 
 # Date range validation constants
 NEAREST_OPTIONS = ("nd", "np")
@@ -538,3 +538,106 @@ class ProcessingJobType:
     POINTING = "pointing"
     CADENCE = "cadence"
     POINTING_ATTITUDE = "pointing_attitude"
+
+
+class CadenceDays:
+    """Class for a cadence value and the corresponding days."""
+
+    _YEAR = 365.25
+    _CADENCE_LOOKUP = {
+        "1mo": _YEAR / 12,
+        "3mo": _YEAR / 4,
+        "6mo": _YEAR / 2,
+        "1yr": _YEAR,
+    }
+
+    def __init__(self, cadence_str: str):
+        """Cadence module.
+
+        Parameters
+        ----------
+        cadence_str : str
+            Cadence string, must be one of "1mo", "3mo", "6mo", or "1yr".
+
+        Initializes cadence_str and days attributes based on the
+        input cadence_str.
+
+        Raises
+        ------
+        ValueError
+            If the cadence string is not valid.
+        """
+        if cadence_str not in self._CADENCE_LOOKUP:
+            raise ValueError(
+                f"Invalid cadence: {cadence_str}. Valid cadences are: {list(self._CADENCE_LOOKUP.keys())}"
+            )
+        self.cadence_str = cadence_str
+        self.days = self._CADENCE_LOOKUP[cadence_str]
+
+    def cadence_to_datetime_range(
+        self,
+        start_date: datetime.datetime = FIRST_MAP_START_DATE,
+        as_str: bool = False,
+    ) -> tuple[datetime.datetime, datetime.datetime] | tuple[str, str]:
+        """Convert the cadence to a datetime range.
+
+        Parameters
+        ----------
+        start_date : datetime, optional
+            The start date for the cadence. This is used to calculate the end date. If
+            not provided, the end date will be set to today. Default is None.
+        as_str : bool
+            If True, return the start and end dates as strings. Default is False.
+
+        Returns
+        -------
+        tuple(datetime, datetime) or tuple(str, str)
+            The start date and end date of the cadence.
+        """
+        num_days = self.days - 1
+        if start_date:
+            end_date = start_date + datetime.timedelta(days=num_days)
+
+        if as_str:
+            start_date = start_date.strftime("%Y-%m-%dT%H:%M:%S")
+            end_date = end_date.strftime("%Y-%m-%dT%H:%M:%S")
+        return start_date, end_date
+
+    def get_cadence_partition_name(
+        self, start_date: datetime.datetime = FIRST_MAP_START_DATE
+    ) -> list[str]:
+        """Get cadence partition names from start_date up to the current time.
+
+        Parameters
+        ----------
+        start_date : datetime, optional
+            The start date for the cadence. This is used to calculate the end date. If
+            not provided, the end date will be set to today. Default is FIRST_MAP_START_DATE.
+
+        Returns
+        -------
+        list[str]
+            A list of cadence partition names from start_date up to the current time.
+        """
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=datetime.timezone.utc)
+
+        end_date = datetime.datetime.now(tz=datetime.timezone.utc)
+        step = datetime.timedelta(days=self.days)
+        partitions: list[str] = []
+
+        while start_date < end_date:
+            partition_start, partition_end = self.cadence_to_datetime_range(
+                start_date=start_date
+            )
+            if partition_end > end_date:
+                break
+
+            partition_start_str = partition_start.strftime("%Y-%m-%dT%H:%M:%S")
+            partition_end_str = partition_end.strftime("%Y-%m-%dT%H:%M:%S")
+            partitions.append(
+                f"cadence_{self.cadence_str}_{partition_start_str}_to_{partition_end_str}"
+            )
+            start_date += step
+
+        return partitions

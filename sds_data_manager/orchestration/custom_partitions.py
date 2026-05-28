@@ -7,6 +7,7 @@ from dagster import (
     DynamicPartitionsDefinition,
     SensorEvaluationContext,
     SensorResult,
+    RunRequest,
     sensor,
     DefaultSensorStatus
 )
@@ -15,9 +16,26 @@ import datetime
 import pandas as pd
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sds_data_manager.orchestration import config
+from sds_data_manager.orchestration.types import CadenceDays
 
 IDEX_10_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
 IDEX_30_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
+
+MISSION_START_TIME = "2026-04-01T00:00:00"
+CADENCE_SENSOR_HOUR_UTC = 5
+
+cadence_1mo_partitions = DynamicPartitionsDefinition(name="cadence_1mo_partitions")
+cadence_3mo_partitions = DynamicPartitionsDefinition(name="cadence_3mo_partitions")
+cadence_6mo_partitions = DynamicPartitionsDefinition(name="cadence_6mo_partitions")
+cadence_1yr_partitions = DynamicPartitionsDefinition(name="cadence_1yr_partitions")
+
+CADENCE_PARTITION_DEFS = {
+    "1mo": cadence_1mo_partitions,
+    "3mo": cadence_3mo_partitions,
+    "6mo": cadence_6mo_partitions,
+    "1yr": cadence_1yr_partitions,
+}
+
 
 ##### THIS TELLS DAGSTER THAT SOME FILES ARE DIVIDED UP BY POINTING NUMBER
 repoint_partitions = DynamicPartitionsDefinition(name="repoint_partitions")
@@ -193,10 +211,70 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
         cursor=end_dt.isoformat()
     )
 
+
+
+@sensor(
+    minimum_interval_seconds=3600,  # Check every hour
+    default_status=DefaultSensorStatus.RUNNING,
+)
+def add_cadence_map_partitions(context: SensorEvaluationContext):
+    """Create missing cadence partitions after 05:00 UTC and trigger map jobs."""
+    now_date = datetime.datetime.now(datetime.timezone.utc)
+    today = now_date.date().isoformat()
+
+    if now_date.hour < CADENCE_SENSOR_HOUR_UTC or context.cursor == today:
+        return SensorResult(cursor=context.cursor)
+
+    partition_requests = []
+    run_requests = []
+
+    for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
+        existing_partitions = set(context.instance.get_dynamic_partitions(partition_def.name))
+        missing_partitions = [
+            partition_name
+            for partition_name in CadenceDays(cadence_str).get_cadence_partition_name()
+            if partition_name not in existing_partitions
+        ]
+        # If no missing partitions, continue to the next cadence.
+        if not missing_partitions:
+            continue
+
+        partition_requests.append(partition_def.build_add_request(missing_partitions))
+        context.log.info(
+            f"Registered new {cadence_str} cadence partitions: {missing_partitions}"
+        )
+
+        # Now trigger cadence job for new partitions.
+        # First find which assets are associated with this partition definition.
+        target_assets = []
+        asset_graph = context.repository_def.asset_graph
+        for asset_key in asset_graph.get_all_asset_keys():
+            partitions_def = asset_graph.get(asset_key).partitions_def
+            if partitions_def and partitions_def.name == partition_def.name:
+                target_assets.append(asset_key)
+
+        # Then trigger a run for each new partition and each associated asset.
+        for asset_key in target_assets:
+            for partition_name in missing_partitions:
+                run_requests.append(
+                    RunRequest(
+                        run_key=f"{asset_key.to_user_string()}_{partition_name}",
+                        partition_key=partition_name,
+                        asset_selection=[asset_key],
+                    )
+                )
+
+    return SensorResult(
+        dynamic_partitions_requests=partition_requests,
+        run_requests=run_requests,
+        cursor=today,
+    )
+
 whole_mission_partition = StaticPartitionsDefinition(["wholemission_2025-09-17T00:00:00_to_2045-09-17T00:00:00"])
 
 sensors = [add_repoint_partitions,
            add_daily_partitions,
            add_idex_10_day_partitions,
-           add_idex_30_day_partitions]
+           add_idex_30_day_partitions,
+           add_cadence_map_partitions]
 
