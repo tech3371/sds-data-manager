@@ -16,7 +16,7 @@ import datetime
 import pandas as pd
 from sds_data_manager.lambda_code.SDSCode.database import database as db, models
 from sds_data_manager.orchestration import config
-from sds_data_manager.orchestration.types import CadenceJob
+from sds_data_manager.orchestration.types import MapJobs
 
 IDEX_10_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_10_day_CDF_names.csv"
 IDEX_30_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
@@ -240,10 +240,10 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
         # already exist, and trigger runs for the new partitions.
         # TODO: If progressive map, retrigger for all valid progressive map partitions
         # based on current time. Eg. call this instead
-        #   CadenceJob().get_progressive_map_partition_names()
+        #   MapJobs().get_progressive_map_partition_names()
         missing_partitions = [
             partition_name
-            for partition_name in CadenceJob().get_map_partitions_to_create(cadence_str)
+            for partition_name in MapJobs().get_map_partitions_to_create(cadence_str)
             if partition_name not in existing_partitions
         ]
         if not missing_partitions:
