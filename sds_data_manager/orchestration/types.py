@@ -670,10 +670,6 @@ class CadenceJob:
         list[str]
             A list of progressive cadence partition names.
         """
-        # Eg. if today is Feb 13, 2026. date range going into 3mo is Jan 17 to Feb 13.
-        # If we look at 6mo partition, date range is Jan 17 to Feb 13,
-        # which is the same as 3mo partition, so we only produce 3mo progressive map.
-        # Think of what data is going into the partition.
         progressive_partitions: list[str] = []
         seen_ranges: set[tuple[str, str]] = set()
         current_time_str = self.current_time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -775,3 +771,13 @@ class CadenceJob:
 print(CadenceJob().get_cadence_partition_names("3mo"))
 print(CadenceJob()._get_partition_for_time("3mo"))
 print(CadenceJob().get_progressive_partition_names())
+
+# Example output from above print statements:
+# [
+#   'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00',
+#   'cadence_3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00',
+#   'cadence_3mo_2026-07-18T00:00:00_to_2026-10-17T00:00:00',
+#   'cadence_3mo_2026-10-17T00:00:00_to_2027-01-17T00:00:00'
+# ]
+# ['cadence_3mo_2026-04-18T00:00:00_to_2026-07-18T00:00:00']
+# ['cadence_3mo_2026-04-18T00:00:00_to_2026-06-02T22:58:04', 'cadence_6mo_2026-01-17T00:00:00_to_2026-06-02T22:58:04']
