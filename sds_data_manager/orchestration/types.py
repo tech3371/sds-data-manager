@@ -542,44 +542,46 @@ class ProcessingJobType:
 
 class CadenceDays:
     """Class for a cadence value and the corresponding days."""
-    end_date = datetime.datetime.now(tz=datetime.timezone.utc)
-    year = end_date.year
-    cadence_partitions = {
-            "3mo": {
-                "partitions": [
-                    # First partition can be 91 days(or 92 days on leap year).
-                    f"cadence_3mo_{year}-01-17T00:00:00_to_{year}-04-18T00:00:00",
-                    # Next two partition are always 91 days.
-                    f"cadence_3mo_{year}-04-18T00:00:00_to_{year}-07-18T00:00:00",
-                    f"cadence_3mo_{year}-07-18T00:00:00_to_{year}-10-17T00:00:00",
-                    # Last partition is always 92 days.
-                    f"cadence_3mo_{year}-10-17T00:00:00_to_{year+1}-01-17T00:00:00",
-                ]
-            },
-            "6mo": {
-                "partitions": [
-                    # First partition can be 182 days and 183 days on leap year.
-                    f"cadence_6mo_{year}-01-17T00:00:00_to_{year}-07-18T00:00:00",
-                    # Second partition will be 183 always.
-                    f"cadence_6mo_{year}-07-18T00:00:00_to_{year+1}-01-17T00:00:00",
-                ]
-            },
-            "1yr": {
-                "partitions": [
-                    # Partition is always 365 days (or 366 on leap year).
-                    f"cadence_1yr_{year}-01-17T00:00:00_to_{year+1}-01-17T00:00:00",
-                ]
-            }
+    _CADENCE_PRIORITY = ["3mo", "6mo", "1yr"]
+    _CADENCE_LOOKUP = {
+        "3mo": {
+            "partitions": [
+                # First partition can be 91 days(or 92 days on leap year).
+                "cadence_3mo_{year}-01-17T00:00:00_to_{year}-04-18T00:00:00",
+                # Next two partition are always 91 days.
+                "cadence_3mo_{year}-04-18T00:00:00_to_{year}-07-18T00:00:00",
+                "cadence_3mo_{year}-07-18T00:00:00_to_{year}-10-17T00:00:00",
+                # Last partition is always 92 days.
+                "cadence_3mo_{year}-10-17T00:00:00_to_{year_plus_1}-01-17T00:00:00",
+            ]
+        },
+        "6mo": {
+            "partitions": [
+                # First partition can be 182 days and 183 days on leap year.
+                "cadence_6mo_{year}-01-17T00:00:00_to_{year}-07-18T00:00:00",
+                # Second partition will be 183 always.
+                "cadence_6mo_{year}-07-18T00:00:00_to_{year_plus_1}-01-17T00:00:00",
+            ]
+        },
+        "1yr": {
+            "partitions": [
+                # Partition is always 365 days (or 366 on leap year).
+                "cadence_1yr_{year}-01-17T00:00:00_to_{year_plus_1}-01-17T00:00:00",
+            ]
         }
+    }
 
-    def __init__(self, cadence_str: str):
+    def __init__(self, cadence_str: str, current_time: datetime.datetime | None = None):
         """Cadence module.
 
         Parameters
         ----------
         cadence_str : str
             Cadence string, must be one of "3mo", "6mo", or "1yr".
-
+        current_time : datetime, optional
+            Current time for determining the year of the partitions. If not provided,
+            defaults to now in UTC.
+            
         Initializes cadence_partitions and cadence_str attributes based on the
         input cadence_str.
 
@@ -588,12 +590,31 @@ class CadenceDays:
         ValueError
             If the cadence string is not valid.
         """
+        if current_time is None:
+            current_time = datetime.datetime.now(tz=datetime.timezone.utc)
+
         if cadence_str not in self._CADENCE_LOOKUP:
             raise ValueError(
                 f"Invalid cadence: {cadence_str}. Valid cadences are: {list(self._CADENCE_LOOKUP.keys())}"
             )
-        self.cadence_partitions = self.cadence_partitions[cadence_str]["partitions"]
+
+        self.current_time = current_time
+        self.pre_steps()
+        self.partitions = self._CADENCE_LOOKUP[cadence_str]["partitions"]
         self.cadence_str = cadence_str
+
+    def pre_steps(self,) -> str:
+        current_year = self.current_time.year
+        year_values = {
+            "year": current_year,
+            "year_plus_1": current_year + 1,
+        }
+        for cadence in self._CADENCE_LOOKUP:
+            replaced_year_partitions = [
+                partition_template.format(**year_values)
+                for partition_template in self._CADENCE_LOOKUP[cadence]["partitions"]
+            ]
+            self._CADENCE_LOOKUP[cadence]["partitions"] = replaced_year_partitions
 
     def cadence_to_datetime_range(
         self,
@@ -631,10 +652,26 @@ class CadenceDays:
             )
 
         if as_datetime:
-            start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%dT%H:%M:%S")
-            end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%dT%H:%M:%S")
+            start_date = datetime.datetime.strptime(
+                start_date_str, "%Y-%m-%dT%H:%M:%S"
+            ).replace(tzinfo=datetime.timezone.utc)
+            end_date = datetime.datetime.strptime(
+                end_date_str, "%Y-%m-%dT%H:%M:%S"
+            ).replace(tzinfo=datetime.timezone.utc)
 
-        return start_date, end_date
+            return start_date, end_date
+
+        return start_date_str, end_date_str
+
+    def _get_partition_for_time(self, current_time: datetime.datetime) -> str | None:
+        """Return the partition that contains current_time, if one exists."""
+        for partition_name in self.partitions:
+            start_date, end_date = self.cadence_to_datetime_range(
+                partition_name, as_datetime=True
+            )
+            if start_date <= current_time < end_date:
+                return partition_name
+        return None
 
     def get_progressive_partition_names(
         self,
@@ -644,27 +681,29 @@ class CadenceDays:
         Returns
         -------
         list[str]
-            A list of cadence partition names from start_date up to the current time.
+            A list of progressive cadence partition names for 3mo, 6mo, and 1yr.
         """
+        current_time = self.current_time
         partitions: list[str] = []
-        # To reduce duplication, potential solution is:
-        # In first 3mo partition date range,
-        #   * produce 3mo progressive map. Don't produce 6mo or 1yr since they will be identical to 3mo.
-        # In second 3mo partition date range,
-        #   * produce 3mo progressive for second 3mo cadence, and first 6mo progressive map
-        # In third 3mo partition date range,
-        #   * produce 3mo progressive for third 3mo cadence, and and
-        #   1yr progressive map because second 6mo will be identical to 3rd 3mo map.
-        # In fourth 3mo partition date range,
-        #   * produce 3mo progressive for fourth 3mo cadence, and second 6mo progressive map,
-        #   and 1yr progressive map
-        # 
+        seen_start_dates: set[datetime.datetime] = set()
 
-        # Eg. if today is Feb 13, 2026. date range going into 3mo is Jan 17 to Feb 13.
-        # If we look at 6mo partition, date range is Jan 17 to Feb 13,
-        # which is the same as 3mo partition, so we only produce 3mo progressive map.
-        # Think of what data is going into the partition. 
+        for cadence_str in self._CADENCE_PRIORITY:
+            cadence_days = CadenceDays(cadence_str, current_time=current_time)
+            current_partition = cadence_days._get_partition_for_time(current_time)
+            if current_partition is None:
+                continue
+
+            start_date, end_date = cadence_days.cadence_to_datetime_range(
+                current_partition, as_datetime=True
+            )
+            if start_date in seen_start_dates:
+                continue
+
+            seen_start_dates.add(start_date)
+            partitions.append(
+                f"cadence_{cadence_str}_{start_date:%Y-%m-%dT%H:%M:%S}_to_{end_date:%Y-%m-%dT%H:%M:%S}"
+            )
+
         return partitions
 
-print(CadenceDays("3mo").get_cadence_partition_names())
-
+print(CadenceDays("3mo").get_progressive_partition_names())
