@@ -103,11 +103,7 @@ partition_map = {
             # NOTE: Right now, IDEX is the only instrument who uses 1mo cadence job that
             # maps to exactly 30 days. If this changes, this logic will need update.
             "30d":     custom_partitions.idex30_partitions,
-            "1mo":     custom_partitions.cadence_1mo_partitions,
-            "3mo":     custom_partitions.cadence_3mo_partitions,
-            "6mo":     custom_partitions.cadence_6mo_partitions,
-            "1yr":     custom_partitions.cadence_1yr_partitions,
-        }
+        } | custom_partitions.CADENCE_PARTITION_DEFS
 
 @dataclass
 class BatchJobSubmit:

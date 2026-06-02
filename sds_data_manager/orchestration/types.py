@@ -603,7 +603,7 @@ class CadenceDays:
             end_date = end_date.strftime("%Y-%m-%dT%H:%M:%S")
         return start_date, end_date
 
-    def get_cadence_partition_name(
+    def get_cadence_partition_names(
         self, start_date: datetime.datetime = FIRST_MAP_START_DATE
     ) -> list[str]:
         """Get cadence partition names from start_date up to the current time.

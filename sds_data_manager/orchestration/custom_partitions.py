@@ -22,15 +22,13 @@ IDEX_10_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_10_da
 IDEX_30_DAY_RANGES_PATH = "sds_data_manager/lambda_code/SDSCode/utils/idex_30_day_CDF_names.csv"
 
 MISSION_START_TIME = "2026-04-01T00:00:00"
-CADENCE_SENSOR_HOUR_UTC = 5
+CADENCE_TRIGGER_HOUR_UTC = 5
 
-cadence_1mo_partitions = DynamicPartitionsDefinition(name="cadence_1mo_partitions")
 cadence_3mo_partitions = DynamicPartitionsDefinition(name="cadence_3mo_partitions")
 cadence_6mo_partitions = DynamicPartitionsDefinition(name="cadence_6mo_partitions")
 cadence_1yr_partitions = DynamicPartitionsDefinition(name="cadence_1yr_partitions")
 
 CADENCE_PARTITION_DEFS = {
-    "1mo": cadence_1mo_partitions,
     "3mo": cadence_3mo_partitions,
     "6mo": cadence_6mo_partitions,
     "1yr": cadence_1yr_partitions,
@@ -214,25 +212,32 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
 
 
 @sensor(
-    minimum_interval_seconds=3600,  # Check every hour
+    minimum_interval_seconds=3600,
     default_status=DefaultSensorStatus.RUNNING,
 )
 def add_cadence_map_partitions(context: SensorEvaluationContext):
-    """Create missing cadence partitions after 05:00 UTC and trigger map jobs."""
+    """Create missing cadence partitions after CADENCE_TRIGGER_HOUR_UTC and trigger map jobs.
+    
+    Sensor is set to check every hour, but will only add partitions and trigger
+    runs after CADENCE_TRIGGER_HOUR_UTC.  
+    """
     now_date = datetime.datetime.now(datetime.timezone.utc)
     today = now_date.date().isoformat()
 
-    if now_date.hour < CADENCE_SENSOR_HOUR_UTC or context.cursor == today:
+    if now_date.hour == CADENCE_TRIGGER_HOUR_UTC and context.cursor == today:
         return SensorResult(cursor=context.cursor)
 
     partition_requests = []
     run_requests = []
 
+    # Recalculate partitions from the map start date through now and compare
+    # against existing partitions in dagster. Skip adding partitions that
+    # already exist, and trigger runs for the new partitions.
     for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
         existing_partitions = set(context.instance.get_dynamic_partitions(partition_def.name))
         missing_partitions = [
             partition_name
-            for partition_name in CadenceDays(cadence_str).get_cadence_partition_name()
+            for partition_name in CadenceDays(cadence_str).get_cadence_partition_names()
             if partition_name not in existing_partitions
         ]
         # If no missing partitions, continue to the next cadence.
