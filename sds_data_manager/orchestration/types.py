@@ -1,11 +1,19 @@
 """Common types for pipeline lambdas."""
 
-from dataclasses import asdict, dataclass, field
 import datetime
-from typing import Any, ClassVar
 import hashlib
-from dagster import AssetKey, AssetExecutionContext, EventRecordsFilter, DagsterEventType
+import re
+from dataclasses import asdict, dataclass, field
+from typing import Any, ClassVar
+
 import imap_data_access
+from dagster import (
+    AssetExecutionContext,
+    AssetKey,
+    DagsterEventType,
+    EventRecordsFilter,
+)
+
 from sds_data_manager.lambda_code.SDSCode.api_lambdas import spice_metakernel_api
 
 FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.utc)
@@ -13,6 +21,7 @@ FIRST_MAP_START_DATE = datetime.datetime(2026, 1, 17, tzinfo=datetime.timezone.u
 # Date range validation constants
 NEAREST_OPTIONS = ("nd", "np")
 DATE_RANGE_OPTIONS = ("p", "h", "d", "l", *NEAREST_OPTIONS)
+
 
 @dataclass
 class DataSource:
@@ -85,6 +94,7 @@ class DataType:
             self.COLLECTION,
             *imap_data_access.VALID_DATALEVELS,
         ]
+
 
 @dataclass
 class TimeRange:
@@ -209,26 +219,37 @@ class Node:
             raise ValueError(
                 f"Descriptor must be a non-empty string, got '{descriptor}'"
             )
-    
+
     def to_dagster_asset(self) -> AssetKey:
-        return AssetKey((self.source + '_' + self.data_type + '_' + self.descriptor).replace('-', ''))
-    
-    def _parse_dates_from_key(self, 
-                              partition_key: str) -> tuple[datetime.datetime, datetime.datetime]:
-        """
-        Extracts start and end datetimes from a string formatted like:
-        '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'
+        """Return this node as a Dagster asset key."""
+        return AssetKey(
+            (self.source + "_" + self.data_type + "_" + self.descriptor).replace(
+                "-", ""
+            )
+        )
+
+    def _parse_dates_from_key(
+        self, partition_key: str
+    ) -> tuple[datetime.datetime, datetime.datetime]:
+        """Parse start and end datetimes from a partition key.
+
+        The partition key must look like
+        '{name}_%Y-%m-%dT%H:%M:%S_to_%Y-%m-%dT%H:%M:%S'.
         """
         if not partition_key:
             return None, None
-            
-        date_range = partition_key.split('_', 1)[1]
+
+        date_range = partition_key.split("_", 1)[1]
         if "_to_" in date_range:
             p_start_str, p_end_str = date_range.split("_to_")
-            p_start = datetime.datetime.strptime(p_start_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=datetime.timezone.utc)
-            
-        return p_start, p_end      
+            p_start = datetime.datetime.strptime(
+                p_start_str, "%Y-%m-%dT%H:%M:%S"
+            ).replace(tzinfo=datetime.timezone.utc)
+            p_end = datetime.datetime.strptime(p_end_str, "%Y-%m-%dT%H:%M:%S").replace(
+                tzinfo=datetime.timezone.utc
+            )
+
+        return p_start, p_end
 
 
 @dataclass
@@ -352,26 +373,32 @@ class DependencyNode(Node):
                 f"Invalid future '{future}'. Must end with "
                 f"{DATE_RANGE_OPTIONS} and be positive."
             )
-        
-    def get_all_files_in_time_range(self,
-                                    context: AssetExecutionContext,
-                                    start_dt: datetime.datetime,
-                                    end_dt: datetime.datetime) -> list:
-        '''
-        This function will return the metadata of all materialized assets between start_dt and end_dt
-        '''
+
+    def get_all_files_in_time_range(  # noqa: PLR0912
+        self,
+        context: AssetExecutionContext,
+        start_dt: datetime.datetime,
+        end_dt: datetime.datetime,
+    ) -> list:
+        """Return metadata for materialized assets overlapping a time range."""
         metadata = []
         partitions_gathered = []
-        midpoint = start_dt + ((end_dt - start_dt) / 2) 
-        
-        # Fetch a list of all partition keys that have EVER been materialized for this dependency
-        materialized_partitions = context.instance.get_materialized_partitions(self.to_dagster_asset())
-        
+        midpoint = start_dt + ((end_dt - start_dt) / 2)
+
+        # Fetch every partition key that has ever been materialized for this dependency.
+        materialized_partitions = context.instance.get_materialized_partitions(
+            self.to_dagster_asset()
+        )
+
         if not materialized_partitions:
-            context.log.info(f"Not enought information to process. Missing {self.to_dagster_asset().to_user_string()} in range {str(start_dt)} to {str(end_dt)}")
+            context.log.info(
+                "Not enough information to process. Missing "
+                f"{self.to_dagster_asset().to_user_string()} in range "
+                f"{start_dt!s} to {end_dt!s}"
+            )
             return []
-        
-        range=0
+
+        range = 0
         partitions_before = []
         distance_array = []
         if self.dependency_query_time_range:
@@ -380,55 +407,65 @@ class DependencyNode(Node):
         # Loop through the partitions to determine if they span the time range
         for partition in materialized_partitions:
             partition_start, partition_end = self._parse_dates_from_key(partition)
-            
+
             if not partition_start or not partition_end:
                 continue
-            
+
             # Apply the overlap logic (StartA < EndB and EndA > StartB)
             if partition_start < end_dt and partition_end > start_dt:
                 context.log.info(f"This partition matches: {partition}")
                 # Fetch the actual materialization record for this overlapping partition
                 mat_event = context.instance.get_event_records(
-                            event_records_filter=EventRecordsFilter(
-                                event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                                asset_key=self.to_dagster_asset(),
-                                asset_partitions=[partition],
-                            ),
-                            limit=1, # The most recent event is returned first
-                        )
+                    event_records_filter=EventRecordsFilter(
+                        event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                        asset_key=self.to_dagster_asset(),
+                        asset_partitions=[partition],
+                    ),
+                    limit=1,  # The most recent event is returned first
+                )
                 if mat_event and mat_event[0].asset_materialization:
                     metadata.append(mat_event[0].asset_materialization.metadata)
                     partitions_gathered.append(partition)
             else:
-                # We'll keep track of how far this partition is from the date range we're looking at. 
-                partition_midpoint = partition_start + ((partition_end - partition_start) / 2)
+                # Track how far this partition is from the requested range.
+                partition_midpoint = partition_start + (
+                    (partition_end - partition_start) / 2
+                )
                 distance_to_center = midpoint - partition_midpoint
                 if distance_to_center < datetime.timedelta(0):
                     partitions_before.append(partition)
                 distance_array.append(abs(distance_to_center))
-        
-        # HANDLING SPECIAL TIME CASES 
+
+        # HANDLING SPECIAL TIME CASES
         # Now we'll get the nearby partitions (if there are any to retrieve)
         if range > 0:
             num_nearby_partitions_gathered = 0
             num_before_parititons_gathered = 0
-            sorted_partitions = [x for _, x in sorted(zip(distance_array, materialized_partitions))]
+            sorted_partitions = [
+                x
+                for _, x in sorted(
+                    zip(distance_array, materialized_partitions, strict=False)
+                )
+            ]
             for partition in sorted_partitions:
                 if partition in partitions_gathered:
                     continue
                 if num_nearby_partitions_gathered == range:
                     break
-                if num_before_parititons_gathered == range // 2 and partition in partitions_before:
+                if (
+                    num_before_parititons_gathered == range // 2
+                    and partition in partitions_before
+                ):
                     # We are already full! Continue searching only the partitions_after
                     continue
                 mat_event = context.instance.get_event_records(
-                                event_records_filter=EventRecordsFilter(
-                                    event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                                    asset_key=self.to_dagster_asset(),
-                                    asset_partitions=[partition],
-                                ),
-                                limit=1, # The most recent event is returned first
-                            )
+                    event_records_filter=EventRecordsFilter(
+                        event_type=DagsterEventType.ASSET_MATERIALIZATION,
+                        asset_key=self.to_dagster_asset(),
+                        asset_partitions=[partition],
+                    ),
+                    limit=1,  # The most recent event is returned first
+                )
                 if mat_event and mat_event[0].asset_materialization:
                     metadata.append(mat_event[0].asset_materialization.metadata)
                     partitions_gathered.append(partition)
@@ -447,10 +484,11 @@ class ProcessingJobNode(Node):
     """Representation of an expected processing job.
 
     This class contains information about the expected settings for a single processing
-    job, including inputs, outputs, and the partition to use. 
+    job, including inputs, outputs, and the partition to use.
 
 
     """
+
     inputs: list[DependencyNode]
     outputs: list[DependencyNode]
     partition: str
@@ -461,43 +499,46 @@ class ProcessingJobNode(Node):
     repoint_input: bool = None
 
     def __post_init__(self):
-        '''
-        We are going to modify the inputs, spice_types, and triggering_deps in this function, 
-        so that we can consolidate multiple files into a "collection". 
-        '''
+        """Consolidate inputs into a single collection.
 
+        This mutates the inputs, spice_types, and triggering_deps fields.
+        """
         triggering_deps = []
         spice_types = []
         deps_list = []
         for dep in self.inputs:
-            if dep.source == 'repoint':
-                repoint_dep = DependencyNode(source=dep.source,
-                                            data_type=dep.data_type,
-                                            descriptor=self.partition,
-                                            required=dep.required,
-                                            trigger_job=dep.trigger_job,
-                                            dependency_query_time_range=dep.dependency_query_time_range)
+            if dep.source == "repoint":
+                repoint_dep = DependencyNode(
+                    source=dep.source,
+                    data_type=dep.data_type,
+                    descriptor=self.partition,
+                    required=dep.required,
+                    trigger_job=dep.trigger_job,
+                    dependency_query_time_range=dep.dependency_query_time_range,
+                )
                 deps_list.append(repoint_dep)
                 self.repoint_input = repoint_dep
-            elif dep.data_type == 'spice':
+            elif dep.data_type == "spice":
                 spice_types.append(dep.source)
                 self.needs_spice = True
-            elif dep.data_type == 'spin':
-                spin_dep = DependencyNode(source=dep.source,
-                               data_type=dep.data_type,
-                               descriptor=self.partition,
-                               required=dep.required,
-                               trigger_job=dep.trigger_job,
-                               dependency_query_time_range=dep.dependency_query_time_range)
+            elif dep.data_type == "spin":
+                spin_dep = DependencyNode(
+                    source=dep.source,
+                    data_type=dep.data_type,
+                    descriptor=self.partition,
+                    required=dep.required,
+                    trigger_job=dep.trigger_job,
+                    dependency_query_time_range=dep.dependency_query_time_range,
+                )
                 deps_list.append(spin_dep)
                 self.spin_input = spin_dep
-            elif dep.data_type == 'ancillary':
+            elif dep.data_type == "ancillary":
                 deps_list.append(dep)
             else:
                 deps_list.append(dep)
                 if dep.trigger_job:
                     triggering_deps.append(dep)
-                
+
         spice_types = list(spice_types)
         deps_list = list(deps_list)
 
@@ -505,21 +546,23 @@ class ProcessingJobNode(Node):
         if spice_types:
             sorted_types = sorted(spice_types)
             joined_string = "|".join(sorted_types)
-            hash_object = hashlib.sha256(joined_string.encode('utf-8'))
+            hash_object = hashlib.sha256(joined_string.encode("utf-8"))
             short_id = hash_object.hexdigest()[:8]
-            spice_dep = DependencyNode(source='spice',
-                                        data_type='collection',
-                                        descriptor=self.partition + '_' + short_id,
-                                        required=True,
-                                        trigger_job=False,
-                                        dependency_query_time_range=[]
-                            )
+            spice_dep = DependencyNode(
+                source="spice",
+                data_type="collection",
+                descriptor=self.partition + "_" + short_id,
+                required=True,
+                trigger_job=False,
+                dependency_query_time_range=[],
+            )
             deps_list.append(spice_dep)
             self.spice_input = spice_dep
-        
+
         self.inputs = deps_list
         self.triggering_deps = triggering_deps
         self.spice_types = spice_types
+
 
 class TriggerEventType:
     """Enum for different trigger event types."""
@@ -540,10 +583,11 @@ class ProcessingJobType:
     POINTING_ATTITUDE = "pointing_attitude"
 
 
-class CadenceDays:
+class CadenceJob:
     """Class for a cadence value and the corresponding days."""
-    _CADENCE_PRIORITY = ["3mo", "6mo", "1yr"]
-    _CADENCE_LOOKUP = {
+
+    _CADENCE_PRIORITY: ClassVar[list[str]] = ["3mo", "6mo", "1yr"]
+    _CADENCE_LOOKUP: ClassVar[dict[str, dict[str, list[str]]]] = {
         "3mo": {
             "partitions": [
                 # First partition can be 91 days(or 92 days on leap year).
@@ -568,22 +612,20 @@ class CadenceDays:
                 # Partition is always 365 days (or 366 on leap year).
                 "cadence_1yr_{year}-01-17T00:00:00_to_{year_plus_1}-01-17T00:00:00",
             ]
-        }
+        },
     }
 
-    def __init__(self, cadence_str: str, current_time: datetime.datetime | None = None):
+    def __init__(
+        self,
+        current_time: datetime.datetime | None = None,
+    ):
         """Cadence module.
 
         Parameters
         ----------
-        cadence_str : str
-            Cadence string, must be one of "3mo", "6mo", or "1yr".
         current_time : datetime, optional
             Current time for determining the year of the partitions. If not provided,
             defaults to now in UTC.
-            
-        Initializes cadence_partitions and cadence_str attributes based on the
-        input cadence_str.
 
         Raises
         ------
@@ -593,17 +635,19 @@ class CadenceDays:
         if current_time is None:
             current_time = datetime.datetime.now(tz=datetime.timezone.utc)
 
-        if cadence_str not in self._CADENCE_LOOKUP:
-            raise ValueError(
-                f"Invalid cadence: {cadence_str}. Valid cadences are: {list(self._CADENCE_LOOKUP.keys())}"
-            )
-
         self.current_time = current_time
-        self.pre_steps()
-        self.partitions = self._CADENCE_LOOKUP[cadence_str]["partitions"]
-        self.cadence_str = cadence_str
+        self._format_partition_templates()
 
-    def pre_steps(self,) -> str:
+    def _format_partition_templates(
+        self,
+    ) -> list[str]:
+        """Format the cadence partition templates for the current year.
+
+        Replace the {year} and {year_plus_1} placeholders in the partition templates
+        with the actual year values. Eg.
+            "cadence_1yr_{year}-01-17T00:00:00_to_{year_plus_1}-01-17T00:00:00" to
+            "cadence_1yr_2026-01-17T00:00:00_to_2027-01-17T00:00:00"
+        """
         current_year = self.current_time.year
         year_values = {
             "year": current_year,
@@ -615,6 +659,79 @@ class CadenceDays:
                 for partition_template in self._CADENCE_LOOKUP[cadence]["partitions"]
             ]
             self._CADENCE_LOOKUP[cadence]["partitions"] = replaced_year_partitions
+
+    def get_cadence_partition_names(self, cadence_str: str) -> list[str]:
+        """Get all cadence partition name for a given cadence string."""
+        cadence_partitions = self._CADENCE_LOOKUP.get(cadence_str, {}).get("partitions")
+        if not cadence_partitions:
+            raise ValueError(
+                "Invalid cadence: "
+                f"{cadence_str}. Valid cadences are: "
+                f"{list(self._CADENCE_LOOKUP.keys())}"
+            )
+        return cadence_partitions
+
+    def get_progressive_partition_names(
+        self,
+    ) -> list[str]:
+        """Get progressive partition names.
+
+        To reduce duplication, the intended behavior is:
+            In first 3mo partition date range,
+                * produce 3mo progressive map. Don't produce 6mo or 1yr
+                    since they will be identical to 3mo.
+            In second 3mo partition date range,
+                * produce 3mo progressive for the second 3mo cadence, and
+                    the first 6mo progressive map.
+            In third 3mo partition date range,
+                * produce 3mo progressive for the third 3mo cadence, and
+                    the 1yr progressive map because the second 6mo partition
+                    is identical to the third 3mo map.
+            In fourth 3mo partition date range,
+                * produce 3mo progressive for the fourth 3mo cadence, the
+                    second 6mo progressive map, and the 1yr progressive map.
+
+            Example: if current time is Feb 13, 2026, the 3mo range is
+            Jan 17 to Feb 13. We will produce:
+                    - cadence_3mo_2026-01-17T00:00:00_to_2026-02-13T00:00:00
+
+            We will not produce 6mo or 1yr progressive maps because they are identical
+            to the 3mo progressive map. Use the shortest cadence first so longer
+            cadences only emit when the range differs.
+
+        Returns
+        -------
+        list[str]
+            A list of progressive cadence partition names.
+        """
+        # Eg. if today is Feb 13, 2026. date range going into 3mo is Jan 17 to Feb 13.
+        # If we look at 6mo partition, date range is Jan 17 to Feb 13,
+        # which is the same as 3mo partition, so we only produce 3mo progressive map.
+        # Think of what data is going into the partition.
+        progressive_partitions: list[str] = []
+        seen_ranges: set[tuple[str, str]] = set()
+        current_time_str = self.current_time.strftime("%Y-%m-%dT%H:%M:%S")
+
+        for cadence_str in self._CADENCE_PRIORITY:
+            active_partitions = self._get_partition_for_time(cadence_str)
+            if not active_partitions:
+                continue
+
+            partition_name = active_partitions[0]
+            start_date, _ = self.cadence_to_datetime_range(
+                partition_name, as_datetime=True
+            )
+            start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
+            partition_range = (start_date_str, current_time_str)
+            if partition_range in seen_ranges:
+                continue
+
+            seen_ranges.add(partition_range)
+            progressive_partitions.append(
+                f"cadence_{cadence_str}_{start_date_str}_to_{current_time_str}"
+            )
+
+        return progressive_partitions
 
     def cadence_to_datetime_range(
         self,
@@ -629,27 +746,30 @@ class CadenceDays:
             The cadence partition name to convert. Eg.
             'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00'.
         as_datetime : bool
-            If True, return the start and end dates as datetime objects. Default is False.
+            If True, return the start and end dates as datetime objects.
+            Default is False.
 
         Returns
         -------
         tuple(datetime, datetime) or tuple(str, str)
             The start date and end date of the cadence.
-        """        
-        prefix = f"cadence_{self.cadence_str}_"
-        if not partition_name.startswith(prefix):
+        """
+        cadence_options = "|".join(map(re.escape, self._CADENCE_LOOKUP.keys()))
+        pattern = (
+            rf"^cadence_(?:{cadence_options})_"
+            r"(?P<start>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})"
+            r"_to_"
+            r"(?P<end>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})$"
+        )
+        match = re.match(pattern, partition_name)
+        if not match:
             raise ValueError(
                 "Expects something like "
                 "'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00'"
             )
 
-        date_range = partition_name.removeprefix(prefix)
-        start_date_str, separator, end_date_str = date_range.partition("_to_")
-        if not separator:
-            raise ValueError(
-                "Expects something like "
-                "'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00'"
-            )
+        start_date_str = match.group("start")
+        end_date_str = match.group("end")
 
         if as_datetime:
             start_date = datetime.datetime.strptime(
@@ -663,47 +783,29 @@ class CadenceDays:
 
         return start_date_str, end_date_str
 
-    def _get_partition_for_time(self, current_time: datetime.datetime) -> str | None:
-        """Return the partition that contains current_time, if one exists."""
-        for partition_name in self.partitions:
-            start_date, end_date = self.cadence_to_datetime_range(
-                partition_name, as_datetime=True
-            )
-            if start_date <= current_time < end_date:
-                return partition_name
-        return None
+    def _get_partition_for_time(self, cadence_str: str) -> str | None:
+        """Return the partition that contains current_time, if one exists.
 
-    def get_progressive_partition_names(
-        self,
-    ) -> list[str]:
-        """Get progressive partition names.
+        Check whether the current time falls within a cadence partition.
+        If it does, the partition is currently active and should produce a map.
+        Otherwise, skip it.
 
-        Returns
-        -------
-        list[str]
-            A list of progressive cadence partition names for 3mo, 6mo, and 1yr.
+        Parameters
+        ----------
+        cadence_str : str
+            The cadence string to check. Eg.
+            'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00'.
         """
-        current_time = self.current_time
-        partitions: list[str] = []
-        seen_start_dates: set[datetime.datetime] = set()
-
-        for cadence_str in self._CADENCE_PRIORITY:
-            cadence_days = CadenceDays(cadence_str, current_time=current_time)
-            current_partition = cadence_days._get_partition_for_time(current_time)
-            if current_partition is None:
-                continue
-
-            start_date, end_date = cadence_days.cadence_to_datetime_range(
-                current_partition, as_datetime=True
+        valid_partitions = []
+        for partition in self.get_cadence_partition_names(cadence_str):
+            start_date, end_date = self.cadence_to_datetime_range(
+                partition, as_datetime=True
             )
-            if start_date in seen_start_dates:
-                continue
+            if start_date <= self.current_time and end_date > self.current_time:
+                valid_partitions.append(partition)
+        return valid_partitions
 
-            seen_start_dates.add(start_date)
-            partitions.append(
-                f"cadence_{cadence_str}_{start_date:%Y-%m-%dT%H:%M:%S}_to_{end_date:%Y-%m-%dT%H:%M:%S}"
-            )
 
-        return partitions
-
-print(CadenceDays("3mo").get_progressive_partition_names())
+print(CadenceJob().get_cadence_partition_names("3mo"))
+print(CadenceJob()._get_partition_for_time("3mo"))
+print(CadenceJob().get_progressive_partition_names())
