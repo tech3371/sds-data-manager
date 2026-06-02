@@ -542,108 +542,9 @@ class ProcessingJobType:
 
 class CadenceDays:
     """Class for a cadence value and the corresponding days."""
-
-    _YEAR = 365.25
-    _CADENCE_LOOKUP = {
-        "1mo": _YEAR / 12,
-        "3mo": _YEAR / 4,
-        "6mo": _YEAR / 2,
-        "1yr": _YEAR,
-    }
-
-    def __init__(self, cadence_str: str):
-        """Cadence module.
-
-        Parameters
-        ----------
-        cadence_str : str
-            Cadence string, must be one of "1mo", "3mo", "6mo", or "1yr".
-
-        Initializes cadence_str and days attributes based on the
-        input cadence_str.
-
-        Raises
-        ------
-        ValueError
-            If the cadence string is not valid.
-        """
-        if cadence_str not in self._CADENCE_LOOKUP:
-            raise ValueError(
-                f"Invalid cadence: {cadence_str}. Valid cadences are: {list(self._CADENCE_LOOKUP.keys())}"
-            )
-        self.cadence_str = cadence_str
-        self.days = self._CADENCE_LOOKUP[cadence_str]
-
-    def cadence_to_datetime_range(
-        self,
-        start_date: datetime.datetime = FIRST_MAP_START_DATE,
-        as_str: bool = False,
-    ) -> tuple[datetime.datetime, datetime.datetime] | tuple[str, str]:
-        """Convert the cadence to a datetime range.
-
-        Parameters
-        ----------
-        start_date : datetime, optional
-            The start date for the cadence. This is used to calculate the end date. If
-            not provided, the end date will be set to today. Default is None.
-        as_str : bool
-            If True, return the start and end dates as strings. Default is False.
-
-        Returns
-        -------
-        tuple(datetime, datetime) or tuple(str, str)
-            The start date and end date of the cadence.
-        """
-        num_days = self.days - 1
-        if start_date:
-            end_date = start_date + datetime.timedelta(days=num_days)
-
-        if as_str:
-            start_date = start_date.strftime("%Y-%m-%dT%H:%M:%S")
-            end_date = end_date.strftime("%Y-%m-%dT%H:%M:%S")
-        return start_date, end_date
-
-    def get_cadence_partition_names(
-        self, start_date: datetime.datetime = FIRST_MAP_START_DATE
-    ) -> list[str]:
-        """Get cadence partition names from start_date up to the current time.
-
-        Parameters
-        ----------
-        start_date : datetime, optional
-            The start date for the cadence. This is used to calculate the end date. If
-            not provided, the end date will be set to today. Default is FIRST_MAP_START_DATE.
-
-        Returns
-        -------
-        list[str]
-            A list of cadence partition names from start_date up to the current time.
-        """
-        if start_date.tzinfo is None:
-            start_date = start_date.replace(tzinfo=datetime.timezone.utc)
-
-        end_date = datetime.datetime.now(tz=datetime.timezone.utc)
-        year = end_date.year
-        step = datetime.timedelta(days=self.days)
-        partitions: list[str] = []
-        # To reduce duplication, potential solution is:
-        # In first 3mo partition date range,
-        #   * produce 3mo progressive map. Don't produce 6mo or 1yr since they will be identical to 3mo.
-        # In second 3mo partition date range,
-        #   * produce 3mo progressive for second 3mo cadence, and first 6mo progressive map
-        # In third 3mo partition date range,
-        #   * produce 3mo progressive for third 3mo cadence, and and
-        #   1yr progressive map because second 6mo will be identical to 3rd 3mo map.
-        # In fourth 3mo partition date range,
-        #   * produce 3mo progressive for fourth 3mo cadence, and second 6mo progressive map,
-        #   and 1yr progressive map
-        # 
-
-        # Eg. if today is Feb 13, 2026. date range going into 3mo is Jan 17 to Feb 13.
-        # If we look at 6mo partition, date range is Jan 17 to Feb 13,
-        # which is the same as 3mo partition, so we only produce 3mo progressive map.
-        # Think of what data is going into the partition. 
-        partition_names = {
+    end_date = datetime.datetime.now(tz=datetime.timezone.utc)
+    year = end_date.year
+    cadence_partitions = {
             "3mo": {
                 "partitions": [
                     # First partition can be 91 days(or 92 days on leap year).
@@ -670,23 +571,99 @@ class CadenceDays:
                 ]
             }
         }
-        while start_date < end_date:
-            partition_start, partition_end = self.cadence_to_datetime_range(
-                start_date=start_date
-            )
-            # TODO: for progressive map, we may need to check for any 
-            # partition start date between the last partition end date and now,
-            # rather than just checking if the end date is in the future.
-            if partition_end > end_date:
-                break
 
-            partition_start_str = partition_start.strftime("%Y-%m-%dT%H:%M:%S")
-            partition_end_str = partition_end.strftime("%Y-%m-%dT%H:%M:%S")
-            partitions.append(
-                f"cadence_{self.cadence_str}_{partition_start_str}_to_{partition_end_str}"
-            )
-            start_date += step
+    def __init__(self, cadence_str: str):
+        """Cadence module.
 
+        Parameters
+        ----------
+        cadence_str : str
+            Cadence string, must be one of "3mo", "6mo", or "1yr".
+
+        Initializes cadence_partitions and cadence_str attributes based on the
+        input cadence_str.
+
+        Raises
+        ------
+        ValueError
+            If the cadence string is not valid.
+        """
+        if cadence_str not in self._CADENCE_LOOKUP:
+            raise ValueError(
+                f"Invalid cadence: {cadence_str}. Valid cadences are: {list(self._CADENCE_LOOKUP.keys())}"
+            )
+        self.cadence_partitions = self.cadence_partitions[cadence_str]["partitions"]
+        self.cadence_str = cadence_str
+
+    def cadence_to_datetime_range(
+        self,
+        partition_name: str,
+        as_datetime: bool = False,
+    ) -> tuple[datetime.datetime, datetime.datetime] | tuple[str, str]:
+        """Convert the cadence to a datetime range.
+
+        Parameters
+        ----------
+        partition_name : str
+            The cadence partition name to convert. Eg.
+            'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00'.
+        as_datetime : bool
+            If True, return the start and end dates as datetime objects. Default is False.
+
+        Returns
+        -------
+        tuple(datetime, datetime) or tuple(str, str)
+            The start date and end date of the cadence.
+        """        
+        prefix = f"cadence_{self.cadence_str}_"
+        if not partition_name.startswith(prefix):
+            raise ValueError(
+                "Expects something like "
+                "'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00'"
+            )
+
+        date_range = partition_name.removeprefix(prefix)
+        start_date_str, separator, end_date_str = date_range.partition("_to_")
+        if not separator:
+            raise ValueError(
+                "Expects something like "
+                "'cadence_3mo_2026-01-17T00:00:00_to_2026-04-18T00:00:00'"
+            )
+
+        if as_datetime:
+            start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%dT%H:%M:%S")
+            end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%dT%H:%M:%S")
+
+        return start_date, end_date
+
+    def get_progressive_partition_names(
+        self,
+    ) -> list[str]:
+        """Get progressive partition names.
+
+        Returns
+        -------
+        list[str]
+            A list of cadence partition names from start_date up to the current time.
+        """
+        partitions: list[str] = []
+        # To reduce duplication, potential solution is:
+        # In first 3mo partition date range,
+        #   * produce 3mo progressive map. Don't produce 6mo or 1yr since they will be identical to 3mo.
+        # In second 3mo partition date range,
+        #   * produce 3mo progressive for second 3mo cadence, and first 6mo progressive map
+        # In third 3mo partition date range,
+        #   * produce 3mo progressive for third 3mo cadence, and and
+        #   1yr progressive map because second 6mo will be identical to 3rd 3mo map.
+        # In fourth 3mo partition date range,
+        #   * produce 3mo progressive for fourth 3mo cadence, and second 6mo progressive map,
+        #   and 1yr progressive map
+        # 
+
+        # Eg. if today is Feb 13, 2026. date range going into 3mo is Jan 17 to Feb 13.
+        # If we look at 6mo partition, date range is Jan 17 to Feb 13,
+        # which is the same as 3mo partition, so we only produce 3mo progressive map.
+        # Think of what data is going into the partition. 
         return partitions
 
 print(CadenceDays("3mo").get_cadence_partition_names())
