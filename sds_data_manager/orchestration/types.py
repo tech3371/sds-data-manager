@@ -623,13 +623,60 @@ class CadenceDays:
             start_date = start_date.replace(tzinfo=datetime.timezone.utc)
 
         end_date = datetime.datetime.now(tz=datetime.timezone.utc)
+        year = end_date.year
         step = datetime.timedelta(days=self.days)
         partitions: list[str] = []
+        # To reduce duplication, potential solution is:
+        # In first 3mo partition date range,
+        #   * produce 3mo progressive map. Don't produce 6mo or 1yr since they will be identical to 3mo.
+        # In second 3mo partition date range,
+        #   * produce 3mo progressive for second 3mo cadence, and first 6mo progressive map
+        # In third 3mo partition date range,
+        #   * produce 3mo progressive for third 3mo cadence, and and
+        #   1yr progressive map because second 6mo will be identical to 3rd 3mo map.
+        # In fourth 3mo partition date range,
+        #   * produce 3mo progressive for fourth 3mo cadence, and second 6mo progressive map,
+        #   and 1yr progressive map
+        # 
 
+        # Eg. if today is Feb 13, 2026. date range going into 3mo is Jan 17 to Feb 13.
+        # If we look at 6mo partition, date range is Jan 17 to Feb 13,
+        # which is the same as 3mo partition, so we only produce 3mo progressive map.
+        # Think of what data is going into the partition. 
+        partition_names = {
+            "3mo": {
+                "partitions": [
+                    # First partition can be 91 days(or 92 days on leap year).
+                    f"cadence_3mo_{year}-01-17T00:00:00_to_{year}-04-18T00:00:00",
+                    # Next two partition are always 91 days.
+                    f"cadence_3mo_{year}-04-18T00:00:00_to_{year}-07-18T00:00:00",
+                    f"cadence_3mo_{year}-07-18T00:00:00_to_{year}-10-17T00:00:00",
+                    # Last partition is always 92 days.
+                    f"cadence_3mo_{year}-10-17T00:00:00_to_{year+1}-01-17T00:00:00",
+                ]
+            },
+            "6mo": {
+                "partitions": [
+                    # First partition can be 182 days and 183 days on leap year.
+                    f"cadence_6mo_{year}-01-17T00:00:00_to_{year}-07-18T00:00:00",
+                    # Second partition will be 183 always.
+                    f"cadence_6mo_{year}-07-18T00:00:00_to_{year+1}-01-17T00:00:00",
+                ]
+            },
+            "1yr": {
+                "partitions": [
+                    # Partition is always 365 days (or 366 on leap year).
+                    f"cadence_1yr_{year}-01-17T00:00:00_to_{year+1}-01-17T00:00:00",
+                ]
+            }
+        }
         while start_date < end_date:
             partition_start, partition_end = self.cadence_to_datetime_range(
                 start_date=start_date
             )
+            # TODO: for progressive map, we may need to check for any 
+            # partition start date between the last partition end date and now,
+            # rather than just checking if the end date is in the future.
             if partition_end > end_date:
                 break
 
@@ -641,3 +688,6 @@ class CadenceDays:
             start_date += step
 
         return partitions
+
+print(CadenceDays("3mo").get_cadence_partition_names())
+
