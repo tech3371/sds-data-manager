@@ -224,26 +224,32 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
     now_date = datetime.datetime.now(datetime.timezone.utc)
     today = now_date.date().isoformat()
 
+    # TODO: how often to check. Eg. daily or weekly?
     if now_date.hour == CADENCE_TRIGGER_HOUR_UTC and context.cursor == today:
         return SensorResult(cursor=context.cursor)
 
     partition_requests = []
     run_requests = []
 
-    # Recalculate partitions from the map start date through now and compare
-    # against existing partitions in dagster. Skip adding partitions that
-    # already exist, and trigger runs for the new partitions.
+    # Calculate partitions base done current time and compare
+    # against existing partitions in dagster.
     for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
         existing_partitions = set(context.instance.get_dynamic_partitions(partition_def.name))
         missing_partitions = [
             partition_name
-            for partition_name in CadenceDays(cadence_str).get_cadence_partition_names()
+            for partition_name in CadenceDays().get_partition_for_time(cadence_str)
             if partition_name not in existing_partitions
         ]
-        # If no missing partitions, continue to the next cadence.
+        # If normal cadence job, skip adding partitions that
+        # already exist, and trigger runs for the new partitions.
+        # TODO:
+        # If progressive map, retrigger for all valid progressive map partitions
+        # based on current time.
+        # TODO: how to automate map partition re-runs if input got updated?
         if not missing_partitions:
             continue
 
+        # For any missing partitions, add to dagster and trigger runs for those partitions.
         partition_requests.append(partition_def.build_add_request(missing_partitions))
         context.log.info(
             f"Registered new {cadence_str} cadence partitions: {missing_partitions}"
