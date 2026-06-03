@@ -104,15 +104,15 @@ jobs:
           echo "cluster_name=$cluster_name" >> "$GITHUB_OUTPUT"
           echo "service_name=$service_name" >> "$GITHUB_OUTPUT"
 
-      - name: Force new deployment
-        shell: bash
-        run: |
-          aws ecs update-service \
-            --cluster "${{ steps.lookup.outputs.cluster_name }}" \
-            --service "${{ steps.lookup.outputs.service_name }}" \
-            --force-new-deployment \
-            --profile "${{ steps.envcfg.outputs.aws_profile }}" \
-            --region "${{ env.AWS_REGION }}"
+      # - name: Force new deployment
+      #   shell: bash
+      #   run: |
+      #     aws ecs update-service \
+      #       --cluster "${{ steps.lookup.outputs.cluster_name }}" \
+      #       --service "${{ steps.lookup.outputs.service_name }}" \
+      #       --force-new-deployment \
+      #       --profile "${{ steps.envcfg.outputs.aws_profile }}" \
+      #       --region "${{ env.AWS_REGION }}"
 
       - name: Summary
         shell: bash
