@@ -1013,7 +1013,7 @@ sensor90_l1c_pset: &sensor90_l1c_pset
   outputs:
     - source: hi
       data_type: l3
-      descriptor: h90-spx-h-hf-sp-full-hae-6deg-6mo
+      descriptor: sp-maps # Had to update because another job was producing same output
 
 (l3, hic-maps):
   partition: daily

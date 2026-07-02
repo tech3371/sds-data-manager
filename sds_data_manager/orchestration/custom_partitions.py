@@ -15,7 +15,7 @@ from sds_data_manager.lambda_code.SDSCode.database import database as db
 from sds_data_manager.lambda_code.SDSCode.database import models
 from sds_data_manager.orchestration import config
 from sds_data_manager.orchestration.maps_utils import (
-    get_progressive_map_partition_names,
+    get_map_partition_to_create,
 )
 
 IDEX_10_DAY_RANGES_PATH = (
@@ -262,7 +262,7 @@ def add_idex_30_day_partitions(context: SensorEvaluationContext):
 # Run daily (24 hours = 86400 seconds)
 # TODO: update to run daily or weekly or at specified time
 # based on progressive discussion in the future.
-@sensor(minimum_interval_seconds=86400)
+@sensor(minimum_interval_seconds=5)
 def add_cadence_map_partitions(context: SensorEvaluationContext):
     """Create missing cadence partitions daily.
 
@@ -273,7 +273,8 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
 
     # Calculate the currently active windows for all cadences.
     current_time = datetime.datetime.now(datetime.timezone.utc)
-    progressive_partition_names = get_progressive_map_partition_names(current_time)
+    progressive_partition_names = get_map_partition_to_create(current_time)
+    partition_requests = []
 
     # Compare against existing partitions in dagster.
     for cadence_str, partition_def in CADENCE_PARTITION_DEFS.items():
@@ -291,11 +292,7 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
         if not missing_partitions:
             continue
 
-        # Add missing partitions via instance API
-        context.instance.add_dynamic_partitions(
-            partitions_def_name=partition_def.name,
-            partition_keys=missing_partitions,
-        )
+        partition_requests.append(partition_def.build_add_request(missing_partitions))
         context.log.info(
             f"Added new {cadence_str} cadence partitions: {missing_partitions}"
         )
@@ -304,9 +301,7 @@ def add_cadence_map_partitions(context: SensorEvaluationContext):
     if not added_any:
         return SkipReason("No new cadence partitions to create")
 
-    # TODO: This sensor only manages partitions. Use auto-materialize
-    # or manual triggers to run jobs on these partitions.
-    return SensorResult()
+    return SensorResult(dynamic_partitions_requests=partition_requests)
 
 
 sensors = [
