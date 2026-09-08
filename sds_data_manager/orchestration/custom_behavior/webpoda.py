@@ -464,6 +464,8 @@ def _compare_and_write_new_data(
             f"New L0 file. Saving binary data of size {len(content) // 1000} kB "
             f"to {path}"
         )
+        print(f"No prod file found. Creating new L0 file: {path.name}")
+        print("-" * 80)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
         return path
@@ -584,6 +586,16 @@ def _parse_args():
 
 
 if __name__ == "__main__":
+    if not imap_data_access.config["API_KEY"]:
+        raise OSError(
+            "IMAP_API_KEY environment variable is not set. "
+            "Set it before running this script."
+        )
+    if not imap_data_access.config["WEBPODA_TOKEN"]:
+        raise OSError(
+            "IMAP_WEBPODA_TOKEN environment variable is not set. "
+            "Set it before running this script."
+        )
     args = _parse_args()
     # print processing start time
     start_time = datetime.datetime.now()
